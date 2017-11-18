@@ -172,7 +172,7 @@ def install_scs(**kwargs):
     if args.blas64:
         define_macros += [('BLAS64', 1)] # 64 bit blas
     if blas_info or lapack_info:
-        define_macros += [('LAPACK_LIB_FOUND', None)] + blas_info.pop('define_macros', []) + lapack_info.pop('define_macros', [])
+        define_macros += [('USE_LAPACK', None)] + blas_info.pop('define_macros', []) + lapack_info.pop('define_macros', [])
         include_dirs += blas_info.pop('include_dirs', []) + lapack_info.pop('include_dirs', [])
         library_dirs += blas_info.pop('library_dirs', []) + lapack_info.pop('library_dirs', [])
         libraries += blas_info.pop('libraries', []) + lapack_info.pop('libraries', [])
