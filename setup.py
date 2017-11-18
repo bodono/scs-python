@@ -179,7 +179,7 @@ def install_scs(**kwargs):
         extra_link_args += blas_info.pop('extra_link_args', []) + lapack_info.pop('extra_link_args', [])
         extra_compile_args += blas_info.pop('extra_compile_args', []) + lapack_info.pop('extra_compile_args', [])
     if not args.int32:
-        extra_define_macros += [('DLONG', 1)] # longs for integer type
+        extra_define_macros += [('LONG', 1)] # longs for integer type
 
     _scs_direct = Extension(
                         name='_scs_direct',

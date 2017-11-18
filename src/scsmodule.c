@@ -275,7 +275,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     SCS_NULL};
 
 /* parse the arguments and ensure they are the correct type */
-#ifdef DLONG
+#ifdef LONG
 #ifdef FLOAT
   char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lfffffl";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
