@@ -1,5 +1,5 @@
 # scs-python
-Python interface for [SCS](https://github.com/cvxgrp/scs)
+Python interface for [SCS](https://github.com/cvxgrp/scs) 2.0.0 and higher.
 
 To install SCS as a python package from source:
 ```shell
@@ -23,7 +23,7 @@ import scs
 ```
 This module provides a single function `scs` with the following call signature:
 ```python
-sol = scs(data, cone, [use_indirect=True, gpu=False, verbose=True, normalize=True, max_iters=2500, scale=5, eps=1e-3, cg_rate=2, alpha=1.8, rho_x=1e-3])
+sol = scs(data, cone, [use_indirect=True, gpu=False, verbose=True, normalize=True, max_iters=2500, scale=5, eps=1e-3, cg_rate=2, alpha=1.8, rho_x=1e-3, acceleration_lookback=20])
 ```
 Arguments in the square brackets are optional, and default to the values on the
 right of their respective equals signs.  The argument `data` is a python
