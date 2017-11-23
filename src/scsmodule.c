@@ -115,7 +115,7 @@ static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
 static scs_int get_warm_start(char *key, scs_float **x, scs_int l,
                               PyObject *warm) {
   PyArrayObject *x0 = (PyArrayObject *)PyDict_GetItemString(warm, key);
-  *x = scs_calloc(l, sizeof(scs_float));
+  *x = (scs_float *)scs_calloc(l, sizeof(scs_float));
   if (x0) {
     if (!PyArray_ISFLOAT(x0) || PyArray_NDIM(x0) != 1 ||
         PyArray_DIM(x0, 0) != l) {
@@ -140,7 +140,7 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
   if (obj) {
     if (PyList_Check(obj)) {
       n = (scs_int)PyList_Size(obj);
-      q = scs_calloc(n, sizeof(scs_int));
+      q = (scs_int *)scs_calloc(n, sizeof(scs_int));
       for (i = 0; i < n; ++i) {
         PyObject *qi = PyList_GetItem(obj, i);
         if (parse_pos_scs_int(qi, &(q[i])) < 0) {
@@ -149,7 +149,7 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
       }
     } else if (PyInt_Check(obj) || PyLong_Check(obj)) {
       n = 1;
-      q = scs_malloc(sizeof(scs_int));
+      q = (scs_int *)scs_malloc(sizeof(scs_int));
       if (parse_pos_scs_int(obj, q) < 0) {
         return printErr(key);
       }
@@ -175,14 +175,14 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
   if (obj) {
     if (PyList_Check(obj)) {
       n = (scs_int)PyList_Size(obj);
-      q = scs_calloc(n, sizeof(scs_float));
+      q = (scs_float *)scs_calloc(n, sizeof(scs_float));
       for (i = 0; i < n; ++i) {
         PyObject *qi = PyList_GetItem(obj, i);
         q[i] = (scs_float)PyFloat_AsDouble(qi);
       }
     } else if (PyInt_Check(obj) || PyLong_Check(obj) || PyFloat_Check(obj)) {
       n = 1;
-      q = scs_malloc(sizeof(scs_float));
+      q = (scs_float *)scs_malloc(sizeof(scs_float));
       q[0] = (scs_float)PyFloat_AsDouble(obj);
     } else {
       return printErr(key);
@@ -260,8 +260,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
       SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
   };
   /* scs data structures */
-  ScsData *d = scs_calloc(1, sizeof(ScsData));
-  ScsCone *k = scs_calloc(1, sizeof(ScsCone));
+  ScsData *d = (ScsData *)scs_calloc(1, sizeof(ScsData));
+  ScsCone *k = (ScsCone *)scs_calloc(1, sizeof(ScsCone));
 
   ScsMatrix *A;
   ScsSolution sol = {0};
@@ -306,7 +306,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   npy_intp veclen[1];
   PyObject *x, *y, *s, *return_dict, *info_dict;
 
-  d->stgs = scs_malloc(sizeof(ScsSettings));
+  d->stgs = (ScsSettings *)scs_malloc(sizeof(ScsSettings));
 
   /* set defaults */
   set_default_scs_settings(d);
@@ -347,7 +347,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   ps.Ai = get_contiguous(Ai, scs_int_type);
   ps.Ap = get_contiguous(Ap, scs_int_type);
 
-  A = scs_malloc(sizeof(ScsMatrix));
+  A = (ScsMatrix *)scs_malloc(sizeof(ScsMatrix));
   A->n = d->n;
   A->m = d->m;
   A->x = (scs_float *)PyArray_DATA(ps.Ax);
