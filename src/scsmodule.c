@@ -1,10 +1,10 @@
 #include <Python.h>
-#include "cones.h"
-#include "glbopts.h"
 #include "amatrix.h"
+#include "cones.h"
+#include "constants.h"
+#include "glbopts.h"
 #include "numpy/arrayobject.h"
 #include "scs.h"
-#include "constants.h"
 #include "util.h"
 
 /* IMPORTANT: This code now uses numpy array types. It is a private C module
@@ -214,14 +214,24 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, struct ScsPyData *ps) {
     Py_DECREF(ps->c);
   }
   if (k) {
-    if (k->q) scs_free(k->q);
-    if (k->s) scs_free(k->s);
-    if (k->p) scs_free(k->p);
+    if (k->q) {
+      scs_free(k->q);
+    }
+    if (k->s) {
+      scs_free(k->s);
+    }
+    if (k->p) {
+      scs_free(k->p);
+    }
     scs_free(k);
   }
   if (d) {
-    if (d->A) scs_free(d->A);
-    if (d->stgs) scs_free(d->stgs);
+    if (d->A) {
+      scs_free(d->A);
+    }
+    if (d->stgs) {
+      scs_free(d->stgs);
+    }
     scs_free(d);
   }
 }
