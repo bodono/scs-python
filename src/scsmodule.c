@@ -5,6 +5,7 @@
 #include "numpy/arrayobject.h"
 #include "scs.h"
 #include "constants.h"
+#include "util.h"
 
 /* IMPORTANT: This code now uses numpy array types. It is a private C module
  * in the sense that end users only see the front-facing Python code in
