@@ -160,7 +160,7 @@ def install_scs(**kwargs):
     libraries = []
     extra_define_macros = []
     sources = ['src/scsmodule.c', ] + glob('scs/src/*.c') + glob('scs/linsys/*.c')
-    include_dirs = [get_include(), 'scs', 'scs/include']
+    include_dirs = [get_include(), 'scs/include', 'scs/linsys']
     define_macros = [('PYTHON', None), ('CTRLC', 1), ('COPYAMATRIX', None)]
 
     if system() == 'Linux':
@@ -224,8 +224,8 @@ def install_scs(**kwargs):
             author_email = 'bodonoghue85@gmail.com',
             url = 'http://github.com/cvxgrp/scs',
             description='scs: splitting conic solver',
-            package_dir = {'': 'src'},
-            py_modules=['scs'],
+            package_dir = {'scs': 'src'},
+            packages=['scs'],
             ext_modules=ext_modules,
             cmdclass = {'build_ext': build_ext_scs},
             install_requires=["numpy >= 1.7","scipy >= 0.13.2"],

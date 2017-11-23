@@ -1,7 +1,7 @@
 #include <Python.h>
 #include "cones.h"
 #include "glbopts.h"
-#include "linsys/amatrix.h"
+#include "amatrix.h"
 #include "numpy/arrayobject.h"
 #include "scs.h"
 #include "constants.h"
