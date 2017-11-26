@@ -1,0 +1,13 @@
+graft src 
+graft test 
+graft scs
+graft scs/src
+graft scs/test
+graft scs/test/random
+graft scs/include
+graft scs/linsys
+graft scs/linsys/direct
+graft scs/linsys/direct/external
+graft scs/linsys/indirect
+graft scs/linsys/gpu
+
