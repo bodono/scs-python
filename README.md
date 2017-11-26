@@ -1,7 +1,11 @@
 # scs-python
 Python interface for [SCS](https://github.com/cvxgrp/scs) 2.0.0 and higher.
 
-To install SCS as a python package from source:
+To install using pip (recommended) use:
+```shell
+pip install scs
+```
+To install SCS from source:
 ```shell
 git clone --recursive https://github.com/bodono/scs-python.git
 cd scs-python
