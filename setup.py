@@ -166,7 +166,7 @@ def install_scs(**kwargs):
     if system() == 'Linux':
         libraries += ['rt']
     if args.float32:
-        define_macros += [('FLOAT', 1)] # single precision floating point
+        define_macros += [('SFLOAT', 1)] # single precision floating point
     if args.extraverbose:
         define_macros += [('EXTRA_VERBOSE', 999)] # for debugging
     if args.blas64:
@@ -179,7 +179,7 @@ def install_scs(**kwargs):
         extra_link_args += blas_info.pop('extra_link_args', []) + lapack_info.pop('extra_link_args', [])
         extra_compile_args += blas_info.pop('extra_compile_args', []) + lapack_info.pop('extra_compile_args', [])
     if not args.int32:
-        extra_define_macros += [('LONG', 1)] # longs for integer type
+        extra_define_macros += [('DLONG', 1)] # longs for integer type
 
     _scs_direct = Extension(
                         name='_scs_direct',
