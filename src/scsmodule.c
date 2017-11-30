@@ -1,7 +1,6 @@
 #include <Python.h>
 #include "amatrix.h"
 #include "cones.h"
-#include "constants.h"
 #include "glbopts.h"
 #include "numpy/arrayobject.h"
 #include "scs.h"
@@ -309,7 +308,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   d->stgs = (ScsSettings *)scs_malloc(sizeof(ScsSettings));
 
   /* set defaults */
-  set_default_scs_settings(d);
+  SCS(set_default_settings)(d);
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
@@ -433,12 +432,12 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS
-      /* Solve! */
-      scs(d, k, &sol, &info);
+  /* Solve! */
+  scs(d, k, &sol, &info);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS
 
-      veclen[0] = d->n;
+  veclen[0] = d->n;
   x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, sol.x);
   PyArray_ENABLEFLAGS((PyArrayObject *)x, NPY_ARRAY_OWNDATA);
 
