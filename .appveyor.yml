@@ -1,0 +1,32 @@
+environment:
+  matrix:
+    - PYVER: 2.7
+      PYLOC: python27
+    - PYVER: 3.3
+      PYLOC: python34
+    - PYVER: 3.4
+      PYLOC: python34
+    - PYVER: 3.5
+      PYLOC: python34
+    - PYVER: 3.6
+      PYLOC: python34
+
+platform:
+  - x86
+  - x64
+
+install:
+  - ps: (new-object net.webclient).DownloadFile('https://bootstrap.pypa.io/get-pip.py', 'C:\get-pip.py')
+  - C:\%PYLOC%\python C:\get-pip.py
+  - C:\%PYLOC%\Scripts\pip.exe install conda
+  - C:\%PYLOC%\Scripts\conda.exe init
+  - C:\%PYLOC%\Scripts\conda.exe create -n testenv --yes --quiet python=%PYVER% numpy scipy nose
+
+build_script:
+  - git submodule update --init --recursive
+  - C:\%PYLOC%\envs\testenv\python.exe setup.py install
+
+test_script:
+  - cd test 
+  - C:\%PYLOC%\envs\testenv\Scripts\nosetests.exe test_scs_basic.py test_scs_rand.py
+
