@@ -3,7 +3,7 @@ graft test
 graft scs
 graft scs/src
 graft scs/test
-graft scs/test/random
+graft scs/test/problems
 graft scs/include
 graft scs/linsys
 graft scs/linsys/direct
