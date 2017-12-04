@@ -2,6 +2,8 @@ scs-python
 ===
 
 [![Build Status](https://travis-ci.org/bodono/scs-python.svg?branch=master)](https://travis-ci.org/bodono/scs-python)
+[![Build status](https://ci.appveyor.com/api/projects/status/github/bodono/scs-python/branch/master?svg=true)](https://ci.appveyor.com/project/bodono/scs-python/branch/master)
+
 
 Python interface for [SCS](https://github.com/cvxgrp/scs) 2.0.0 and higher.
 
