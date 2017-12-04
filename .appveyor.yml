@@ -9,7 +9,7 @@ environment:
       PYVER: 2.7
 
     - platform: x64
-      CONDAPATH: C:\Miniconda3-x64;C:\Miniconda2-x64\Scripts
+      CONDAPATH: C:\Miniconda3-x64;C:\Miniconda3-x64\Scripts
       PYVER: 3.5
     
     - platform: x86
