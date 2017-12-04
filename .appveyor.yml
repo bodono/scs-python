@@ -1,32 +1,26 @@
 environment:
   matrix:
-    - PYTHON: "C:\\Python27"
-      PYTHON_VERSION: "2.7.x" # currently 2.7.9
+    - PYTHON_VERSION: "2.7"
       CONDA_PY: "27"
       PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Python27-x64"
-      PYTHON_VERSION: "2.7.x" # currently 2.7.9
+    - PYTHON_VERSION: "2.7"
       CONDA_PY: "27"
       PYTHON_ARCH: "64"
 
-    - PYTHON: "C:\\Python34"
-      PYTHON_VERSION: "3.4.x" # currently 3.4.3
+    - PYTHON_VERSION: "3.4"
       CONDA_PY: "34"
       PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Python34-x64"
-      PYTHON_VERSION: "3.4.x" # currently 3.4.3
+    - PYTHON_VERSION: "3.4"
       CONDA_PY: "34"
       PYTHON_ARCH: "64"
 
-    - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: "3.5.0"
+    - PYTHON_VERSION: "3.5"
       CONDA_PY: "35"
       PYTHON_ARCH: "32"
 
-    - PYTHON: "C:\\Python35-x64"
-      PYTHON_VERSION: "3.5.0"
+    - PYTHON_VERSION: "3.5"
       CONDA_PY: "35"
       PYTHON_ARCH: "64"
 
@@ -34,6 +28,8 @@ install:
   - powershell .\\continuous-integration\\appveyor\\install.ps1
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
   - conda create -n testenv --yes --quiet python=%PYTHON_VERSION% numpy scipy nose
+  - python --version
+  - python -c "import struct; print(struct.calcsize('P') * 8)"
   - git submodule update --init --recursive
   - python setup.py install
 
