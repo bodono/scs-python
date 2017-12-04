@@ -1,6 +1,7 @@
 os:
   - linux
   - osx
+language: python
 env:
   - PYTHON_VERSION="2.6"
   - PYTHON_VERSION="2.7"
@@ -16,7 +17,7 @@ install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q -n test-environment python=$PYTHON_VERSION numpy scipy
+  - conda create -q -n test-environment python=$PYTHON_VERSION numpy scipy nose argparse
   - source activate test-environment
   - conda install -c https://conda.anaconda.org/cyclus lapack
   - python setup.py install
