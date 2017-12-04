@@ -18,7 +18,9 @@ environment:
  
 install:
   - set PATH=%CONDAPATH%;%PATH%
-  - conda.exe create -n testenv --yes --quiet python=%PYVER% numpy scipy nose
+  - conda update -q conda
+  - conda create -n testenv --yes --quiet python=%PYVER%
+  - conda install numpy scipy nose
   - git submodule update --init --recursive
   - python setup.py install
 
