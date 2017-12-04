@@ -1,30 +1,46 @@
-environment:
-  matrix:
-    - PYVER: 2.7
-      PYLOC: python27
-    - PYVER: 3.3
-      PYLOC: python34
-    - PYVER: 3.4
-      PYLOC: python34
-    - PYVER: 3.5
-      PYLOC: python34
-    - PYVER: 3.6
-      PYLOC: python34
+matrix:
+  - PYTHON: "C:\\Python27"
+    PYTHON_VERSION: "2.7.x" # currently 2.7.9
+    PYTHON_ARCH: "32"
 
-platform:
-  - x86
-  - x64
+  - PYTHON: "C:\\Python27-x64"
+    PYTHON_VERSION: "2.7.x" # currently 2.7.9
+    PYTHON_ARCH: "64"
+
+  - PYTHON: "C:\\Python33"
+    PYTHON_VERSION: "3.3.x" # currently 3.3.5
+    PYTHON_ARCH: "32"
+
+  - PYTHON: "C:\\Python33-x64"
+    PYTHON_VERSION: "3.3.x" # currently 3.3.5
+    PYTHON_ARCH: "64"
+
+  - PYTHON: "C:\\Python34"
+    PYTHON_VERSION: "3.4.x" # currently 3.4.3
+    PYTHON_ARCH: "32"
+
+  - PYTHON: "C:\\Python34-x64"
+    PYTHON_VERSION: "3.4.x" # currently 3.4.3
+    PYTHON_ARCH: "64"
+
+  - PYTHON: "C:\\Python35"
+    PYTHON_VERSION: "3.5.0"
+    PYTHON_ARCH: "32"
+
+  - PYTHON: "C:\\Python35-x64"
+    PYTHON_VERSION: "3.5.0"
+    PYTHON_ARCH: "64"
 
 install:
-  - ps: (new-object net.webclient).DownloadFile('https://bootstrap.pypa.io/get-pip.py', 'C:\get-pip.py')
-  - C:\%PYLOC%\python C:\get-pip.py
-  - C:\%PYLOC%\Scripts\pip.exe install numpy scipy nose
+  - ps: if (-not(Test-Path($env:PYTHON))) { & appveyor\install.ps1 }
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - "pip install --disable-pip-version-check --user --upgrade pip"
+  - "pip install numpy scipy nose"
 
 build_script:
   - git submodule update --init --recursive
-  - C:\%PYLOC%\envs\testenv\python.exe setup.py install
+  - "python setup.py build"
 
 test_script:
-  - cd test 
-  - C:\%PYLOC%\envs\testenv\Scripts\nosetests.exe test_scs_basic.py test_scs_rand.py
+  - "python setup.py nosetests"
 
