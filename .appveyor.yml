@@ -26,14 +26,14 @@ environment:
 
 install:
   - ps: if (-not(Test-Path($env:PYTHON))) { & appveyor\install.ps1 }
-  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - "pip install --disable-pip-version-check --user --upgrade pip"
-  - "pip install numpy scipy nose"
+  - SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
+  - pip install --disable-pip-version-check --user --upgrade pip
+  - pip install numpy scipy nose
 
 build_script:
   - git submodule update --init --recursive
-  - "python setup.py build"
+  - python setup.py build
 
 test_script:
-  - "python setup.py nosetests"
+  - python setup.py nosetests
 
