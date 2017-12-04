@@ -18,9 +18,7 @@ platform:
 install:
   - ps: (new-object net.webclient).DownloadFile('https://bootstrap.pypa.io/get-pip.py', 'C:\get-pip.py')
   - C:\%PYLOC%\python C:\get-pip.py
-  - C:\%PYLOC%\Scripts\pip.exe install conda
-  - C:\%PYLOC%\Scripts\conda.exe init
-  - C:\%PYLOC%\Scripts\conda.exe create -n testenv --yes --quiet python=%PYVER% numpy scipy nose
+  - C:\%PYLOC%\Scripts\pip.exe install numpy scipy nose
 
 build_script:
   - git submodule update --init --recursive
