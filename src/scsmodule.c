@@ -401,6 +401,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   d->stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
   d->stgs->normalize =
       normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
+  scs_printf("max_iters %li\n", (long)d->stgs->max_iters);
   if (d->stgs->max_iters < 0) {
     return finish_with_error(d, k, &ps, "max_iters must be positive");
   }
