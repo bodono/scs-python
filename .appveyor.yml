@@ -1,35 +1,24 @@
 environment:
   matrix:
-    - PYTHON_VERSION: "2.7"
-      CONDA_PY: "27"
-      PYTHON_ARCH: "32"
+    - platform: x64
+      CONDAPATH: C:\Miniconda-x64;C:\Miniconda-x64\Scripts
+      PYVER: 2.7
 
-    - PYTHON_VERSION: "2.7"
-      CONDA_PY: "27"
-      PYTHON_ARCH: "64"
+    - platform: x86
+      CONDAPATH: C:\Miniconda;C:\Miniconda\Scripts
+      PYVER: 2.7
 
-    - PYTHON_VERSION: "3.4"
-      CONDA_PY: "34"
-      PYTHON_ARCH: "32"
-
-    - PYTHON_VERSION: "3.4"
-      CONDA_PY: "34"
-      PYTHON_ARCH: "64"
-
-    - PYTHON_VERSION: "3.5"
-      CONDA_PY: "35"
-      PYTHON_ARCH: "32"
-
-    - PYTHON_VERSION: "3.5"
-      CONDA_PY: "35"
-      PYTHON_ARCH: "64"
-
+    - platform: x64
+      CONDAPATH: C:\Miniconda3-x64;C:\Miniconda2-x64\Scripts
+      PYVER: 3.5
+    
+    - platform: x86
+      CONDAPATH: C:\Miniconda3;C:\Miniconda3\Scripts
+      PYVER: 3.5
+ 
 install:
-  - powershell .\\continuous-integration\\appveyor\\install.ps1
-  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - conda create -n testenv --yes --quiet python=%PYTHON_VERSION% numpy scipy nose
-  - python --version
-  - python -c "import struct; print(struct.calcsize('P') * 8)"
+  - set PATH=%CONDAPATH%;%PATH%
+  - conda.exe create -n testenv --yes --quiet python=%PYVER% numpy scipy nose
   - git submodule update --init --recursive
   - python setup.py install
 
