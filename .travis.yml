@@ -7,6 +7,8 @@ env:
   - PYTHON_VERSION="2.7"
   - PYTHON_VERSION="3.3"
   - PYTHON_VERSION="3.4"
+  - PYTHON_VERSION="3.5"
+  - PYTHON_VERSION="3.6"
 install:
   - if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
       wget http://repo.continuum.io/miniconda/Miniconda2-latest-MacOSX-x86_64.sh -O miniconda.sh;
@@ -17,7 +19,7 @@ install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q -n test-environment python=$PYTHON_VERSION numpy scipy nose argparse
+  - conda create -q -n test-environment python=$PYTHON_VERSION numpy scipy nose gcc argparse
   - source activate test-environment
   - conda install -c https://conda.anaconda.org/cyclus lapack
   - python setup.py install
