@@ -16,7 +16,7 @@ environment:
       CONDAPATH: C:\Miniconda3;C:\Miniconda3\Scripts
       PYVER: 3.5
  
-install:
+build_script:
   - set PATH=%CONDAPATH%;%PATH%
   - conda update -q conda --yes
   - conda create -n testenv --yes --quiet python=%PYVER%
