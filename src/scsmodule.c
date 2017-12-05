@@ -353,8 +353,6 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   A->i = (scs_int *)PyArray_DATA(ps.Ai);
   A->p = (scs_int *)PyArray_DATA(ps.Ap);
   d->A = A;
-  /*d->Anz = d->Ap[d->n]; */
-  /*d->Anz = PyArray_DIM(Ai,0); */
   /* set c */
   if (!PyArray_ISFLOAT(c) || PyArray_NDIM(c) != 1) {
     return finish_with_error(
@@ -399,8 +397,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 
   d->stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
-  d->stgs->normalize =
-      normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
+  d->stgs->normalize = normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
+  
   if (d->stgs->max_iters < 0) {
     return finish_with_error(d, k, &ps, "max_iters must be positive");
   }
