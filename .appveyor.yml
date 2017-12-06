@@ -26,5 +26,6 @@ build_script:
 
 test_script:
   - cd test
+  - python solve_random_cone_prob.py
   - nosetests
 
