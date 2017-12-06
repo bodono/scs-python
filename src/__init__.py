@@ -7,6 +7,7 @@ __version__ = _scs_indirect.version()
 
 
 def solve(probdata, cone, **kwargs):
+  print(numpy.array([1]).dtype)
   """Solves convex cone problems.
 
     @return dictionary with solution with keys:
