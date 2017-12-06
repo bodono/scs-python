@@ -34,8 +34,7 @@ before_install:
       pyenv install $PYTHON;
       export PYENV_VERSION=$PYTHON;
       export PATH="/Users/travis/.pyenv/shims:${PATH}";
-      pyenv-virtualenv venv;
-      source venv/bin/activate;
+      pyenv virtualenv testenv;
       python --version;
     fi
 
