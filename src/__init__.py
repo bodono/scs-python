@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 from warnings import warn
 from scipy import sparse
 import _scs_indirect
@@ -9,6 +10,7 @@ __version__ = _scs_indirect.version()
 def solve(probdata, cone, **kwargs):
   import numpy as numpy
   print(numpy.array([1]).dtype)
+  print(type(1))
   """Solves convex cone problems.
 
     @return dictionary with solution with keys:
