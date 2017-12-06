@@ -36,7 +36,6 @@ struct ScsPyData {
 /* Note, Python3.x may require special handling for the scs_int and scs_float
  * types. */
 static int get_int_type(void) {
-  scs_printf("XXXXXXx sizeof scs_int %i\n", sizeof(scs_int));
   switch (sizeof(scs_int)) {
     case 1:
       return NPY_INT8;

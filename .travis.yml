@@ -2,16 +2,16 @@ matrix:
   include:
   - os: osx
     language: generic
-    env: PYTHON=2.7
+    env: PYTHON=2.7.10
   - os: osx
     language: generic
-    env: PYTHON=3.4
+    env: PYTHON=3.4.7
   - os: osx
     language: generic
-    env: PYTHON=3.5
+    env: PYTHON=3.5.1
   - os: osx
     language: generic
-    env: PYTHON=3.6
+    env: PYTHON=3.6.0
   - os: linux 
     language: python 
     python: "2.7"
@@ -30,19 +30,17 @@ before_install:
       sudo apt-get install liblapack-dev;
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       brew update;
-      brew install openssl readline;
-      brew outdated pyenv || brew upgrade pyenv;
-      brew install pyenv-virtualenv;
+      brew install pyenv-virtualenv gcc;
       pyenv install $PYTHON;
       export PYENV_VERSION=$PYTHON;
       export PATH="/Users/travis/.pyenv/shims:${PATH}";
-      pyenv-virtualenv venv;
-      source venv/bin/activate;
+      pyenv virtualenv testenv;
       python --version;
     fi
 
 install:
-  - pip install numpy scipy
+  - pip install --upgrade pip
+  - pip install numpy scipy nose
   - python setup.py install
 
 script:
