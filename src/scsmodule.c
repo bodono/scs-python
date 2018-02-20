@@ -397,8 +397,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 
   d->stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
-  d->stgs->normalize = normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
-  
+  d->stgs->normalize =
+      normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
+
   if (d->stgs->max_iters < 0) {
     return finish_with_error(d, k, &ps, "max_iters must be positive");
   }
@@ -429,11 +430,11 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     d->stgs->warm_start |= get_warm_start("s", &(sol.s), d->m, warm);
   }
   /* release the GIL */
-  Py_BEGIN_ALLOW_THREADS
+  Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
   scs(d, k, &sol, &info);
   /* reacquire the GIL */
-  Py_END_ALLOW_THREADS
+  Py_END_ALLOW_THREADS;
 
   veclen[0] = d->n;
   x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, sol.x);
