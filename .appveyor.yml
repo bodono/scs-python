@@ -18,7 +18,7 @@ environment:
 
 build_script:
   - set PATH=%CONDAPATH%;%PATH%
-  - conda update -q conda --yes
+  # - conda update -q conda --yes
   - conda create -n testenv --yes --quiet python=%PYVER%
   - conda install numpy scipy nose --yes
   - git submodule update --init --recursive
