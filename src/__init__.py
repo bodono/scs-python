@@ -38,10 +38,8 @@ def solve(probdata, cone, **kwargs):
   if not sparse.issparse(A):
     raise TypeError('A is required to be a sparse matrix')
   if not sparse.isspmatrix_csc(A):
-    warn(
-        'Converting A to a CSC (compressed sparse column) matrix; may take a '
-        'while.'
-    )
+    warn('Converting A to a CSC (compressed sparse column) matrix; may take a '
+         'while.')
     A = A.tocsc()
 
   if sparse.issparse(b):
@@ -54,6 +52,9 @@ def solve(probdata, cone, **kwargs):
 
   Adata, Aindices, Acolptr = A.data, A.indices, A.indptr
   if kwargs.pop('gpu', False):  # False by default
+    if not kwargs.pop('use_indirect', True):  # True by default
+      raise NotImplementedError(
+          'GPU direct solver not yet available, pass `use_indirect=True`.')
     import _scs_gpu
     return _scs_gpu.csolve((m, n), Adata, Aindices, Acolptr, b, c, cone, warm,
                            **kwargs)
