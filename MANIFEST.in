@@ -10,4 +10,4 @@ graft scs/linsys/direct
 graft scs/linsys/direct/external
 graft scs/linsys/indirect
 graft scs/linsys/gpu
-
+include LICENSE
