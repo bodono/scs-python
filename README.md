@@ -38,7 +38,20 @@ import scs
 ```
 This module provides a single function `solve` with the following call signature:
 ```python
-sol = scs.solve(data, cone, use_indirect=True, gpu=False, verbose=True, normalize=True, max_iters=5000, scale=1, eps=1e-5, cg_rate=2, alpha=1.5, rho_x=1e-3, acceleration_lookback=20)
+sol = scs.solve(data,
+                cone,
+                use_indirect=False,
+                gpu=False,
+                verbose=True,
+                normalize=True,
+                max_iters=5000,
+                scale=1,
+                eps=1e-5,
+                cg_rate=2,
+                alpha=1.5,
+                rho_x=1e-3,
+                acceleration_lookback=10,
+                write_data_filename=None)
 ```
 The argument `data` is a python dictionary with three elements `A`, `b`, and `c`
 where `b` and `c` are `1d` NUMPY arrays and `A` is a SCIPY **sparse matrix in

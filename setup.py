@@ -162,7 +162,8 @@ def install_scs(**kwargs):
   _scs_direct = Extension(
       name='_scs_direct',
       sources=sources + glob('scs/linsys/direct/*.c') +
-      glob('scs/linsys/direct/external/*.c'),
+      glob('scs/linsys/direct/external/amd/*.c') +
+      glob('scs/linsys/direct/external/qdldl/*.c'),
       define_macros=list(define_macros),
       include_dirs=include_dirs +
       ['scs/linsys/direct/', 'scs/linsys/direct/external/'],

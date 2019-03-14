@@ -282,23 +282,24 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "alpha",
                     "rho_x",
                     "acceleration_lookback",
+                    "write_data_filename",
                     SCS_NULL};
 
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lfffffl";
+  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lffffflz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddl";
+  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddlz";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!ifffffi";
+  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!ifffffiz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!idddddi";
+  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!idddddiz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
@@ -317,7 +318,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &(d->stgs->max_iters), &(d->stgs->scale), &(d->stgs->eps),
           &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
-          &(d->stgs->acceleration_lookback))) {
+          &(d->stgs->acceleration_lookback),
+          &(d->stgs->write_data_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
