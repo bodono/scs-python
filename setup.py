@@ -208,7 +208,13 @@ def install_scs(**kwargs):
       install_requires=['numpy >= 1.7', 'scipy >= 0.13.2'],
       license='MIT',
       zip_safe=False,
-      long_description='Solves convex cone programs via operator splitting. Can solve: linear programs (LPs), second-order cone programs (SOCPs), semidefinite programs (SDPs), exponential cone programs (ECPs), and power cone programs (PCPs), or problems with any combination of those cones. See http://github.com/cvxgrp/scs for more details.'
+      long_description=('Solves convex cone programs via operator splitting. '
+                        'Can solve: linear programs (LPs), second-order cone '
+                        'programs (SOCPs), semidefinite programs (SDPs), '
+                        'exponential cone programs (ECPs), and power cone '
+                        'programs (PCPs), or problems with any combination of '
+                        'those cones. See http://github.com/cvxgrp/scs for '
+                        'more details.')
   )
 
 
