@@ -10,7 +10,13 @@ import gen_random_cone_prob as tools
 
 
 def main():
-  flags = [(False, False), (True, False), (True, True)]
+  flags = [(False, False), (True, False)]
+  try:
+    import _scs_gpu
+    flags += [(True, True)]
+  except ImportError:
+    pass
+
   for (use_indirect, gpu) in flags:
     np.random.seed(1)
     solve_feasible(use_indirect, gpu)

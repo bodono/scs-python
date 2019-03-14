@@ -97,42 +97,6 @@ def get_infos():
   return blas_info, lapack_info
 
 
-def can_compile_with_openmp(cc, flags, gomp_paths):
-  tmpdir = tempfile.mkdtemp()
-  curdir = os.getcwd()
-  os.chdir(tmpdir)
-
-  # attempt to compile a test program with openmp
-  test_filename_base = 'test_openmp'
-  test_filename = test_filename_base + '.c'
-  with open(test_filename, 'w') as f:
-    f.write('#include <omp.h>\n'
-            '#include <stdio.h>\n'
-            'int main(void) {\n'
-            '  #pragma omp parallel\n'
-            '  printf("thread: %d\\n", omp_get_thread_num());\n'
-            '  return 0;\n'
-            '}')
-
-  compilation_cmd = [cc] + flags
-  for path in gomp_paths:
-    compilation_cmd += ['-L' + path]
-  compilation_cmd += [test_filename] + ['-o'] + [test_filename_base]
-  run_cmd = ['./' + test_filename_base]
-
-  try:
-    with open(os.devnull, 'w') as fnull:
-      subprocess.call(compilation_cmd, stdout=fnull, stderr=fnull)
-      exit_code = subprocess.call(run_cmd, stdout=fnull, stderr=fnull)
-  except OSError:
-    exit_code = 1
-
-  # clean up
-  os.chdir(curdir)
-  shutil.rmtree(tmpdir)
-  return exit_code == 0
-
-
 def set_builtin(name, value):
   if isinstance(__builtins__, dict):
     __builtins__[name] = value
@@ -165,41 +129,6 @@ class build_ext_scs(build_ext):
           'extra_link_args', []) + lapack_info.pop('extra_link_args', [])
       self.copy['extra_compile_args'] = blas_info.pop(
           'extra_compile_args', []) + lapack_info.pop('extra_compile_args', [])
-
-  def build_extensions(self):
-    # TODO: include paths for other systems
-    gomp_paths = ['/usr/local/gfortran/lib']
-
-    flags = []
-    cc = None
-    if isinstance(self.compiler, MSVCCompiler):
-      # TODO: support Windows
-      build_ext.build_extensions(self)
-      return
-    else:
-      flags = ['-fopenmp']
-      try:
-        cc = self.compiler.compiler_so[0]
-      except AttributeError:
-        # we should only arrive here if the compiler is a BCPPCompiler
-        print('compiler class does not contain a compiler_so object')
-        build_ext.build_extensions(self)
-        return
-
-    if (can_compile_with_openmp(cc, flags, gomp_paths)):
-      for e in self.extensions:
-        e.extra_compile_args += flags
-        e.library_dirs += gomp_paths
-        # setuptools silently ignores extra_compile_args;
-        # as a workaround, we include the flags here as well.
-        # (see https://github.com/pypa/setuptools/issues/473)
-        e.extra_link_args += flags + ['-lgomp']
-    else:
-      print('##################################################')
-      print('# failed to compile with OpenMP;                 #')
-      print('# some sections of SCS will not be parallelized. #')
-      print('##################################################')
-    build_ext.build_extensions(self)
 
   def build_extension(self, ext):
     for k, v in self.copy.items():
