@@ -77,19 +77,11 @@ def get_infos():
 
   # environment variables not set, using defaults instead
   blas_info = get_info('blas_opt')
-  # ugly hack due to scipy bug
-  if 'libraries' in blas_info:
-    if 'mkl_intel_lp64' in blas_info['libraries']:
-      blas_info = get_info('blas_mkl')
   if not blas_info:
     blas_info = get_info('blas')
   print(blas_info)
 
   lapack_info = get_info('lapack_opt')
-  # ugly hack due to scipy bug
-  if 'libraries' in lapack_info:
-    if 'mkl_intel_lp64' in lapack_info['libraries']:
-      lapack_info = get_info('lapack')
   if not lapack_info:
     lapack_info = get_info('lapack')
   print(lapack_info)
@@ -214,8 +206,7 @@ def install_scs(**kwargs):
                         'exponential cone programs (ECPs), and power cone '
                         'programs (PCPs), or problems with any combination of '
                         'those cones. See http://github.com/cvxgrp/scs for '
-                        'more details.')
-  )
+                        'more details.'))
 
 
 def run_install():
