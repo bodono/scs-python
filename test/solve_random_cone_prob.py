@@ -1,8 +1,8 @@
 from __future__ import print_function, division
 import scs
-from numpy import *
+import numpy as np
 from scipy import sparse, randn
-from gen_random_cone_prob import *
+import gen_random_cone_prob as tools
 
 #############################################
 #  Uses scs to solve a random cone problem  #
@@ -10,13 +10,15 @@ from gen_random_cone_prob import *
 
 
 def main():
-  #random.seed(0)
-  solve_feasible()
-  solve_infeasible()
-  solve_unbounded()
+  flags = [(False, False), (True, False), (True, True)]
+  for (use_indirect, gpu) in flags:
+    np.random.seed(1)
+    solve_feasible(use_indirect, gpu)
+    solve_infeasible(use_indirect, gpu)
+    solve_unbounded(use_indirect, gpu)
 
 
-def solve_feasible():
+def solve_feasible(use_indirect, gpu):
   # cone:
   K = {
       'f': 10,
@@ -27,26 +29,19 @@ def solve_feasible():
       'ed': 10,
       'p': [-0.25, 0.5, 0.75, -0.33]
   }
-  m = get_scs_cone_dims(K)
-  data, p_star = gen_feasible(K, n=m // 3, density=0.01)
+  m = tools.get_scs_cone_dims(K)
+  data, p_star = tools.gen_feasible(K, n=m // 3, density=0.01)
   params = {'normalize': True, 'scale': 5, 'cg_rate': 2}
 
-  sol_i = scs.solve(data, K, use_indirect=True, **params)
-  xi = sol_i['x']
-  yi = sol_i['y']
+  sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+  x = sol['x']
+  y = sol['y']
   print('p*  = ', p_star)
-  print('pri error = ', (dot(data['c'], xi) - p_star) / p_star)
-  print('dual error = ', (-dot(data['b'], yi) - p_star) / p_star)
-  # direct:
-  sol_d = scs.solve(data, K, use_indirect=False, **params)
-  xd = sol_d['x']
-  yd = sol_d['y']
-  print('p*  = ', p_star)
-  print('pri error = ', (dot(data['c'], xd) - p_star) / p_star)
-  print('dual error = ', (-dot(data['b'], yd) - p_star) / p_star)
+  print('pri error = ', (np.dot(data['c'], x) - p_star) / p_star)
+  print('dual error = ', (-np.dot(data['b'], y) - p_star) / p_star)
 
 
-def solve_infeasible():
+def solve_infeasible(use_indirect, gpu):
   K = {
       'f': 10,
       'l': 15,
@@ -56,14 +51,13 @@ def solve_infeasible():
       'ed': 10,
       'p': [-0.25, 0.5, 0.75, -0.33]
   }
-  m = get_scs_cone_dims(K)
-  data = gen_infeasible(K, n=m // 3)
+  m = tools.get_scs_cone_dims(K)
+  data = tools.gen_infeasible(K, n=m // 3)
   params = {'normalize': True, 'scale': 0.5, 'cg_rate': 2}
-  sol_i = scs.solve(data, K, use_indirect=True, **params)
-  sol_d = scs.solve(data, K, use_indirect=False, **params)
+  sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
 
 
-def solve_unbounded():
+def solve_unbounded(use_indirect, gpu):
   K = {
       'f': 10,
       'l': 15,
@@ -73,11 +67,10 @@ def solve_unbounded():
       'ed': 10,
       'p': [-0.25, 0.5, 0.75, -0.33]
   }
-  m = get_scs_cone_dims(K)
-  data = gen_unbounded(K, n=m // 3)
+  m = tools.get_scs_cone_dims(K)
+  data = tools.gen_unbounded(K, n=m // 3)
   params = {'normalize': True, 'scale': 0.5, 'cg_rate': 2}
-  sol_i = scs.solve(data, K, use_indirect=True, **params)
-  sol_d = scs.solve(data, K, use_indirect=False, **params)
+  sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
 
 
 if __name__ == '__main__':

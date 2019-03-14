@@ -6,6 +6,8 @@ import _scs_indirect
 
 __version__ = _scs_indirect.version()
 
+_USE_INDIRECT_DEFAULT = False
+
 
 def solve(probdata, cone, **kwargs):
   """Solves convex cone problems.
@@ -52,14 +54,14 @@ def solve(probdata, cone, **kwargs):
 
   Adata, Aindices, Acolptr = A.data, A.indices, A.indptr
   if kwargs.pop('gpu', False):  # False by default
-    if not kwargs.pop('use_indirect', True):  # True by default
+    if not kwargs.pop('use_indirect', _USE_INDIRECT_DEFAULT):
       raise NotImplementedError(
           'GPU direct solver not yet available, pass `use_indirect=True`.')
     import _scs_gpu
     return _scs_gpu.csolve((m, n), Adata, Aindices, Acolptr, b, c, cone, warm,
                            **kwargs)
 
-  if not kwargs.pop('use_indirect', True):  # True by default
+  if not kwargs.pop('use_indirect', _USE_INDIRECT_DEFAULT):
     import _scs_direct
     return _scs_direct.csolve((m, n), Adata, Aindices, Acolptr, b, c, cone,
                               warm, **kwargs)

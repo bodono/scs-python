@@ -1,5 +1,5 @@
 import scs
-from numpy import *
+import numpy as np
 from scipy import sparse, randn
 
 #############################################
@@ -16,11 +16,11 @@ def gen_feasible(K, n, density):
   A = sparse.rand(m, n, density, format='csc')
   A.data = randn(A.nnz)
   x = randn(n)
-  c = -transpose(A).dot(y)
+  c = -np.transpose(A).dot(y)
   b = A.dot(x) + s
 
   data = {'A': A, 'b': b, 'c': c}
-  return data, dot(c, x)
+  return data, np.dot(c, x)
 
 
 def gen_infeasible(K, n):
@@ -29,10 +29,10 @@ def gen_infeasible(K, n):
   z = randn(m,)
   y = proj_dual_cone(z, K)  # y = s - z;
   A = randn(m, n)
-  A = A - outer(y, transpose(A).dot(y)) / linalg.norm(y)**2  # dense...
+  A = A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y)**2  # dense...
 
   b = randn(m)
-  b = -b / dot(b, y)
+  b = -b / np.dot(b, y)
 
   data = {'A': sparse.csc_matrix(A), 'b': b, 'c': randn(n)}
   return data
@@ -45,10 +45,10 @@ def gen_unbounded(K, n):
   s = proj_cone(z, K)
   A = randn(m, n)
   x = randn(n)
-  A = A - outer(s + A.dot(x), x) / linalg.norm(x)**2
+  A = A - np.outer(s + A.dot(x), x) / np.linalg.norm(x)**2
   # dense...
   c = randn(n)
-  c = -c / dot(c, x)
+  c = -c / np.dot(c, x)
 
   data = {'A': sparse.csc_matrix(A), 'b': randn(m), 'c': c}
   return data
@@ -81,7 +81,7 @@ def get_sd_cone_size(n):
 
 
 def proj_cone(z, c):
-  z = copy(z)
+  z = np.copy(z)
   free_len = c['f']
   lp_len = c['l']
   q = c['q']
@@ -120,7 +120,7 @@ def proj_cone(z, c):
 
 
 def proj_soc(tt):
-  tt = copy(tt)
+  tt = np.copy(tt)
   if len(tt) == 0:
     return
   elif len(tt) == 1:
@@ -128,36 +128,36 @@ def proj_soc(tt):
 
   v1 = tt[0]
   v2 = tt[1:]
-  if linalg.norm(v2) <= -v1:
-    v2 = zeros(len(v2))
+  if np.linalg.norm(v2) <= -v1:
+    v2 = np.zeros(len(v2))
     v1 = 0
-  elif linalg.norm(v2) > abs(v1):
-    v2 = 0.5 * (1 + v1 / linalg.norm(v2)) * v2
-    v1 = linalg.norm(v2)
+  elif np.linalg.norm(v2) > abs(v1):
+    v2 = 0.5 * (1 + v1 / np.linalg.norm(v2)) * v2
+    v1 = np.linalg.norm(v2)
   tt[0] = v1
   tt[1:] = v2
   return tt
 
 
 def proj_sdp(z, n):
-  z = copy(z)
+  z = np.copy(z)
   if n == 0:
     return
   elif n == 1:
     return pos(z)
-  tidx = triu_indices(n)
+  tidx = np.triu_indices(n)
   tidx = (tidx[1], tidx[0])
-  didx = diag_indices(n)
+  didx = np.diag_indices(n)
 
-  a = zeros((n, n))
+  a = np.zeros((n, n))
   a[tidx] = z
-  a = (a + transpose(a))
-  a[didx] = a[didx] / sqrt(2.)
+  a = (a + np.transpose(a))
+  a[didx] = a[didx] / np.sqrt(2.)
 
-  w, v = linalg.eig(a)  # cols of v are eigenvectors
+  w, v = np.linalg.eig(a)  # cols of v are eigenvectors
   w = pos(w)
-  a = dot(v, dot(diag(w), transpose(v)))
-  a[didx] = a[didx] / sqrt(2.)
+  a = np.dot(v, np.dot(np.diag(w), np.transpose(v)))
+  a[didx] = a[didx] / np.sqrt(2.)
   z = a[tidx]
   return z
 
@@ -171,7 +171,7 @@ def proj_pow(v, a):
 
   if (v[0] <= 0 and v[1] <= 0 and
       ((-v[0] / a)**a) * ((-v[1] / (1 - a))**(1 - a)) >= abs(v[2])):
-    return zeros(3,)
+    return np.zeros(3,)
 
   xh = v[0]
   yh = v[1]
@@ -192,7 +192,7 @@ def proj_pow(v, a):
 
     r = min(max(r - f / fp, 0), rh)
 
-  z = sign(zh) * r
+  z = np.sign(zh) * r
   v[0] = x
   v[1] = y
   v[2] = z
@@ -200,7 +200,7 @@ def proj_pow(v, a):
 
 
 def calc_x(r, xh, rh, a):
-  return max(0.5 * (xh + sqrt(xh * xh + 4 * a * (rh - r) * r)), 1e-12)
+  return max(0.5 * (xh + np.sqrt(xh * xh + 4 * a * (rh - r) * r)), 1e-12)
 
 
 def calcdxdr(x, xh, rh, r, a):
@@ -216,24 +216,24 @@ def calc_fp(x, y, dxdr, dydr, a):
 
 
 def project_exp_bisection(v):
-  v = copy(v)
+  v = np.copy(v)
   r = v[0]
   s = v[1]
   t = v[2]
   # v in cl(Kexp)
-  if (s * exp(r / s) <= t and s > 0) or (r <= 0 and s == 0 and t >= 0):
+  if (s * np.exp(r / s) <= t and s > 0) or (r <= 0 and s == 0 and t >= 0):
     return v
   # -v in Kexp^*
-  if (-r < 0 and r * exp(s / r) <= -exp(1) * t) or (-r == 0 and -s >= 0 and
-                                                    -t >= 0):
-    return zeros(3,)
+  if (-r < 0 and r * np.exp(s / r) <= -np.exp(1) * t) or (-r == 0 and
+                                                          -s >= 0 and -t >= 0):
+    return np.zeros(3,)
   # special case with analytical solution
   if r < 0 and s < 0:
     v[1] = 0
     v[2] = max(v[2], 0)
     return v
 
-  x = copy(v)
+  x = np.copy(v)
   ub, lb = get_rho_ub(v)
   for iter in range(0, 100):
     rho = (ub + lb) / 2
@@ -264,12 +264,12 @@ def calc_grad(v, rho, warm_start):
   if x[1] == 0:
     g = x[0]
   else:
-    g = (x[0] + x[1] * log(x[1] / x[2]))
+    g = (x[0] + x[1] * np.log(x[1] / x[2]))
   return g, x
 
 
 def solve_with_rho(v, rho, w):
-  x = zeros(3)
+  x = np.zeros(3)
   x[2] = newton_exp_onz(rho, v[1], v[2], w)
   x[1] = (1 / rho) * (x[2] - v[2]) * x[2]
   x[0] = v[0] - rho
@@ -279,7 +279,7 @@ def solve_with_rho(v, rho, w):
 def newton_exp_onz(rho, y_hat, z_hat, w):
   t = max(max(w - z_hat, -z_hat), 1e-6)
   for iter in range(0, 100):
-    f = (1 / rho**2) * t * (t + z_hat) - y_hat / rho + log(t / rho) + 1
+    f = (1 / rho**2) * t * (t + z_hat) - y_hat / rho + np.log(t / rho) + 1
     fp = (1 / rho**2) * (2 * t + z_hat) + 1 / t
 
     t = t - f / fp
@@ -292,7 +292,3 @@ def newton_exp_onz(rho, y_hat, z_hat, w):
     elif abs(f) < 1e-6:
       break
   return t + z_hat
-
-
-if __name__ == '__main__':
-  main()
