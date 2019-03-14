@@ -44,8 +44,8 @@ parser.add_argument(
     dest='int32',
     action='store_true',
     default=False,
-    help='Use 32 bit ints, default is 64 bit (GPU code always uses 32 bit ints)'
-)
+    help=('Use 32 bit ints, default is 64 bit (GPU code must always use 32 bit '
+          'ints, since CUSPARSE only supports 32 bits.)'))
 parser.add_argument(
     '--blas64',
     dest='blas64',
@@ -156,7 +156,7 @@ def install_scs(**kwargs):
     define_macros += [('EXTRA_VERBOSE', 999)]  # for debugging
   if args.blas64:
     define_macros += [('BLAS64', 1)]  # 64 bit blas
-  if not args.int32:
+  if not args.int32 and not args.gpu:
     define_macros += [('DLONG', 1)]  # longs for integer type
 
   _scs_direct = Extension(
