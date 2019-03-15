@@ -1,12 +1,13 @@
 environment:
   matrix:
-    - platform: x64
-      CONDAPATH: C:\Miniconda-x64
-      PYVER: 2.7
+    # Disable these while numpy.get_info is broken.
+    #- platform: x64
+    #  CONDAPATH: C:\Miniconda-x64
+    #  PYVER: 2.7
 
-    - platform: x86
-      CONDAPATH: C:\Miniconda
-      PYVER: 2.7
+    #- platform: x86
+    #  CONDAPATH: C:\Miniconda
+    #  PYVER: 2.7
 
     - platform: x64
       CONDAPATH: C:\Miniconda-x64
