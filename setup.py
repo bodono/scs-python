@@ -65,6 +65,7 @@ if SCS_ARG_MARK in sys.argv:
 
 
 def get_infos():
+  import numpy
   from numpy.distutils.system_info import get_info
   # Print out full BLAS / LAPACK linkage info.
   numpy.show_config()
