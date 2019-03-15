@@ -66,6 +66,8 @@ if SCS_ARG_MARK in sys.argv:
 
 def get_infos():
   from numpy.distutils.system_info import get_info
+  # Print out full BLAS / LAPACK linkage info.
+  numpy.show_config()
   if env_lib_dirs or env_libs:
     print('using environment variables for blas/lapack libraries')
     env_vars = {}

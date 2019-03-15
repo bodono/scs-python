@@ -19,7 +19,7 @@ environment:
 build_script:
   - '%CONDAPATH%\Scripts\conda config --set always_yes yes'
   - '%CONDAPATH%\Scripts\conda update conda'
-  - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER% mkl numpy scipy nose'
+  - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER% numpy scipy nose'
   - '%CONDAPATH%\Scripts\activate C:\pythontest'
   - where python
   - git submodule update --init --recursive
