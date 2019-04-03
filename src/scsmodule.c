@@ -33,9 +33,14 @@ struct ScsPyData {
   PyArrayObject *c;
 };
 
+
+PyObject *solve_lin_sys_cb = SCS_NULL;
+PyObject *accum_by_a_cb = SCS_NULL;
+PyObject *accum_by_atrans_cb = SCS_NULL;
+
 /* Note, Python3.x may require special handling for the scs_int and scs_float
  * types. */
-static int get_int_type(void) {
+int get_int_type(void) {
   switch (sizeof(scs_int)) {
     case 1:
       return NPY_INT8;
@@ -50,7 +55,7 @@ static int get_int_type(void) {
   }
 }
 
-static int get_float_type(void) {
+int get_float_type(void) {
   switch (sizeof(scs_float)) {
     case 2:
       return NPY_FLOAT16;
@@ -283,22 +288,32 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "rho_x",
                     "acceleration_lookback",
                     "write_data_filename",
+                    "linsys_cbs",
                     SCS_NULL};
 
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
+#ifdef PYTHON_LINSYS
+#error // Unimplemented.
+#endif
   char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lffffflz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddlz";
+  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddlz(OOO)";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
+#ifdef PYTHON_LINSYS
+#error // Unimplemented.
+#endif
   char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!ifffffiz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
+#ifdef PYTHON_LINSYS
+#error // Unimplemented.
+#endif
   char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!idddddiz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
@@ -319,7 +334,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &(d->stgs->max_iters), &(d->stgs->scale), &(d->stgs->eps),
           &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
           &(d->stgs->acceleration_lookback),
-          &(d->stgs->write_data_filename))) {
+          &(d->stgs->write_data_filename),
+          &solve_lin_sys_cb, &accum_by_a_cb, &accum_by_atrans_cb)) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -431,12 +447,35 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     d->stgs->warm_start |= get_warm_start("y", &(sol.y), d->m, warm);
     d->stgs->warm_start |= get_warm_start("s", &(sol.s), d->m, warm);
   }
+
+#ifdef PYTHON_LINSYS
+  if (!PyCallable_Check(solve_lin_sys_cb)) {
+    PyErr_SetString(PyExc_ValueError, "solve_lin_sys_cb not a valid callback");
+    return SCS_NULL;
+  }
+
+  if (!PyCallable_Check(accum_by_a_cb)) {
+    PyErr_SetString(PyExc_ValueError, "accum_by_a_cb not a valid callback");
+    return SCS_NULL;
+  }
+
+  if (!PyCallable_Check(accum_by_atrans_cb)) {
+    PyErr_SetString(PyExc_ValueError, "accum_by_atrans_cb not a valid callback");
+    return SCS_NULL;
+  }
+#endif
+
+
+#ifndef PYTHON_LINSYS
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
+#endif
   /* Solve! */
   scs(d, k, &sol, &info);
+#ifndef PYTHON_LINSYS
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
+#endif
 
   veclen[0] = d->n;
   x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, sol.x);
@@ -504,6 +543,8 @@ static PyObject *moduleinit(void) {
   m = Py_InitModule("_scs_indirect", scs_methods);
 #elif defined GPU
   m = Py_InitModule("_scs_gpu", scs_methods);
+#elif defined PYTHON_LINSYS
+  m = Py_InitModule("_scs_python", scs_methods);
 #else
   m = Py_InitModule("_scs_direct", scs_methods);
 #endif
@@ -524,6 +565,8 @@ PyMODINIT_FUNC
 PyInit__scs_indirect(void)
 #elif defined GPU
 PyInit__scs_gpu(void)
+#elif defined PYTHON_LINSYS
+PyInit__scs_python(void)
 #else
 PyInit__scs_direct(void)
 #endif
@@ -537,6 +580,8 @@ PyMODINIT_FUNC
 init_scs_indirect(void)
 #elif defined GPU
 init_scs_gpu(void)
+#elif defined PYTHON_LINSYS
+init_scs_python(void)
 #else
 init_scs_direct(void)
 #endif
