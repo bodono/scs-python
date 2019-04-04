@@ -168,7 +168,7 @@ def install_scs(**kwargs):
   _scs_indirect = Extension(
       name='_scs_indirect',
       sources=sources + glob('scs/linsys/indirect/*.c'),
-      define_macros=define_macros + [('INDIRECT', None)],
+      define_macros=list(define_macros) + [('INDIRECT', None)],
       include_dirs=include_dirs + ['scs/linsys/indirect/'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
