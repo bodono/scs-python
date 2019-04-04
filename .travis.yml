@@ -30,7 +30,7 @@ before_install:
       sudo apt-get install liblapack-dev;
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       brew update;
-      brew install pyenv-virtualenv gcc;
+      brew install pyenv-virtualenv gcc openssl;
       pyenv install $PYTHON;
       export PYENV_VERSION=$PYTHON;
       export PATH="/Users/travis/.pyenv/shims:${PATH}";
