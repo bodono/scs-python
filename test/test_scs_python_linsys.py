@@ -86,8 +86,7 @@ def test_python_linsys():
 
     sol = scs.solve(
         data, K, verbose=True, use_indirect=False,
-        normalize=False, use_python_linsys=True,
-        rho_x=rho_x,
+        normalize=False, rho_x=rho_x,
         linsys_cbs=(solve_lin_sys_cb,accum_by_a_cb,accum_by_atrans_cb),
         max_iters=int(1e5), eps=1e-5,
     )

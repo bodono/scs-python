@@ -41,8 +41,8 @@ def solve(probdata, cone, **kwargs):
   if b is None or c is None:
     raise TypeError('Incomplete data specification')
 
-  use_python_linsys = kwargs.pop('use_python_linsys', False)
-  if use_python_linsys:
+  linsys_cbs = kwargs.get('linsys_cbs', None)
+  if linsys_cbs:
     # Create an empty placeholder A matrix that is never used.
     A = sparse.csc_matrix((m,n))
   else:
@@ -77,7 +77,7 @@ def solve(probdata, cone, **kwargs):
     return _scs_indirect.csolve((m, n), Adata, Aindices, Acolptr, b, c, cone,
                                 warm, **kwargs)
 
-  if use_python_linsys:
+  if linsys_cbs:
     import _scs_python
     return _scs_python.csolve(
         (m, n), Adata, Aindices, Acolptr, b, c, cone,
