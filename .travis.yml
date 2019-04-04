@@ -12,17 +12,17 @@ matrix:
   - os: osx
     language: generic
     env: PYTHON=3.6.0
-  - os: linux 
-    language: python 
+  - os: linux
+    language: python
     python: "2.7"
   - os: linux
-    language: python 
+    language: python
     python: "3.4"
   - os: linux
-    language: python 
+    language: python
     python: "3.5"
   - os: linux
-    language: python 
+    language: python
     python: "3.6"
 
 before_install:
@@ -31,6 +31,8 @@ before_install:
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       brew update;
       brew install pyenv-virtualenv gcc openssl;
+      export CFLAGS="-I$(brew --prefix openssl)/include ${CFLAGS}"
+      export LDFLAGS="-L$(brew --prefix openssl)/lib ${LDFLAGS}"
       pyenv install $PYTHON;
       export PYENV_VERSION=$PYTHON;
       export PATH="/Users/travis/.pyenv/shims:${PATH}";
@@ -49,4 +51,3 @@ script:
 notifications:
   email:
     - bodonoghue85@gmail.com
-
