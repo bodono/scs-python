@@ -40,7 +40,7 @@ PyObject *accum_by_atrans_cb = SCS_NULL;
 
 /* Note, Python3.x may require special handling for the scs_int and scs_float
  * types. */
-int get_int_type(void) {
+int scs_get_int_type(void) {
   switch (sizeof(scs_int)) {
     case 1:
       return NPY_INT8;
@@ -55,7 +55,7 @@ int get_int_type(void) {
   }
 }
 
-int get_float_type(void) {
+int scs_get_float_type(void) {
   switch (sizeof(scs_float)) {
     case 2:
       return NPY_FLOAT16;
@@ -126,7 +126,7 @@ static scs_int get_warm_start(char *key, scs_float **x, scs_int l,
       PySys_WriteStderr("Error parsing warm-start input\n");
       return 0;
     } else {
-      PyArrayObject *px0 = get_contiguous(x0, get_float_type());
+      PyArrayObject *px0 = get_contiguous(x0, scs_get_float_type());
       memcpy(*x, (scs_float *)PyArray_DATA(px0), l * sizeof(scs_float));
       Py_DECREF(px0);
       return 1;
@@ -258,8 +258,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   PyObject *verbose = SCS_NULL;
   PyObject *normalize = SCS_NULL;
   /* get the typenum for the primitive scs_int and scs_float types */
-  int scs_int_type = get_int_type();
-  int scs_float_type = get_float_type();
+  int scs_int_type = scs_get_int_type();
+  int scs_float_type = scs_get_float_type();
   struct ScsPyData ps = {
       SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
   };

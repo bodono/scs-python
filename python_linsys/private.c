@@ -8,7 +8,7 @@
 extern PyObject *solve_lin_sys_cb;
 extern PyObject *accum_by_a_cb;
 extern PyObject *accum_by_atrans_cb;
-extern int get_float_type(void);
+extern int scs_get_float_type(void);
 
 char *SCS(get_lin_sys_method)(const ScsMatrix *A, const ScsSettings *stgs) {
   char *str = (char *)scs_malloc(sizeof(char) * 128);
@@ -33,7 +33,7 @@ void SCS(free_lin_sys_work)(ScsLinSysWork *p) {
 
 void SCS(accum_by_atrans)(const ScsMatrix *A, ScsLinSysWork *p,
                           const scs_float *x, scs_float *y) {
-  int scs_float_type = get_float_type();
+  int scs_float_type = scs_get_float_type();
 
   npy_intp veclen[1];
   veclen[0] = A->m;
@@ -53,7 +53,7 @@ void SCS(accum_by_atrans)(const ScsMatrix *A, ScsLinSysWork *p,
 
 void SCS(accum_by_a)(const ScsMatrix *A, ScsLinSysWork *p, const scs_float *x,
                      scs_float *y) {
-  int scs_float_type = get_float_type();
+  int scs_float_type = scs_get_float_type();
 
   npy_intp veclen[1];
   veclen[0] = A->n;
@@ -88,7 +88,7 @@ scs_int SCS(solve_lin_sys)(const ScsMatrix *A, const ScsSettings *stgs,
 
   npy_intp veclen[1];
   veclen[0] = A->n + A->m;
-  int scs_float_type = get_float_type();
+  int scs_float_type = scs_get_float_type();
   PyObject *b_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, b);
   PyObject *s_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, s);
 
