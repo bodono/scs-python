@@ -73,7 +73,7 @@ void SCS(accum_by_a)(const ScsMatrix *A, ScsLinSysWork *p, const scs_float *x,
 
 ScsLinSysWork *SCS(init_lin_sys_work)(const ScsMatrix *A,
                                       const ScsSettings *stgs) {
-  import_array(); // TODO: Move this somewhere else?
+  _import_array(); // TODO: Move this somewhere else?
 
   ScsLinSysWork *p = (ScsLinSysWork *)scs_calloc(1, sizeof(ScsLinSysWork));
   p->total_solve_time = 0;
