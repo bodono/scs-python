@@ -4,9 +4,9 @@ import platform
 import sys
 import gen_random_cone_prob as tools
 
-if platform.system() == 'Windows':
-  print('Skipping Python linear system tests on Windows')
-  sys.exit(0)
+# if platform.system() == 'Windows':
+#   print('Skipping Python linear system tests on Windows')
+#   sys.exit(0)
 
 
 def import_error(msg):
