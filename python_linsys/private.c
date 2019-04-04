@@ -5,9 +5,9 @@
 
 // The following are shared with scsmodule.c, which
 // sets the callbacks.
-extern PyObject *solve_lin_sys_cb;
-extern PyObject *accum_by_a_cb;
-extern PyObject *accum_by_atrans_cb;
+extern PyObject *scs_solve_lin_sys_cb;
+extern PyObject *scs_accum_by_a_cb;
+extern PyObject *scs_accum_by_atrans_cb;
 extern int scs_get_float_type(void);
 
 char *SCS(get_lin_sys_method)(const ScsMatrix *A, const ScsSettings *stgs) {
@@ -48,7 +48,7 @@ void SCS(accum_by_atrans)(const ScsMatrix *A, ScsLinSysWork *p,
   PyArray_ENABLEFLAGS((PyArrayObject *)y_np, NPY_ARRAY_OWNDATA);
 
   PyObject *arglist = Py_BuildValue("(OO)", x_np, y_np);
-  PyObject_CallObject(accum_by_atrans_cb, arglist);
+  PyObject_CallObject(scs_accum_by_atrans_cb, arglist);
 }
 
 void SCS(accum_by_a)(const ScsMatrix *A, ScsLinSysWork *p, const scs_float *x,
@@ -68,7 +68,7 @@ void SCS(accum_by_a)(const ScsMatrix *A, ScsLinSysWork *p, const scs_float *x,
   PyArray_ENABLEFLAGS((PyArrayObject *)y_np, NPY_ARRAY_OWNDATA);
 
   PyObject *arglist = Py_BuildValue("(OO)", x_np, y_np);
-  PyObject_CallObject(accum_by_a_cb, arglist);
+  PyObject_CallObject(scs_accum_by_a_cb, arglist);
 }
 
 ScsLinSysWork *SCS(init_lin_sys_work)(const ScsMatrix *A,
@@ -98,7 +98,7 @@ scs_int SCS(solve_lin_sys)(const ScsMatrix *A, const ScsSettings *stgs,
   PyArray_ENABLEFLAGS((PyArrayObject *)s_np, NPY_ARRAY_OWNDATA);
 
   PyObject *arglist = Py_BuildValue("(OOi)", b_np, s_np, iter);
-  PyObject_CallObject(solve_lin_sys_cb, arglist);
+  PyObject_CallObject(scs_solve_lin_sys_cb, arglist);
 
   p->total_solve_time += SCS(tocq)(&linsys_timer);
   return 0;

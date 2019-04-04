@@ -34,9 +34,9 @@ struct ScsPyData {
 };
 
 
-PyObject *solve_lin_sys_cb = SCS_NULL;
-PyObject *accum_by_a_cb = SCS_NULL;
-PyObject *accum_by_atrans_cb = SCS_NULL;
+PyObject *scs_solve_lin_sys_cb = SCS_NULL;
+PyObject *scs_accum_by_a_cb = SCS_NULL;
+PyObject *scs_accum_by_atrans_cb = SCS_NULL;
 
 /* Note, Python3.x may require special handling for the scs_int and scs_float
  * types. */
@@ -335,7 +335,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
           &(d->stgs->acceleration_lookback),
           &(d->stgs->write_data_filename),
-          &solve_lin_sys_cb, &accum_by_a_cb, &accum_by_atrans_cb)) {
+          &scs_solve_lin_sys_cb, &scs_accum_by_a_cb, &scs_accum_by_atrans_cb)) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -449,18 +449,18 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 
 #ifdef PYTHON_LINSYS
-  if (!PyCallable_Check(solve_lin_sys_cb)) {
-    PyErr_SetString(PyExc_ValueError, "solve_lin_sys_cb not a valid callback");
+  if (!PyCallable_Check(scs_solve_lin_sys_cb)) {
+    PyErr_SetString(PyExc_ValueError, "scs_solve_lin_sys_cb not a valid callback");
     return SCS_NULL;
   }
 
-  if (!PyCallable_Check(accum_by_a_cb)) {
-    PyErr_SetString(PyExc_ValueError, "accum_by_a_cb not a valid callback");
+  if (!PyCallable_Check(scs_accum_by_a_cb)) {
+    PyErr_SetString(PyExc_ValueError, "scs_accum_by_a_cb not a valid callback");
     return SCS_NULL;
   }
 
-  if (!PyCallable_Check(accum_by_atrans_cb)) {
-    PyErr_SetString(PyExc_ValueError, "accum_by_atrans_cb not a valid callback");
+  if (!PyCallable_Check(scs_accum_by_atrans_cb)) {
+    PyErr_SetString(PyExc_ValueError, "scs_accum_by_atrans_cb not a valid callback");
     return SCS_NULL;
   }
 #endif
