@@ -168,12 +168,21 @@ def install_scs(**kwargs):
   _scs_indirect = Extension(
       name='_scs_indirect',
       sources=sources + glob('scs/linsys/indirect/*.c'),
-      define_macros=define_macros + [('INDIRECT', None)],
+      define_macros=list(define_macros) + [('INDIRECT', None)],
       include_dirs=include_dirs + ['scs/linsys/indirect/'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
 
-  ext_modules = [_scs_direct, _scs_indirect]
+  _scs_python = Extension(
+      name='_scs_python',
+      sources=sources + glob('python_linsys/*.c'),
+      define_macros=list(define_macros) + [('PYTHON_LINSYS', None)],
+      include_dirs=include_dirs + ['python_linsys'],
+      libraries=list(libraries),
+      extra_compile_args=list(extra_compile_args))
+
+
+  ext_modules = [_scs_direct, _scs_indirect, _scs_python]
 
   if args.gpu:
     _scs_gpu = Extension(

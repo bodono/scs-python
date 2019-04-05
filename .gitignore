@@ -16,6 +16,8 @@ python/.coverage
 python/build/
 python/cover/
 python_dist
+build
+dist
 linsys_dense/out
 out
 .swo
@@ -44,3 +46,4 @@ out
 *.class
 *.dylib
 *.jar
+*.egg-info
