@@ -89,15 +89,16 @@ scs_int SCS(solve_lin_sys)(const ScsMatrix *A, const ScsSettings *stgs,
   npy_intp veclen[1];
   veclen[0] = A->n + A->m;
   int scs_float_type = scs_get_float_type();
-  PyObject *b_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, b);
-  PyObject *s_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, s);
+  PyObject *b_py = PyArray_SimpleNewFromData(1, veclen, scs_float_type, b);
+  PyArray_ENABLEFLAGS((PyArrayObject *)b_py, NPY_ARRAY_OWNDATA);
 
-  // TODO: Should we not let numpy own the data since we're just
-  // using this in a callback?
-  PyArray_ENABLEFLAGS((PyArrayObject *)b_np, NPY_ARRAY_OWNDATA);
-  PyArray_ENABLEFLAGS((PyArrayObject *)s_np, NPY_ARRAY_OWNDATA);
+  PyObject *s_py = Py_None;
+  if (s) {
+    s_py = PyArray_SimpleNewFromData(1, veclen, scs_float_type, s);
+    PyArray_ENABLEFLAGS((PyArrayObject *)s_py, NPY_ARRAY_OWNDATA);
+  }
 
-  PyObject *arglist = Py_BuildValue("(OOi)", b_np, s_np, iter);
+  PyObject *arglist = Py_BuildValue("(OOi)", b_py, s_py, iter);
   PyObject_CallObject(scs_solve_lin_sys_cb, arglist);
 
   p->total_solve_time += SCS(tocq)(&linsys_timer);
