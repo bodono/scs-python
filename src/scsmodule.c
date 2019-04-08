@@ -34,9 +34,12 @@ struct ScsPyData {
 };
 
 
+PyObject *scs_init_lin_sys_work_cb = SCS_NULL;
 PyObject *scs_solve_lin_sys_cb = SCS_NULL;
 PyObject *scs_accum_by_a_cb = SCS_NULL;
 PyObject *scs_accum_by_atrans_cb = SCS_NULL;
+PyObject *scs_normalize_a_cb = SCS_NULL;
+PyObject *scs_un_normalize_a_cb = SCS_NULL;
 
 /* Note, Python3.x may require special handling for the scs_int and scs_float
  * types. */
@@ -68,7 +71,7 @@ int scs_get_float_type(void) {
   }
 }
 
-static PyArrayObject *get_contiguous(PyArrayObject *array, int typenum) {
+PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
   /* gets the pointer to the block of contiguous C memory */
   /* the overhead should be small unless the numpy array has been */
   /* reordered in some way or the data type doesn't quite match */
@@ -126,7 +129,7 @@ static scs_int get_warm_start(char *key, scs_float **x, scs_int l,
       PySys_WriteStderr("Error parsing warm-start input\n");
       return 0;
     } else {
-      PyArrayObject *px0 = get_contiguous(x0, scs_get_float_type());
+      PyArrayObject *px0 = scs_get_contiguous(x0, scs_get_float_type());
       memcpy(*x, (scs_float *)PyArray_DATA(px0), l * sizeof(scs_float));
       Py_DECREF(px0);
       return 1;
@@ -300,7 +303,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lffffflz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddlz(OOO)";
+  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddlz(OOOOOO)";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
@@ -335,7 +338,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
           &(d->stgs->acceleration_lookback),
           &(d->stgs->write_data_filename),
-          &scs_solve_lin_sys_cb, &scs_accum_by_a_cb, &scs_accum_by_atrans_cb)) {
+          &scs_init_lin_sys_work_cb, &scs_solve_lin_sys_cb,
+          &scs_accum_by_a_cb, &scs_accum_by_atrans_cb,
+          &scs_normalize_a_cb, &scs_un_normalize_a_cb)) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -360,9 +365,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (!PyArray_ISINTEGER(Ap) || PyArray_NDIM(Ap) != 1) {
     return finish_with_error(d, k, &ps, "Ap must be a numpy array of ints");
   }
-  ps.Ax = get_contiguous(Ax, scs_float_type);
-  ps.Ai = get_contiguous(Ai, scs_int_type);
-  ps.Ap = get_contiguous(Ap, scs_int_type);
+  ps.Ax = scs_get_contiguous(Ax, scs_float_type);
+  ps.Ai = scs_get_contiguous(Ai, scs_int_type);
+  ps.Ap = scs_get_contiguous(Ap, scs_int_type);
 
   A = (ScsMatrix *)scs_malloc(sizeof(ScsMatrix));
   A->n = d->n;
@@ -379,7 +384,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (PyArray_DIM(c, 0) != d->n) {
     return finish_with_error(d, k, &ps, "c has incompatible dimension with A");
   }
-  ps.c = get_contiguous(c, scs_float_type);
+  ps.c = scs_get_contiguous(c, scs_float_type);
   d->c = (scs_float *)PyArray_DATA(ps.c);
   /* set b */
   if (!PyArray_ISFLOAT(b) || PyArray_NDIM(b) != 1) {
@@ -389,7 +394,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (PyArray_DIM(b, 0) != d->m) {
     return finish_with_error(d, k, &ps, "b has incompatible dimension with A");
   }
-  ps.b = get_contiguous(b, scs_float_type);
+  ps.b = scs_get_contiguous(b, scs_float_type);
   d->b = (scs_float *)PyArray_DATA(ps.b);
 
   if (get_pos_int_param("f", &(k->f), 0, cone) < 0) {
@@ -449,6 +454,11 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 
 #ifdef PYTHON_LINSYS
+  if (!PyCallable_Check(scs_init_lin_sys_work_cb)) {
+    PyErr_SetString(PyExc_ValueError, "scs_init_lin_sys_work_cb not a valid callback");
+    return SCS_NULL;
+  }
+
   if (!PyCallable_Check(scs_solve_lin_sys_cb)) {
     PyErr_SetString(PyExc_ValueError, "scs_solve_lin_sys_cb not a valid callback");
     return SCS_NULL;
@@ -461,6 +471,16 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 
   if (!PyCallable_Check(scs_accum_by_atrans_cb)) {
     PyErr_SetString(PyExc_ValueError, "scs_accum_by_atrans_cb not a valid callback");
+    return SCS_NULL;
+  }
+
+  if (!PyCallable_Check(scs_normalize_a_cb)) {
+    PyErr_SetString(PyExc_ValueError, "scs_normalize_a_cb not a valid callback");
+    return SCS_NULL;
+  }
+
+  if (!PyCallable_Check(scs_un_normalize_a_cb)) {
+    PyErr_SetString(PyExc_ValueError, "scs_un_normalize_a_cb not a valid callback");
     return SCS_NULL;
   }
 #endif
