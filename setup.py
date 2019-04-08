@@ -141,7 +141,7 @@ def install_scs(**kwargs):
       'src/scsmodule.c',
   ] + glob('scs/src/*.c') + glob('scs/linsys/*.c')
   include_dirs = ['scs/include', 'scs/linsys']
-  define_macros = [('PYTHON', None), ('CTRLC', 1), ('COPYAMATRIX', None)]
+  define_macros = [('PYTHON', None), ('CTRLC', 1)]
 
   if system() == 'Linux':
     libraries += ['rt']
@@ -159,7 +159,7 @@ def install_scs(**kwargs):
       sources=sources + glob('scs/linsys/direct/*.c') +
       glob('scs/linsys/direct/external/amd/*.c') +
       glob('scs/linsys/direct/external/qdldl/*.c'),
-      define_macros=list(define_macros),
+      define_macros=list(define_macros) + [('COPYAMATRIX', None)],
       include_dirs=include_dirs +
       ['scs/linsys/direct/', 'scs/linsys/direct/external/'],
       libraries=list(libraries),
@@ -168,7 +168,8 @@ def install_scs(**kwargs):
   _scs_indirect = Extension(
       name='_scs_indirect',
       sources=sources + glob('scs/linsys/indirect/*.c'),
-      define_macros=list(define_macros) + [('INDIRECT', None)],
+      define_macros=list(define_macros) + \
+          [('COPYAMATRIX', None), ('INDIRECT', None)],
       include_dirs=include_dirs + ['scs/linsys/indirect/'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
