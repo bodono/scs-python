@@ -122,9 +122,9 @@ def test_python_linsys():
 
         return D_all, E_all, mean_row_norm, mean_col_norm
 
-    def un_normalize_a_cb(D, E):
+    def un_normalize_a_cb(D, E, scale):
         global A
-        A = sp.diags(D).dot(A).dot(sp.diags(E))
+        A = sp.diags(D).dot(A).dot(sp.diags(E))/scale
 
     sol = scs.solve(
         data, K, verbose=False, use_indirect=False,

@@ -168,7 +168,7 @@ void SCS(un_normalize_a)(ScsMatrix *A, const ScsSettings *stgs,
                                              scs_float_type, scal->E);
   PyArray_ENABLEFLAGS((PyArrayObject *)E_py, NPY_ARRAY_OWNDATA);
 
-  PyObject *arglist = Py_BuildValue("(OO)", D_py, E_py);
+  PyObject *arglist = Py_BuildValue("(OOd)", D_py, E_py, stgs->scale);
   PyObject_CallObject(scs_un_normalize_a_cb, arglist);
   Py_DECREF(arglist);
 }
