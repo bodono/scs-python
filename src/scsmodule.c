@@ -297,10 +297,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-#ifdef PYTHON_LINSYS
-#error // Unimplemented.
-#endif
-  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lffffflz";
+  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lffffflz(OOOOOO)";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
   char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddlz(OOOOOO)";
@@ -308,16 +305,10 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 #endif
 #else
 #ifdef SFLOAT
-#ifdef PYTHON_LINSYS
-#error // Unimplemented.
-#endif
-  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!ifffffiz";
+  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!ifffffiz(OOOOOO)";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-#ifdef PYTHON_LINSYS
-#error // Unimplemented.
-#endif
-  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!idddddiz";
+  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!idddddiz(OOOOOO)";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
