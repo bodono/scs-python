@@ -86,7 +86,11 @@ ScsLinSysWork *SCS(init_lin_sys_work)(const ScsMatrix *A,
   ScsLinSysWork *p = (ScsLinSysWork *)scs_calloc(1, sizeof(ScsLinSysWork));
   p->total_solve_time = 0;
 
+#ifdef SFLOAT
+  PyObject *arglist = Py_BuildValue("(f)", stgs->rho_x);
+#else
   PyObject *arglist = Py_BuildValue("(d)", stgs->rho_x);
+#endif
   PyObject_CallObject(scs_init_lin_sys_work_cb, arglist);
   Py_DECREF(arglist);
 
@@ -134,14 +138,24 @@ void SCS(normalize_a)(ScsMatrix *A, const ScsSettings *stgs,
     1, veclen, scs_int_type, boundaries);
   PyArray_ENABLEFLAGS((PyArrayObject *)boundaries_py, NPY_ARRAY_OWNDATA);
 
+#ifdef SFLOAT
+  PyObject *arglist = Py_BuildValue("(Of)", boundaries_py, stgs->scale);
+#else
   PyObject *arglist = Py_BuildValue("(Od)", boundaries_py, stgs->scale);
+#endif
   PyObject *result = PyObject_CallObject(scs_normalize_a_cb, arglist);
   Py_DECREF(arglist);
   scs_free(boundaries);
 
+#ifdef SFLOAT
+  char *argparse_string = "O!O!ff";
+#else
+  char *argparse_string = "O!O!dd";
+#endif
+
   PyArrayObject *D_py = SCS_NULL;
   PyArrayObject *E_py = SCS_NULL;
-  PyArg_ParseTuple(result, "O!O!dd", &PyArray_Type, &D_py,
+  PyArg_ParseTuple(result, argparse_string, &PyArray_Type, &D_py,
                    &PyArray_Type, &E_py,
                    &scal->mean_norm_row_a, &scal->mean_norm_col_a);
 
@@ -168,7 +182,12 @@ void SCS(un_normalize_a)(ScsMatrix *A, const ScsSettings *stgs,
                                              scs_float_type, scal->E);
   PyArray_ENABLEFLAGS((PyArrayObject *)E_py, NPY_ARRAY_OWNDATA);
 
+
+#ifdef SFLOAT
+  PyObject *arglist = Py_BuildValue("(OOf)", D_py, E_py, stgs->scale);
+#else
   PyObject *arglist = Py_BuildValue("(OOd)", D_py, E_py, stgs->scale);
+#endif
   PyObject_CallObject(scs_un_normalize_a_cb, arglist);
   Py_DECREF(arglist);
 }
