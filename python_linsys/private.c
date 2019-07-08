@@ -43,7 +43,7 @@ void SCS(accum_by_atrans)(const ScsMatrix *A, ScsLinSysWork *p,
 
   npy_intp veclen[1];
   veclen[0] = A->m;
-  PyObject *x_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, x);
+  PyObject *x_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, (void *)x);
 
   veclen[0] = A->n;
   PyObject *y_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, y);
@@ -64,7 +64,7 @@ void SCS(accum_by_a)(const ScsMatrix *A, ScsLinSysWork *p, const scs_float *x,
 
   npy_intp veclen[1];
   veclen[0] = A->n;
-  PyObject *x_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, x);
+  PyObject *x_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, (void *)x);
 
   veclen[0] = A->m;
   PyObject *y_np = PyArray_SimpleNewFromData(1, veclen, scs_float_type, y);
@@ -111,7 +111,7 @@ scs_int SCS(solve_lin_sys)(const ScsMatrix *A, const ScsSettings *stgs,
 
   PyObject *s_py = Py_None;
   if (s) {
-    s_py = PyArray_SimpleNewFromData(1, veclen, scs_float_type, s);
+    s_py = PyArray_SimpleNewFromData(1, veclen, scs_float_type, (void *)s);
     PyArray_ENABLEFLAGS((PyArrayObject *)s_py, NPY_ARRAY_OWNDATA);
   }
 
