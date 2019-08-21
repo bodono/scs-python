@@ -71,6 +71,6 @@ Warm-starting SCS with a guess of the primal-dual solution can reduce the total
 solve time. This is useful, for example, when solving several similar problems
 sequentially. To do this simply add fields to the `data` dictionary passed to
 `scs.solve` with additional fields `x`, `y`, and `s` (or any subset thereof)
-where `x` and `s` correspond to the primal solution guesses and `y` corresponds
-to the dual solution guess.
+where `x` and `s` correspond to NUMPY arrays containing the primal solution
+guesses and `y` corresponds to a NUMPY array containing the dual solution guess.
 
