@@ -65,3 +65,12 @@ The returned object is a dictionary containing the keys `'x'`, `'y'`, `'s'`, and
 `'info'`.  The first three are NUMPY arrays containing the respective solution
 vector. The `'info'` value is a dictionary with solver information.
 
+### Warm-starting
+
+Warm-starting SCS with a guess of the primal-dual solution can reduce the total
+solve time. This is useful, for example, when solving several similar problems
+sequentially. To do this simply add fields to the `data` dictionary passed to
+`scs.solve` with additional fields `x`, `y`, and `s` (or any subset thereof)
+where `x` and `s` correspond to the primal solution guesses and `y` corresponds
+to the dual solution guess.
+
