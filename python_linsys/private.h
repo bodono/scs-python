@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+#include "amatrix.h"
+#include "glbopts.h"
+#include "linalg.h"
 #include "scs.h"
 
 struct SCS_LIN_SYS_WORK {

@@ -254,6 +254,14 @@ static PyObject *version(PyObject *self) {
   return Py_BuildValue("s", scs_version());
 }
 
+static PyObject *sizeof_int(PyObject *self) {
+  return Py_BuildValue("n", scs_sizeof_int());
+}
+
+static PyObject *sizeof_float(PyObject *self) {
+  return Py_BuildValue("n", scs_sizeof_float());
+}
+
 static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   /* data structures for arguments */
   PyArrayObject *Ax, *Ai, *Ap, *c, *b;
@@ -524,9 +532,13 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 
 static PyMethodDef scs_methods[] = {
     {"csolve", (PyCFunction)csolve, METH_VARARGS | METH_KEYWORDS,
-     "Solve a convex cone problem using scs."},
+      "Solve a convex cone problem using scs."},
     {"version", (PyCFunction)version, METH_NOARGS, "Version number for SCS."},
-    {SCS_NULL, SCS_NULL, 0, SCS_NULL} /* sentinel */
+    {"sizeof_int", (PyCFunction)sizeof_int, METH_NOARGS,
+      "Int size (in bytes) SCS uses."},
+    {"sizeof_float", (PyCFunction)sizeof_float, METH_NOARGS,
+      "Float size (in bytes) SCS uses."},
+    {SCS_NULL, SCS_NULL} /* sentinel */
 };
 
 /* Module initialization */

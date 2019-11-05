@@ -5,6 +5,8 @@ from scipy import sparse
 import _scs_direct
 
 __version__ = _scs_direct.version()
+__sizeof_int__ = _scs_direct.sizeof_int()
+__sizeof_float__ = _scs_direct.sizeof_float()
 
 _USE_INDIRECT_DEFAULT = False
 

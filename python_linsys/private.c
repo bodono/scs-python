@@ -1,6 +1,5 @@
 #include <Python.h>
 #include "numpy/arrayobject.h"
-#include "common.h"
 #include "private.h"
 
 // The following are shared with scsmodule.c, which

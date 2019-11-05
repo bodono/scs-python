@@ -156,21 +156,21 @@ def install_scs(**kwargs):
 
   _scs_direct = Extension(
       name='_scs_direct',
-      sources=sources + glob('scs/linsys/direct/*.c') +
-      glob('scs/linsys/direct/external/amd/*.c') +
-      glob('scs/linsys/direct/external/qdldl/*.c'),
+      sources=sources + glob('scs/linsys/cpu/direct/*.c') +
+      glob('scs/linsys/external/amd/*.c') +
+      glob('scs/linsys/external/qdldl/*.c'),
       define_macros=list(define_macros) + [('COPYAMATRIX', None)],
-      include_dirs=include_dirs +
-      ['scs/linsys/direct/', 'scs/linsys/direct/external/'],
+      include_dirs=include_dirs + ['scs/linsys/cpu/direct/',
+          'scs/linsys/external/amd', 'scs/linsys/external/dqlql'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
 
   _scs_indirect = Extension(
       name='_scs_indirect',
-      sources=sources + glob('scs/linsys/indirect/*.c'),
+      sources=sources + glob('scs/linsys/cpu/indirect/*.c'),
       define_macros=list(define_macros) + \
           [('COPYAMATRIX', None), ('INDIRECT', None)],
-      include_dirs=include_dirs + ['scs/linsys/indirect/'],
+      include_dirs=include_dirs + ['scs/linsys/cpu/indirect/'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
 
@@ -190,8 +190,8 @@ def install_scs(**kwargs):
         name='_scs_gpu',
         sources=sources + glob('scs/linsys/gpu/*.c'),
         define_macros=define_macros + [('GPU', None)],
-        include_dirs=include_dirs +
-        ['scs/linsys/gpu/', '/usr/local/cuda/include'],
+        include_dirs=include_dirs + ['scs/linsys/gpu/',
+            'scs/linsys/gpu/indirect', '/usr/local/cuda/include'],
         library_dirs=['/usr/local/cuda/lib', '/usr/local/cuda/lib64'
                      ],  # TODO probably not right for windows
         libraries=libraries + ['cudart', 'cublas', 'cusparse'],
@@ -200,7 +200,7 @@ def install_scs(**kwargs):
 
   setup(
       name='scs',
-      version='2.1.1_2',
+      version='2.1.2',
       author='Brendan O\'Donoghue',
       author_email='bodonoghue85@gmail.com',
       url='http://github.com/cvxgrp/scs',

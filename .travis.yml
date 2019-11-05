@@ -12,6 +12,9 @@ matrix:
   - os: osx
     language: generic
     env: PYTHON=3.6.0
+  - os: osx
+    language: generic
+    env: PYTHON=3.7.4
   - os: linux
     language: python
     python: "2.7"
@@ -24,6 +27,9 @@ matrix:
   - os: linux
     language: python
     python: "3.6"
+  - os: linux
+    language: python
+    python: "3.7"
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
