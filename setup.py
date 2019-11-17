@@ -188,7 +188,7 @@ def install_scs(**kwargs):
   if args.gpu:
     _scs_gpu = Extension(
         name='_scs_gpu',
-        sources=sources + glob('scs/linsys/gpu/*.c'),
+        sources=sources + glob('scs/linsys/gpu/*.c') + glob('scs/linsys/gpu/indirect/*.c'),
         define_macros=define_macros + [('GPU', None)],
         include_dirs=include_dirs + ['scs/linsys/gpu/',
             'scs/linsys/gpu/indirect', '/usr/local/cuda/include'],
