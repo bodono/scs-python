@@ -34,8 +34,8 @@ matrix:
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       sudo apt-get install liblapack-dev;
-      pip install --upgrade pip
-      pip install numpy scipy nose
+      pip install --upgrade pip;
+      pip install numpy scipy nose;
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       brew update;
       brew install pyenv-virtualenv gcc openssl;
@@ -46,8 +46,8 @@ before_install:
       export PATH="/Users/travis/.pyenv/shims:${PATH}";
       pyenv virtualenv testenv;
       python --version;
-      sudo pip install --upgrade pip
-      sudo pip install numpy scipy nose
+      sudo pip install --upgrade pip;
+      sudo pip install numpy scipy nose;
     fi
 
 install:
