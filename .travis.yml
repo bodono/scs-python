@@ -52,9 +52,9 @@ before_install:
 
 install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      python setup.py install
+      python setup.py install;
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      sudo python setup.py install
+      sudo python setup.py install;
     fi
 script:
   - cd test && nosetests test_scs_basic.py test_scs_rand.py test_scs_sdp.py test_scs_python_linsys.py
