@@ -49,7 +49,7 @@ before_install:
   - sudo pip install numpy scipy nose
 
 install:
-  - python setup.py install
+  - sudo python setup.py install
 
 script:
   - cd test && nosetests test_scs_basic.py test_scs_rand.py test_scs_sdp.py test_scs_python_linsys.py
