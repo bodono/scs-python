@@ -45,11 +45,11 @@ before_install:
       pyenv virtualenv testenv;
       python --version;
     fi
-  - sudo pip install --upgrade pip
-  - sudo pip install numpy scipy nose
+  - pip install --upgrade pip
+  - pip install numpy scipy nose
 
 install:
-  - sudo python setup.py install
+  - python setup.py install
 
 script:
   - cd test && nosetests test_scs_basic.py test_scs_rand.py test_scs_sdp.py test_scs_python_linsys.py
