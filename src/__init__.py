@@ -21,19 +21,19 @@ def solve(probdata, cone, **kwargs):
          'info' - information dictionary
   """
   if not probdata or not cone:
-    raise TypeError('Missing data or cone information')
+    raise ValueError('Missing data or cone information')
 
   if 'b' not in probdata or 'c' not in probdata:
-    raise TypeError('Missing one or more of b, c from data dictionary')
+    raise ValueError('Missing one or more of b, c from data dictionary')
   if 'A' not in probdata:
-    raise TypeError('Missing A from data dictionary')
+    raise ValueError('Missing A from data dictionary')
 
   A = probdata['A']
   b = probdata['b']
   c = probdata['c']
 
   if A is None or b is None or c is None:
-    raise TypeError('Incomplete data specification')
+    raise ValueError('Incomplete data specification')
 
   if not sparse.issparse(A):
     raise TypeError('A is required to be a sparse matrix')
@@ -48,7 +48,12 @@ def solve(probdata, cone, **kwargs):
   if sparse.issparse(c):
     c = c.todense()
 
+  m = len(b)
+  n = len(c)
+
   Adata, Aindices, Acolptr = A.data, A.indices, A.indptr
+  if A.shape != (m, n):
+    raise ValueError('A shape not compatible with b,c')
 
   if 'P' in probdata:
     P = probdata['P']
@@ -58,12 +63,14 @@ def solve(probdata, cone, **kwargs):
       if not sparse.isspmatrix_csc(P):
         warn('Converting P to a CSC (compressed sparse column) matrix; '
              'may take a while.')
+
+    if P.shape != (n, n):
+      raise ValueError('P shape not compatible with A,b,c')
+
     Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
   else:
     Pdata, Pindices, Pcolptr = None, None, None
 
-  m = len(b)
-  n = len(c)
 
   warm = {}
   if 'x' in probdata:

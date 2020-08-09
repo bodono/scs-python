@@ -174,7 +174,7 @@ def install_scs(**kwargs):
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
 
-  ext_modules = [_scs_direct, _scs_indirect, _scs_python]
+  ext_modules = [_scs_direct, _scs_indirect]
 
   if args.gpu:
     _scs_gpu = Extension(

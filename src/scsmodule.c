@@ -287,7 +287,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   ScsData *d = (ScsData *)scs_calloc(1, sizeof(ScsData));
   ScsCone *k = (ScsCone *)scs_calloc(1, sizeof(ScsCone));
 
-  ScsMatrix *A;
+  ScsMatrix *A, *P;
   ScsSolution sol = {0};
   ScsInfo info;
   char *kwlist[] = {"shape",
@@ -316,18 +316,18 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!O!O!O!O!O!O!|O!O!O!lffffflz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!lffffflz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!O!O!O!O!O!O!|O!O!O!ldddddlz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!ldddddlz";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!O!O!O!O!O!O!|O!O!O!ifffffiz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffiz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!O!O!O!O!O!O!|O!O!O!idddddiz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddiz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
@@ -342,13 +342,13 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
           &PyArray_Type, &Ax, &PyArray_Type, &Ai, &PyArray_Type, &Ap,
-          &PyArray_Type, &Px, &PyArray_Type, &Pi, &PyArray_Type, &Pp,
+          &Px, &Pi, &Pp, /* P can be None, so don't check is PyArray_Type */
           &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &(d->stgs->max_iters), &(d->stgs->scale), &(d->stgs->eps),
           &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
           &(d->stgs->acceleration_lookback),
-          &(d->stgs->write_data_filename)) {
+          &(d->stgs->write_data_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -386,14 +386,14 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   d->A = A;
 
   /* set P if passed in */
-  if (Px != Py_None && Pi != Py_None && Pp != Py_None ) {
-    if (!PyPrray_ISFLOPT(Px) || PyPrray_NDIM(Px) != 1) {
+  if ((void *)Px != Py_None && (void *)Pi != Py_None && (void *)Pp != Py_None ) {
+    if (!PyArray_ISFLOAT(Px) || PyArray_NDIM(Px) != 1) {
       return finish_with_error(d, k, &ps, "Px must be a numpy array of floats");
     }
-    if (!PyPrray_ISINTEGER(Pi) || PyPrray_NDIM(Pi) != 1) {
+    if (!PyArray_ISINTEGER(Pi) || PyArray_NDIM(Pi) != 1) {
       return finish_with_error(d, k, &ps, "Pi must be a numpy array of ints");
     }
-    if (!PyPrray_ISINTEGER(Pp) || PyPrray_NDIM(Pp) != 1) {
+    if (!PyArray_ISINTEGER(Pp) || PyArray_NDIM(Pp) != 1) {
       return finish_with_error(d, k, &ps, "Pp must be a numpy array of ints");
     }
     ps.Px = scs_get_contiguous(Px, scs_float_type);
@@ -403,9 +403,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     P = (ScsMatrix *)scs_malloc(sizeof(ScsMatrix));
     P->n = d->n;
     P->m = d->m;
-    P->x = (scs_float *)PyPrray_DPTP(ps.Px);
-    P->i = (scs_int *)PyPrray_DPTP(ps.Pi);
-    P->p = (scs_int *)PyPrray_DPTP(ps.Pp);
+    P->x = (scs_float *)PyArray_DATA(ps.Px);
+    P->i = (scs_int *)PyArray_DATA(ps.Pi);
+    P->p = (scs_int *)PyArray_DATA(ps.Pp);
     d->P = P;
   } else {
     d->P = SCS_NULL;
