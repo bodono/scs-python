@@ -1,4 +1,5 @@
 #include <Python.h>
+
 #include "amatrix.h"
 #include "cones.h"
 #include "glbopts.h"
@@ -29,17 +30,12 @@ struct ScsPyData {
   PyArrayObject *Ax;
   PyArrayObject *Ai;
   PyArrayObject *Ap;
+  PyArrayObject *Px;
+  PyArrayObject *Pi;
+  PyArrayObject *Pp;
   PyArrayObject *b;
   PyArrayObject *c;
 };
-
-
-PyObject *scs_init_lin_sys_work_cb = SCS_NULL;
-PyObject *scs_solve_lin_sys_cb = SCS_NULL;
-PyObject *scs_accum_by_a_cb = SCS_NULL;
-PyObject *scs_accum_by_atrans_cb = SCS_NULL;
-PyObject *scs_normalize_a_cb = SCS_NULL;
-PyObject *scs_un_normalize_a_cb = SCS_NULL;
 
 /* Note, Python3.x may require special handling for the scs_int and scs_float
  * types. */
@@ -214,6 +210,15 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, struct ScsPyData *ps) {
   if (ps->Ap) {
     Py_DECREF(ps->Ap);
   }
+  if (ps->Px) {
+    Py_DECREF(ps->Px);
+  }
+  if (ps->Pi) {
+    Py_DECREF(ps->Pi);
+  }
+  if (ps->Pp) {
+    Py_DECREF(ps->Pp);
+  }
   if (ps->b) {
     Py_DECREF(ps->b);
   }
@@ -235,6 +240,9 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, struct ScsPyData *ps) {
   if (d) {
     if (d->A) {
       scs_free(d->A);
+    }
+    if (d->P) {
+      scs_free(d->P);
     }
     if (d->stgs) {
       scs_free(d->stgs);
@@ -264,7 +272,7 @@ static PyObject *sizeof_float(PyObject *self) {
 
 static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   /* data structures for arguments */
-  PyArrayObject *Ax, *Ai, *Ap, *c, *b;
+  PyArrayObject *Ax, *Ai, *Ap, *Px, *Pi, *Pp, *c, *b;
   PyObject *cone, *warm = SCS_NULL;
   PyObject *verbose = SCS_NULL;
   PyObject *normalize = SCS_NULL;
@@ -272,7 +280,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   int scs_int_type = scs_get_int_type();
   int scs_float_type = scs_get_float_type();
   struct ScsPyData ps = {
-      SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
+      SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
+      SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
   };
   /* scs data structures */
   ScsData *d = (ScsData *)scs_calloc(1, sizeof(ScsData));
@@ -285,6 +294,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "Ax",
                     "Ai",
                     "Ap",
+                    "Px",
+                    "Pi",
+                    "Pp",
                     "b",
                     "c",
                     "cone",
@@ -299,24 +311,23 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "rho_x",
                     "acceleration_lookback",
                     "write_data_filename",
-                    "linsys_cbs",
                     SCS_NULL};
 
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!lffffflz(OOOOOO)";
+  char *argparse_string = "(ll)O!O!O!O!O!O!O!O!O!|O!O!O!lffffflz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!O!O!O!|O!O!O!ldddddlz(OOOOOO)";
+  char *argparse_string = "(ll)O!O!O!O!O!O!O!O!O!|O!O!O!ldddddlz";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!ifffffiz(OOOOOO)";
+  char *argparse_string = "(ii)O!O!O!O!O!O!O!O!O!|O!O!O!ifffffiz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!O!O!O!|O!O!O!idddddiz(OOOOOO)";
+  char *argparse_string = "(ii)O!O!O!O!O!O!O!O!O!|O!O!O!idddddiz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
@@ -331,15 +342,13 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
           &PyArray_Type, &Ax, &PyArray_Type, &Ai, &PyArray_Type, &Ap,
+          &PyArray_Type, &Px, &PyArray_Type, &Pi, &PyArray_Type, &Pp,
           &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &(d->stgs->max_iters), &(d->stgs->scale), &(d->stgs->eps),
           &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
           &(d->stgs->acceleration_lookback),
-          &(d->stgs->write_data_filename),
-          &scs_init_lin_sys_work_cb, &scs_solve_lin_sys_cb,
-          &scs_accum_by_a_cb, &scs_accum_by_atrans_cb,
-          &scs_normalize_a_cb, &scs_un_normalize_a_cb)) {
+          &(d->stgs->write_data_filename)) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -375,6 +384,33 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   A->i = (scs_int *)PyArray_DATA(ps.Ai);
   A->p = (scs_int *)PyArray_DATA(ps.Ap);
   d->A = A;
+
+  /* set P if passed in */
+  if (Px != Py_None && Pi != Py_None && Pp != Py_None ) {
+    if (!PyPrray_ISFLOPT(Px) || PyPrray_NDIM(Px) != 1) {
+      return finish_with_error(d, k, &ps, "Px must be a numpy array of floats");
+    }
+    if (!PyPrray_ISINTEGER(Pi) || PyPrray_NDIM(Pi) != 1) {
+      return finish_with_error(d, k, &ps, "Pi must be a numpy array of ints");
+    }
+    if (!PyPrray_ISINTEGER(Pp) || PyPrray_NDIM(Pp) != 1) {
+      return finish_with_error(d, k, &ps, "Pp must be a numpy array of ints");
+    }
+    ps.Px = scs_get_contiguous(Px, scs_float_type);
+    ps.Pi = scs_get_contiguous(Pi, scs_int_type);
+    ps.Pp = scs_get_contiguous(Pp, scs_int_type);
+
+    P = (ScsMatrix *)scs_malloc(sizeof(ScsMatrix));
+    P->n = d->n;
+    P->m = d->m;
+    P->x = (scs_float *)PyPrray_DPTP(ps.Px);
+    P->i = (scs_int *)PyPrray_DPTP(ps.Pi);
+    P->p = (scs_int *)PyPrray_DPTP(ps.Pp);
+    d->P = P;
+  } else {
+    d->P = SCS_NULL;
+  }
+
   /* set c */
   if (!PyArray_ISFLOAT(c) || PyArray_NDIM(c) != 1) {
     return finish_with_error(
@@ -452,49 +488,12 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     d->stgs->warm_start |= get_warm_start("s", &(sol.s), d->m, warm);
   }
 
-#ifdef PYTHON_LINSYS
-  if (!PyCallable_Check(scs_init_lin_sys_work_cb)) {
-    PyErr_SetString(PyExc_ValueError, "scs_init_lin_sys_work_cb not a valid callback");
-    return SCS_NULL;
-  }
-
-  if (!PyCallable_Check(scs_solve_lin_sys_cb)) {
-    PyErr_SetString(PyExc_ValueError, "scs_solve_lin_sys_cb not a valid callback");
-    return SCS_NULL;
-  }
-
-  if (!PyCallable_Check(scs_accum_by_a_cb)) {
-    PyErr_SetString(PyExc_ValueError, "scs_accum_by_a_cb not a valid callback");
-    return SCS_NULL;
-  }
-
-  if (!PyCallable_Check(scs_accum_by_atrans_cb)) {
-    PyErr_SetString(PyExc_ValueError, "scs_accum_by_atrans_cb not a valid callback");
-    return SCS_NULL;
-  }
-
-  if (!PyCallable_Check(scs_normalize_a_cb)) {
-    PyErr_SetString(PyExc_ValueError, "scs_normalize_a_cb not a valid callback");
-    return SCS_NULL;
-  }
-
-  if (!PyCallable_Check(scs_un_normalize_a_cb)) {
-    PyErr_SetString(PyExc_ValueError, "scs_un_normalize_a_cb not a valid callback");
-    return SCS_NULL;
-  }
-#endif
-
-
-#ifndef PYTHON_LINSYS
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
-#endif
   /* Solve! */
   scs(d, k, &sol, &info);
-#ifndef PYTHON_LINSYS
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
-#endif
 
   veclen[0] = d->n;
   x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, sol.x);
@@ -532,12 +531,12 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 
 static PyMethodDef scs_methods[] = {
     {"csolve", (PyCFunction)csolve, METH_VARARGS | METH_KEYWORDS,
-      "Solve a convex cone problem using scs."},
+     "Solve a convex cone problem using scs."},
     {"version", (PyCFunction)version, METH_NOARGS, "Version number for SCS."},
     {"sizeof_int", (PyCFunction)sizeof_int, METH_NOARGS,
-      "Int size (in bytes) SCS uses."},
+     "Int size (in bytes) SCS uses."},
     {"sizeof_float", (PyCFunction)sizeof_float, METH_NOARGS,
-      "Float size (in bytes) SCS uses."},
+     "Float size (in bytes) SCS uses."},
     {SCS_NULL, SCS_NULL} /* sentinel */
 };
 
@@ -566,8 +565,6 @@ static PyObject *moduleinit(void) {
   m = Py_InitModule("_scs_indirect", scs_methods);
 #elif defined GPU
   m = Py_InitModule("_scs_gpu", scs_methods);
-#elif defined PYTHON_LINSYS
-  m = Py_InitModule("_scs_python", scs_methods);
 #else
   m = Py_InitModule("_scs_direct", scs_methods);
 #endif
@@ -588,8 +585,6 @@ PyMODINIT_FUNC
 PyInit__scs_indirect(void)
 #elif defined GPU
 PyInit__scs_gpu(void)
-#elif defined PYTHON_LINSYS
-PyInit__scs_python(void)
 #else
 PyInit__scs_direct(void)
 #endif
@@ -603,8 +598,6 @@ PyMODINIT_FUNC
 init_scs_indirect(void)
 #elif defined GPU
 init_scs_gpu(void)
-#elif defined PYTHON_LINSYS
-init_scs_python(void)
 #else
 init_scs_direct(void)
 #endif

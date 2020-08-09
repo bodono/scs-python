@@ -1,4 +1,3 @@
-graft python_linsys
 graft src 
 graft test 
 graft scs
