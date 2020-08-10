@@ -154,12 +154,15 @@ def install_scs(**kwargs):
   if not args.int32 and not args.gpu:
     define_macros += [('DLONG', 1)]  # longs for integer type
 
+  # XXXXXXXXXXXXXX
+  #define_macros += [('COPYAMATRIX', None)]
+
   _scs_direct = Extension(
       name='_scs_direct',
       sources=sources + glob('scs/linsys/cpu/direct/*.c') +
       glob('scs/linsys/external/amd/*.c') +
       glob('scs/linsys/external/qdldl/*.c'),
-      define_macros=list(define_macros) + [('COPYAMATRIX', None)],
+      define_macros=list(define_macros),
       include_dirs=include_dirs + ['scs/linsys/cpu/direct/',
           'scs/linsys/external/amd', 'scs/linsys/external/dqlql'],
       libraries=list(libraries),
@@ -168,13 +171,14 @@ def install_scs(**kwargs):
   _scs_indirect = Extension(
       name='_scs_indirect',
       sources=sources + glob('scs/linsys/cpu/indirect/*.c'),
-      define_macros=list(define_macros) + \
-          [('COPYAMATRIX', None), ('INDIRECT', None)],
+      define_macros=list(define_macros) + [('INDIRECT', None)],
       include_dirs=include_dirs + ['scs/linsys/cpu/indirect/'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
 
-  ext_modules = [_scs_direct, _scs_indirect]
+  #ext_modules = [_scs_direct, _scs_indirect]
+  # XXXXXXXx
+  ext_modules = [_scs_direct,]
 
   if args.gpu:
     _scs_gpu = Extension(

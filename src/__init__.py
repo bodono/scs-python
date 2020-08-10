@@ -55,22 +55,21 @@ def solve(probdata, cone, **kwargs):
   if A.shape != (m, n):
     raise ValueError('A shape not compatible with b,c')
 
+  Pdata, Pindices, Pcolptr = None, None, None
   if 'P' in probdata:
     P = probdata['P']
     if P is not None:
       if not sparse.issparse(P):
         raise TypeError('P is required to be a sparse matrix')
+      if P.shape != (n, n):
+        raise ValueError('P shape not compatible with A,b,c')
       if not sparse.isspmatrix_csc(P):
         warn('Converting P to a CSC (compressed sparse column) matrix; '
              'may take a while.')
-
-    if P.shape != (n, n):
-      raise ValueError('P shape not compatible with A,b,c')
-
-    Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
-  else:
-    Pdata, Pindices, Pcolptr = None, None, None
-
+        P = P.tocsc()
+      # extract upper triangular component only
+      P = sparse.triu(P, format='csc')
+      Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
 
   warm = {}
   if 'x' in probdata:

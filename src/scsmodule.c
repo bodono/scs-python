@@ -341,14 +341,13 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
-          &PyArray_Type, &Ax, &PyArray_Type, &Ai, &PyArray_Type, &Ap,
-          &Px, &Pi, &Pp, /* P can be None, so don't check is PyArray_Type */
+          &PyArray_Type, &Ax, &PyArray_Type, &Ai, &PyArray_Type, &Ap, &Px, &Pi,
+          &Pp, /* P can be None, so don't check is PyArray_Type */
           &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &(d->stgs->max_iters), &(d->stgs->scale), &(d->stgs->eps),
           &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
-          &(d->stgs->acceleration_lookback),
-          &(d->stgs->write_data_filename))) {
+          &(d->stgs->acceleration_lookback), &(d->stgs->write_data_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -386,7 +385,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   d->A = A;
 
   /* set P if passed in */
-  if ((void *)Px != Py_None && (void *)Pi != Py_None && (void *)Pp != Py_None ) {
+  if ((void *)Px != Py_None && (void *)Pi != Py_None && (void *)Pp != Py_None) {
     if (!PyArray_ISFLOAT(Px) || PyArray_NDIM(Px) != 1) {
       return finish_with_error(d, k, &ps, "Px must be a numpy array of floats");
     }
@@ -402,7 +401,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 
     P = (ScsMatrix *)scs_malloc(sizeof(ScsMatrix));
     P->n = d->n;
-    P->m = d->m;
+    P->m = d->n;
     P->x = (scs_float *)PyArray_DATA(ps.Px);
     P->i = (scs_int *)PyArray_DATA(ps.Pi);
     P->p = (scs_int *)PyArray_DATA(ps.Pp);
@@ -410,7 +409,6 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   } else {
     d->P = SCS_NULL;
   }
-
   /* set c */
   if (!PyArray_ISFLOAT(c) || PyArray_NDIM(c) != 1) {
     return finish_with_error(
