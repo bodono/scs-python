@@ -154,8 +154,7 @@ def install_scs(**kwargs):
   if not args.int32 and not args.gpu:
     define_macros += [('DLONG', 1)]  # longs for integer type
 
-  # XXXXXXXXXXXXXX
-  #define_macros += [('COPYAMATRIX', None)]
+  define_macros += [('COPYAMATRIX', None)]
 
   _scs_direct = Extension(
       name='_scs_direct',
@@ -176,9 +175,7 @@ def install_scs(**kwargs):
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
 
-  #ext_modules = [_scs_direct, _scs_indirect]
-  # XXXXXXXx
-  ext_modules = [_scs_direct,]
+  ext_modules = [_scs_direct, _scs_indirect]
 
   if args.gpu:
     _scs_gpu = Extension(
