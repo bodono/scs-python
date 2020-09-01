@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - uses: actions/setup-python@v2
         name: Install Python
@@ -49,6 +51,7 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: "yum install -y openblas-devel liblapack-dev"
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
           CIBW_TEST_COMMAND: "nosetests test_scs_basic.py test_scs_rand.py test_scs_sdp.py test_scs_python_linsys.py"
+          CIBW_TEST_REQUIRES: nose
 
       - uses: actions/upload-artifact@v2
         with:
