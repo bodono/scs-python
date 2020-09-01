@@ -29,25 +29,25 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install vcpython27 -f -y
-#      - name: Install OpenBLAS Windows
-#        if: runner.os == 'Windows'
-#        shell: pwsh
-#        run: |
-#          $ErrorActionPreference = "Stop"
-#          # Download and get the path to "openblas.a". We cannot copy it
-#          # to $PYTHON_EXE's directory since that is on a different drive which
-#          # mingw does not like. Instead copy it to a directory and set OPENBLAS,
-#          # since OPENBLAS will be picked up by the openblas discovery
-#          $target = $(python tools/openblas_support.py)
-#          mkdir openblas
-#          echo "Copying $target to openblas/openblas$env:OPENBLAS_SUFFIX.a"
-#          cp $target openblas/openblas$env:OPENBLAS_SUFFIX.a
-#          echo "##vso[task.setvariable variable=OPENBLAS]$pwd\openblas"
+      - name: Install OpenBLAS Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          # Download and get the path to "openblas.a". We cannot copy it
+          # to $PYTHON_EXE's directory since that is on a different drive which
+          # mingw does not like. Instead copy it to a directory and set OPENBLAS,
+          # since OPENBLAS will be picked up by the openblas discovery
+          $target = $(python tools/openblas_support.py)
+          mkdir openblas
+          echo "Copying $target to openblas/openblas$env:OPENBLAS_SUFFIX.a"
+          cp $target openblas/openblas$env:OPENBLAS_SUFFIX.a
+          echo "##vso[task.setvariable variable=OPENBLAS]$pwd\openblas"
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_SKIP: "cp27-* cp34-* pp*"
+          CIBW_SKIP: "cp27-* cp34-* pp* *win32"
           CIBW_BEFORE_ALL_LINUX: "yum install -y openblas-devel liblapack-dev"
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
           CIBW_BEFORE_BUILD_WINDOWS: "pip install -U numpy scipy"
