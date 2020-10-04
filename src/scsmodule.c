@@ -84,7 +84,7 @@ PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
 }
 
 static int printErr(char *key) {
-  PySys_WriteStderr("error parsing '%s'\n", key);
+  PySys_WriteStderr("error parsing '%s' (cone fields should be lists)\n", key);
   return -1;
 }
 
@@ -226,6 +226,12 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, struct ScsPyData *ps) {
     Py_DECREF(ps->c);
   }
   if (k) {
+    if (k->bu) {
+      scs_free(k->bu);
+    }
+    if (k->bl) {
+      scs_free(k->bl);
+    }
     if (k->q) {
       scs_free(k->q);
     }
@@ -279,6 +285,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   /* get the typenum for the primitive scs_int and scs_float types */
   int scs_int_type = scs_get_int_type();
   int scs_float_type = scs_get_float_type();
+  scs_int bsizeu, bsizel;
   struct ScsPyData ps = {
       SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
       SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
@@ -436,6 +443,18 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (get_pos_int_param("l", &(k->l), 0, cone) < 0) {
     return finish_with_error(d, k, &ps, "failed to parse cone field l");
   }
+  /* box cone */
+  if (get_cone_float_arr("bu", &(k->bu), &bsizeu, cone) < 0) {
+    return finish_with_error(d, k, &ps, "failed to parse cone field bu");
+  }
+  if (get_cone_float_arr("bl", &(k->bl), &bsizel, cone) < 0) {
+    return finish_with_error(d, k, &ps, "failed to parse cone field bl");
+  }
+  if (bsizeu != bsizel) {
+    return finish_with_error(d, k, &ps, "bu different dimension to bl");
+  }
+  k->bsize = bsizeu + 1; /* cone = (s,t), add 1 for t */
+  /* end box cone */
   if (get_cone_arr_dim("q", &(k->q), &(k->qsize), cone) < 0) {
     return finish_with_error(d, k, &ps, "failed to parse cone field q");
   }
