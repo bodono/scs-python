@@ -479,8 +479,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error(d, k, &ps, "max_iters must be positive");
   }
   if (d->stgs->acceleration_lookback < 0) {
-    return finish_with_error(d, k, &ps,
-                             "acceleration_lookback must be positive");
+    /* hack - use type-I AA when lookback is < 0 */
+    /* return finish_with_error(d, k, &ps,
+                               "acceleration_lookback must be positive"); */
   }
   if (d->stgs->scale < 0) {
     return finish_with_error(d, k, &ps, "scale must be positive");
