@@ -453,7 +453,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (bsizeu != bsizel) {
     return finish_with_error(d, k, &ps, "bu different dimension to bl");
   }
-  k->bsize = bsizeu + 1; /* cone = (s,t), add 1 for t */
+  if (bsizeu > 0) {
+    k->bsize = bsizeu + 1; /* cone = (s,t), add 1 for t */
+  }
   /* end box cone */
   if (get_cone_arr_dim("q", &(k->q), &(k->qsize), cone) < 0) {
     return finish_with_error(d, k, &ps, "failed to parse cone field q");
