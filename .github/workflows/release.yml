@@ -33,9 +33,9 @@ jobs:
         run: |
           $pyversion = python -c "import sys; print(sys.version.split()[0])"
           Write-Host "Python Version: $pyversion"
-          function Download-OpenBLAS($ilp64) {
-              $target_name = "openblas.a"
-              $target = "$(HOME)\openblaslib\$target_name"
+              function Download-OpenBLAS($ilp64) {
+              if ($ilp64 -eq '1') { $target_name = "openblas64_.a" } else { $target_name = "openblas.a" }
+              $target = "$(OPENBLAS)\$target_name"
               Write-Host "target path: $target"
               $old_value = $env:NPY_USE_BLAS_ILP64
               $env:NPY_USE_BLAS_ILP64 = $ilp64
@@ -43,8 +43,11 @@ jobs:
               $env:NPY_USE_BLAS_ILP64 = $old_value
               cp $openblas $target
           }
-          mkdir $(HOME)\openblaslib
+          mkdir $(OPENBLAS)
           Download-OpenBLAS('0')
+        env:
+          OPENBLAS: {{ HOME }}\openblaslib
+          OPENBLAS64_: {{ HOME }}\openblaslib
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse
@@ -54,8 +57,8 @@ jobs:
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
           CIBW_BEFORE_BUILD_WINDOWS: "pip install -U numpy scipy"
           CIBW_TEST_COMMAND: "nosetests {project}/test"
-          CIBW_ENVIRONMENT_WINDOWS: "OPENBLAS=$(HOME)/openblaslib"
           CIBW_TEST_REQUIRES: nose
+          CIBW_ENVIRONMENT_WINDOWS: "BLAS_LAPACK_LIB_PATHS={{ HOME }}/openblaslib"
       - uses: actions/upload-artifact@v2
         with:
           path: ./wheelhouse/*.whl
