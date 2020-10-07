@@ -54,7 +54,7 @@ jobs:
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
           CIBW_BEFORE_BUILD_WINDOWS: "pip install -U numpy scipy"
           CIBW_TEST_COMMAND: "nosetests {project}/test"
-          CIBW_ENVIRONMENT_WINDOWS: "OPENBLAS=$(HOME)\openblaslib"
+          CIBW_ENVIRONMENT_WINDOWS: "OPENBLAS=$(HOME)/openblaslib"
           CIBW_TEST_REQUIRES: nose
       - uses: actions/upload-artifact@v2
         with:
