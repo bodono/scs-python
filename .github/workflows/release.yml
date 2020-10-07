@@ -43,7 +43,7 @@ jobs:
               $env:NPY_USE_BLAS_ILP64 = $old_value
               cp $openblas $target
           }
-          mkdir $(OPENBLAS)
+          mkdir $(HOME)\openblaslib
           Download-OpenBLAS('0')
       - name: Build wheels
         run: |
