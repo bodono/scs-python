@@ -28,26 +28,17 @@ jobs:
         uses: microsoft/setup-msbuild@v1.0.1
         if: runner.os == 'Windows'
       - name: Install OpenBLAS Windows
-        env:
-          OPENBLAS: openblaslib
-          OPENBLAS64_: openblaslib
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $pyversion = python -c "import sys; print(sys.version.split()[0])"
+          mkdir openblaslib
           Write-Host "Python Version: $pyversion"
-              function Download-OpenBLAS($ilp64) {
-              if ($ilp64 -eq '1') { $target_name = "openblas64_.a" } else { $target_name = "openblas.a" }
-              $target = "$(OPENBLAS)\$target_name"
-              Write-Host "target path: $target"
-              $old_value = $env:NPY_USE_BLAS_ILP64
-              $env:NPY_USE_BLAS_ILP64 = $ilp64
-              $openblas = python tools/openblas_support.py
-              $env:NPY_USE_BLAS_ILP64 = $old_value
-              cp $openblas $target
-          }
-          mkdir $(OPENBLAS)
-          Download-OpenBLAS('0')
+          $target_name = "openblas.a"
+          $target = "openblaslib\$target_name"
+          Write-Host "target path: $target"
+          $openblas = python tools/openblas_support.py
+          cp $openblas $target
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse
