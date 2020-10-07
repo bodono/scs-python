@@ -68,12 +68,34 @@ jobs:
       - name: Install Visual C++ for Python 2.7
         run: |
           choco install vcpython27 -f -y
-      - name: Build Wheel
+      - uses: msys2/setup-msys2@v2
         if: matrix.arch == 'x64'
-        run: python setup.py install --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib"'
-      - name: Build Wheel
+        with:
+          msystem: ${{ matrix.msystem }}
+          install: git base-devel mingw-w64-x86_64-toolchain
+      - uses: msys2/setup-msys2@v2
         if: matrix.arch == 'x86'
-        run: python setup.py install --scs 'CC="gcc.exe -m32" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib"'
+        with:
+          msystem: ${{ matrix.msystem }}
+          install: git base-devel mingw-w64-i686-toolchain
+      - name: Build Wheel
+        shell: msys2 {0}
+        if: matrix.arch == 'x64'
+        run: python setup.py install --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
+      - name: Build Wheel
+        shell: msys2 {0}
+        if: matrix.arch == 'x86'
+        run: python setup.py install --scs 'CC="gcc.exe -m32" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
+      - name: Run tests
+        run: |
+          set -e
+          mkdir test_dir
+          cd test_dir
+          virtualenv test-env
+          test-env/bin/pip install ../dist/*whl
+          test-env/bin/pip install -U nose
+          test-env/bin/nosetests ../tests
+          cd ..
       - uses: actions/upload-artifact@v2
         with:
           path: ./dist/*.whl
