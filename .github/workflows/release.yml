@@ -28,7 +28,7 @@ jobs:
         run: |
           python -m cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_SKIP: "cp27-* cp34-* pp* *win32"
+          CIBW_SKIP: "cp27-* cp34-* pp* cp39* *win32"
           CIBW_BEFORE_ALL_LINUX: "yum install -y openblas-devel liblapack-dev"
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
           CIBW_BEFORE_BUILD_WINDOWS: "pip install -U numpy scipy"
