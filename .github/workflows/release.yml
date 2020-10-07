@@ -71,12 +71,12 @@ jobs:
       - uses: msys2/setup-msys2@v2
         if: matrix.arch == 'x64'
         with:
-          msystem: ${{ matrix.msystem }}
+          msystem: MINGW64
           install: git base-devel mingw-w64-x86_64-toolchain
       - uses: msys2/setup-msys2@v2
         if: matrix.arch == 'x86'
         with:
-          msystem: ${{ matrix.msystem }}
+          msystem: MINGW32
           install: git base-devel mingw-w64-i686-toolchain
       - name: Build Wheel
         shell: msys2 {0}
