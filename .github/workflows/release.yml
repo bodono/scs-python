@@ -45,7 +45,7 @@ jobs:
           }
           mkdir $(OPENBLAS)
           Download-OpenBLAS('0')
-        env:
+        variables:
           OPENBLAS: {{ HOME }}\openblaslib
           OPENBLAS64_: {{ HOME }}\openblaslib
       - name: Build wheels
