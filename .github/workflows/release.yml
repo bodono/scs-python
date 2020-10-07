@@ -36,10 +36,10 @@ jobs:
           Write-Host "target path: $target"
           $openblas = python tools/openblas_support.py
           cp $openblas $target
-      - uses: msys2/setup-msys2@v2
+      - name: Install Visual C++ for Python 2.7
         if: runner.os == 'Windows'
-        with:
-          install: gcc make
+        run: |
+          choco install vcpython27 -f -y
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse
