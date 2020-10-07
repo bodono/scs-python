@@ -29,8 +29,8 @@ jobs:
         if: runner.os == 'Windows'
       - name: Install OpenBLAS Windows
         env:
-          OPENBLAS: ${{ HOME }}\openblaslib
-          OPENBLAS64_: ${{ HOME }}\openblaslib
+          OPENBLAS: ${{ GITHUB_WORKSPACE }}\openblaslib
+          OPENBLAS64_: ${{ GITHUB_WORKSPACE }}\openblaslib
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -58,7 +58,7 @@ jobs:
           CIBW_BEFORE_BUILD_WINDOWS: "pip install -U numpy scipy"
           CIBW_TEST_COMMAND: "nosetests {project}/test"
           CIBW_TEST_REQUIRES: nose
-          CIBW_ENVIRONMENT_WINDOWS: "BLAS_LAPACK_LIB_PATHS=${{ HOME }}/openblaslib"
+          CIBW_ENVIRONMENT_WINDOWS: "BLAS_LAPACK_LIB_PATHS=${{ GITHUB_WORKSPACE }}/openblaslib"
       - uses: actions/upload-artifact@v2
         with:
           path: ./wheelhouse/*.whl
