@@ -34,7 +34,7 @@ jobs:
           $pyversion = python -c "import sys; print(sys.version.split()[0])"
           Write-Host "Python Version: $pyversion"
           function Download-OpenBLAS($ilp64) {
-              $target_name = "openblas.a" }
+              $target_name = "openblas.a"
               $target = "$(HOME)\openblaslib\$target_name"
               Write-Host "target path: $target"
               $old_value = $env:NPY_USE_BLAS_ILP64
