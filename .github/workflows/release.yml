@@ -39,7 +39,7 @@ jobs:
         with:
           path: ./wheelhouse/*.whl
   build_wheels_windows:
-    name: Build wheels on ${{ matrix.os }}
+    name: Build wheels on windows Python-${{ matrix.python-version }} ${{ matrix.arch }}
     runs-on: windows-latest
     strategy:
       matrix:
