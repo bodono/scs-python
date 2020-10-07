@@ -28,6 +28,9 @@ jobs:
         uses: microsoft/setup-msbuild@v1.0.1
         if: runner.os == 'Windows'
       - name: Install OpenBLAS Windows
+        env:
+          OPENBLAS: {{ HOME }}\openblaslib
+          OPENBLAS64_: {{ HOME }}\openblaslib
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -45,9 +48,6 @@ jobs:
           }
           mkdir $(OPENBLAS)
           Download-OpenBLAS('0')
-        variables:
-          OPENBLAS: {{ HOME }}\openblaslib
-          OPENBLAS64_: {{ HOME }}\openblaslib
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse
