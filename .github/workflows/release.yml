@@ -36,6 +36,10 @@ jobs:
           Write-Host "target path: $target"
           $openblas = python tools/openblas_support.py
           cp $openblas $target
+     - uses: msys2/setup-msys2@v2
+       if: runner.os == 'Windows'
+       with:
+         install: gcc make
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse
