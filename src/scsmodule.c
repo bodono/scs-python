@@ -282,6 +282,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   PyObject *cone, *warm = SCS_NULL;
   PyObject *verbose = SCS_NULL;
   PyObject *normalize = SCS_NULL;
+  PyObject *adaptive_scaling = SCS_NULL;
   /* get the typenum for the primitive scs_int and scs_float types */
   int scs_int_type = scs_get_int_type();
   int scs_float_type = scs_get_float_type();
@@ -310,6 +311,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "warm",
                     "verbose",
                     "normalize",
+                    "adaptive_scaling",
                     "max_iters",
                     "scale",
                     "eps",
@@ -318,23 +320,24 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "rho_x",
                     "acceleration_lookback",
                     "write_data_filename",
+                    "log_csv_filename",
                     SCS_NULL};
 
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!lffffflz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lffffflzz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!ldddddlz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddlzz";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffiz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffizz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddiz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddizz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
@@ -352,9 +355,11 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &Pp, /* P can be None, so don't check is PyArray_Type */
           &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
-          &(d->stgs->max_iters), &(d->stgs->scale), &(d->stgs->eps),
-          &(d->stgs->cg_rate), &(d->stgs->alpha), &(d->stgs->rho_x),
-          &(d->stgs->acceleration_lookback), &(d->stgs->write_data_filename))) {
+          &PyBool_Type, &adaptive_scaling, &(d->stgs->max_iters),
+          &(d->stgs->scale), &(d->stgs->eps), &(d->stgs->cg_rate),
+          &(d->stgs->alpha), &(d->stgs->rho_x),
+          &(d->stgs->acceleration_lookback),
+          &(d->stgs->write_data_filename), &(d->stgs->log_csv_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -476,6 +481,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   d->stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
   d->stgs->normalize =
       normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
+  d->stgs->adaptive_scaling =
+      adaptive_scaling ? (scs_int)PyObject_IsTrue(adaptive_scaling) :
+      ADAPTIVE_SCALING;
 
   if (d->stgs->max_iters < 0) {
     return finish_with_error(d, k, &ps, "max_iters must be positive");
