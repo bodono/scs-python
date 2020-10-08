@@ -52,6 +52,7 @@ jobs:
       - uses: goanpeca/setup-miniconda@v1
         with:
           activate-environment: scs
+          miniconda-version: 4.8.3
           auto-update-conda: true
           channels: conda-forge
           python-version: ${{ matrix.python-version }}
