@@ -75,6 +75,7 @@ jobs:
         if: matrix.arch == 'x86'
         run: python setup.py install --scs 'CC="gcc.exe -m32" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
       - name: Run tests
+        shell: bash
         run: |
           set -e
           mkdir test_dir
