@@ -60,7 +60,7 @@ jobs:
         if: matrix.arch == 'x86'
         with:
           activate-environment: scs
-          miniconda-version: Miniconda3-latest-Windows-x86.exe
+          miniconda-version: "latest"
           auto-update-conda: true
           channels: conda-forge
           python-version: ${{ matrix.python-version }}
