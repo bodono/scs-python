@@ -83,7 +83,7 @@ jobs:
           virtualenv test-env
           test-env/Scripts/pip install dist/*whl
           test-env/Scripts/pip install nose
-          test-env/Scripts/nosetests tests
+          test-env/Scripts/nosetests test
       - uses: actions/upload-artifact@v2
         with:
           path: ./dist/*.whl
