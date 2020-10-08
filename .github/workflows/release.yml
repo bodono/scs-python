@@ -68,6 +68,8 @@ jobs:
       - name: Install Visual C++ for Python 2.7
         run: |
           choco install vcpython27 -f -y
+      - name: Install Deps
+        run: pip install wheel virtualenv numpy scipy
       - name: Build Wheel
         if: matrix.arch == 'x64'
         run: python setup.py install --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
