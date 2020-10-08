@@ -72,10 +72,10 @@ jobs:
         run: pip install wheel virtualenv numpy scipy
       - name: Build Wheel
         if: matrix.arch == 'x64'
-        run: python setup.py install --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
+        run: python setup.py bdist_wheel --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
       - name: Build Wheel
         if: matrix.arch == 'x86'
-        run: python setup.py install --scs 'CC="gcc.exe -m32" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
+        run: python setup.py bdist_wheel --scs 'CC="gcc.exe -m32" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
       - name: Run tests
         shell: bash
         run: |
