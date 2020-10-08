@@ -49,27 +49,15 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: true
-      - uses: actions/setup-python@v2
-        name: Install Python
+            - uses: goanpeca/setup-miniconda@v1
         with:
+          activate-environment: scs
+          auto-update-conda: true
+          channels: conda-forge
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.arch }}
-      - name: Install OpenBLAS Windows
-        shell: pwsh
-        run: |
-          $pyversion = python -c "import sys; print(sys.version.split()[0])"
-          mkdir openblaslib
-          Write-Host "Python Version: $pyversion"
-          $target_name = "openblas.a"
-          $target = "openblaslib\$target_name"
-          Write-Host "target path: $target"
-          $openblas = python tools/openblas_support.py
-          cp $openblas $target
-      - name: Install Visual C++ for Python 2.7
-        run: |
-          choco install vcpython27 -f -y
       - name: Install Deps
-        run: pip install wheel virtualenv numpy scipy
+        run: conda install numpy scipy nose virtualenv
       - name: Build Wheel
         if: matrix.arch == 'x64'
         run: python setup.py bdist_wheel --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
