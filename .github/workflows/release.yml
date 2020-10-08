@@ -83,9 +83,9 @@ jobs:
           mkdir test_dir
           cd test_dir
           virtualenv test-env
-          test-env/bin/pip install ../dist/*whl
-          test-env/bin/pip install -U nose
-          test-env/bin/nosetests ../tests
+          test-env/Scripts/pip install ../dist/*whl
+          test-env/Scripts/pip install -U nose
+          test-env/Scripts/nosetests ../tests
           cd ..
       - uses: actions/upload-artifact@v2
         with:
