@@ -80,13 +80,10 @@ jobs:
         shell: bash
         run: |
           set -e
-          mkdir test_dir
-          cd test_dir
           virtualenv test-env
-          test-env/Scripts/pip install ../dist/*whl
-          test-env/Scripts/pip install -U nose
-          test-env/Scripts/nosetests ../tests
-          cd ..
+          test-env/Scripts/pip install dist/*whl
+          test-env/Scripts/pip install nose
+          test-env/Scripts/nosetests tests
       - uses: actions/upload-artifact@v2
         with:
           path: ./dist/*.whl
