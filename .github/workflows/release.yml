@@ -69,11 +69,9 @@ jobs:
         run: |
           choco install vcpython27 -f -y
       - name: Build Wheel
-        shell: msys2 {0}
         if: matrix.arch == 'x64'
         run: python setup.py install --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
       - name: Build Wheel
-        shell: msys2 {0}
         if: matrix.arch == 'x86'
         run: python setup.py install --scs 'CC="gcc.exe -m32" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
       - name: Run tests
