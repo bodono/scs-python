@@ -50,13 +50,21 @@ jobs:
         with:
           submodules: true
       - uses: goanpeca/setup-miniconda@v1
+        if: matrix.arch == 'x64'
         with:
           activate-environment: scs
-          miniconda-version: 4.8.3
           auto-update-conda: true
           channels: conda-forge
           python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.arch }}
+      - uses: goanpeca/setup-miniconda@v1
+        if: matrix.arch == 'x86'
+        with:
+          activate-environment: scs
+          miniconda-version: Miniconda3-latest-Windows-x86.exe
+          auto-update-conda: true
+          channels: conda-forge
+          python-version: ${{ matrix.python-version }}
+          architecture: x86
       - name: Install Deps
         run: conda install numpy scipy nose virtualenv
       - name: Build Wheel
