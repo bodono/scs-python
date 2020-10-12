@@ -84,7 +84,7 @@ PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
 }
 
 static int printErr(char *key) {
-  PySys_WriteStderr("error parsing '%s' (cone fields should be lists)\n", key);
+  PySys_WriteStderr("error parsing '%s'\n", key);
   return -1;
 }
 
