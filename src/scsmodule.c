@@ -327,18 +327,18 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 #ifdef DLONG
 #ifdef SFLOAT
   char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lffffflzz";
-  char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+  char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
   char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddlzz";
-  char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+  char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
   char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffizz";
-  char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+  char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
   char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddizz";
-  char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+  char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
   npy_intp veclen[1];
@@ -536,13 +536,20 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   PyArray_ENABLEFLAGS((PyArrayObject *)s, NPY_ARRAY_OWNDATA);
 
   info_dict = Py_BuildValue(
-      outarg_string, "statusVal", (scs_int)info.status_val, "iter",
-      (scs_int)info.iter, "pobj", (scs_float)info.pobj, "dobj",
-      (scs_float)info.dobj, "resPri", (scs_float)info.res_pri, "resDual",
-      (scs_float)info.res_dual, "relGap", (scs_float)info.rel_gap, "resInfeas",
-      (scs_float)info.res_infeas, "resUnbdd", (scs_float)info.res_unbdd,
-      "solveTime", (scs_float)(info.solve_time), "setupTime",
-      (scs_float)(info.setup_time), "status", info.status);
+      outarg_string,
+      "statusVal", (scs_int)info.status_val,
+      "iter", (scs_int)info.iter,
+      "pobj", (scs_float)info.pobj,
+      "dobj", (scs_float)info.dobj,
+      "resPri", (scs_float)info.res_pri,
+      "resDual", (scs_float)info.res_dual,
+      "gap", (scs_float)info.gap,
+      "resInfeas", (scs_float)info.res_infeas,
+      "resUnbddA", (scs_float)info.res_unbdd_a,
+      "resUnbddP", (scs_float)info.res_unbdd_p,
+      "solveTime", (scs_float)(info.solve_time),
+      "setupTime", (scs_float)(info.setup_time),
+      "status", info.status);
 
   return_dict = Py_BuildValue("{s:O,s:O,s:O,s:O}", "x", x, "y", y, "s", s,
                               "info", info_dict);
