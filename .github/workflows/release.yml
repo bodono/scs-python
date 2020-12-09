@@ -76,14 +76,27 @@ jobs:
         if: matrix.arch == 'x86'
         run: python setup.py bdist_wheel --scs 'CC="gcc.exe -m32" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
       - name: Run tests
-        shell: bash
+        shell: bash -l {0}
         run: |
           set -e
-          conda create test-env
-          activate test-env
+          conda create -y -n test-env python=${{ matrix.python-version }}
+          source activate test-env
           pip install dist/*whl
           pip install nose
           nosetests test
+        if: matrix.arch == 'x64'
+      - name: Run tests
+        shell: bash -l {0}
+        run: |
+          set -e
+          conda create -y -n test-env python=${{ matrix.python-version }}
+          source activate test-env
+          pip install dist/*whl
+          pip install nose
+          nosetests test
+        env:
+          - CONDA_FORCE_32BIT: 1
+        if: matrix.arch == 'x86'
       - uses: actions/upload-artifact@v2
         with:
           path: ./dist/*.whl
