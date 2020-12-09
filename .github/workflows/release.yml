@@ -77,11 +77,11 @@ jobs:
         shell: bash
         run: |
           set -e
-          pip install virtualenv
-          virtualenv test-env
-          test-env/Scripts/pip install dist/*whl
-          test-env/Scripts/pip install nose
-          test-env/Scripts/nosetests test
+          conda create test-env
+          activate test-env
+          pip install dist/*whl
+          pip install nose
+          nosetests test
       - uses: actions/upload-artifact@v2
         with:
           path: ./dist/*.whl
