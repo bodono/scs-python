@@ -80,7 +80,7 @@ jobs:
         run: |
           set -e
           conda create -y -n test-env python=${{ matrix.python-version }}
-          source activate test-env
+          conda activate test-env
           pip install dist/*whl
           pip install nose
           nosetests test
@@ -90,7 +90,7 @@ jobs:
         run: |
           set -e
           conda create -y -n test-env python=${{ matrix.python-version }}
-          source activate test-env
+          condae activate test-env
           pip install dist/*whl
           pip install nose
           nosetests test
