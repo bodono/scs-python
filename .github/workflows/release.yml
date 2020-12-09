@@ -28,7 +28,7 @@ jobs:
         run: |
           python -m cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_SKIP: "cp27-* cp34-* pp* cp39* *win32"
+          CIBW_SKIP: "cp27-* cp34-* pp* *win32"
           CIBW_BEFORE_ALL_LINUX: "yum install -y openblas-devel liblapack-dev"
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
           CIBW_BEFORE_BUILD_WINDOWS: "pip install -U numpy scipy"
@@ -46,7 +46,7 @@ jobs:
     strategy:
       matrix:
         arch: [x64, x86]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
         with:
