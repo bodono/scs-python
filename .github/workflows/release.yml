@@ -95,7 +95,7 @@ jobs:
           pip install nose
           nosetests test
         env:
-          - CONDA_FORCE_32BIT: 1
+          CONDA_FORCE_32BIT: 1
         if: matrix.arch == 'x86'
       - uses: actions/upload-artifact@v2
         with:
