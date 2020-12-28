@@ -40,11 +40,11 @@ parser.add_argument(
     default=False,
     help='Extra verbose SCS (for debugging)')
 parser.add_argument(
-    '--gpu-atrans',
+    '--no-gpu-atrans',
     dest='gpu_atrans',
-    action='store_true',
-    default=False,
-    help='use transposed A matrix in gpu indirect method')
+    action='store_false',
+    default=True,
+    help='use original (non-transposed) A matrix in gpu indirect method')
 parser.add_argument(
     '--int',
     dest='int32',
