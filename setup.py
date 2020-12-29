@@ -40,6 +40,12 @@ parser.add_argument(
     default=False,
     help='Extra verbose SCS (for debugging)')
 parser.add_argument(
+    '--no-gpu-atrans',
+    dest='gpu_atrans',
+    action='store_false',
+    default=True,
+    help='use original (non-transposed) A matrix in gpu indirect method')
+parser.add_argument(
     '--int',
     dest='int32',
     action='store_true',
@@ -186,6 +192,8 @@ def install_scs(**kwargs):
   ext_modules = [_scs_direct, _scs_indirect, _scs_python]
 
   if args.gpu:
+    if args.gpu_atrans:
+       define_macros += [('GPU_TRANSPOSE_MAT', 1)]  # for debugging
     _scs_gpu = Extension(
         name='_scs_gpu',
         sources=sources + glob('scs/linsys/gpu/*.c') + glob('scs/linsys/gpu/indirect/*.c'),
