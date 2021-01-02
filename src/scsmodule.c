@@ -314,7 +314,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "adaptive_scaling",
                     "max_iters",
                     "scale",
-                    "eps",
+                    "eps_abs",
+                    "eps_rel",
+                    "eps_infeas",
                     "cg_rate",
                     "alpha",
                     "rho_x",
@@ -327,18 +329,18 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffllzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffffllzz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddllzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddddllzz";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffffiizz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddddiizz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
@@ -357,10 +359,11 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &PyBool_Type, &adaptive_scaling, &(d->stgs->max_iters),
-          &(d->stgs->scale), &(d->stgs->eps), &(d->stgs->cg_rate),
-          &(d->stgs->alpha), &(d->stgs->rho_x),
-          &(d->stgs->acceleration_lookback), &(d->stgs->acceleration_interval),
-          &(d->stgs->write_data_filename), &(d->stgs->log_csv_filename))) {
+          &(d->stgs->scale), &(d->stgs->eps_abs), &(d->stgs->eps_rel),
+          &(d->stgs->eps_infeas), &(d->stgs->cg_rate), &(d->stgs->alpha),
+          &(d->stgs->rho_x), &(d->stgs->acceleration_lookback),
+          &(d->stgs->acceleration_interval), &(d->stgs->write_data_filename),
+          &(d->stgs->log_csv_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -501,8 +504,14 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (d->stgs->scale < 0) {
     return finish_with_error(d, k, &ps, "scale must be positive");
   }
-  if (d->stgs->eps < 0) {
-    return finish_with_error(d, k, &ps, "eps must be positive");
+  if (d->stgs->eps_abs < 0) {
+    return finish_with_error(d, k, &ps, "eps_abs must be positive");
+  }
+  if (d->stgs->eps_rel < 0) {
+    return finish_with_error(d, k, &ps, "eps_rel must be positive");
+  }
+  if (d->stgs->eps_infeas < 0) {
+    return finish_with_error(d, k, &ps, "eps_infeas must be positive");
   }
   if (d->stgs->cg_rate < 0) {
     return finish_with_error(d, k, &ps, "cg_rate must be positive");
