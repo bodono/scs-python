@@ -319,6 +319,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "alpha",
                     "rho_x",
                     "acceleration_lookback",
+                    "acceleration_interval",
                     "write_data_filename",
                     "log_csv_filename",
                     SCS_NULL};
@@ -326,18 +327,18 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lffffflzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffllzz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddlzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddllzz";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffiizz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddiizz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
@@ -358,7 +359,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &PyBool_Type, &adaptive_scaling, &(d->stgs->max_iters),
           &(d->stgs->scale), &(d->stgs->eps), &(d->stgs->cg_rate),
           &(d->stgs->alpha), &(d->stgs->rho_x),
-          &(d->stgs->acceleration_lookback),
+          &(d->stgs->acceleration_lookback), &(d->stgs->acceleration_interval),
           &(d->stgs->write_data_filename), &(d->stgs->log_csv_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
@@ -492,6 +493,10 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     /* hack - use type-I AA when lookback is < 0 */
     /* return finish_with_error(d, k, &ps,
                                "acceleration_lookback must be positive"); */
+  }
+  if (d->stgs->acceleration_interval < 0) {
+    return finish_with_error(d, k, &ps,
+                            "acceleration_interval must be positive");
   }
   if (d->stgs->scale < 0) {
     return finish_with_error(d, k, &ps, "scale must be positive");
