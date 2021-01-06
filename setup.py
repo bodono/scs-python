@@ -194,8 +194,8 @@ def install_scs(**kwargs):
   if args.gpu:
     library_dirs = []
     if system() == 'Windows':
-      include_dirs += [f'{os.environ["CUDA_PATH"]}/include']
-      library_dirs = [f'{os.environ["CUDA_PATH"]}/lib/x64']
+      include_dirs += [os.environ['CUDA_PATH'] + '/include']
+      library_dirs = [os.environ['CUDA_PATH'] + '/lib/x64']
     else:
       include_dirs += ['/usr/local/cuda/include']
       library_dirs = ['/usr/local/cuda/lib', '/usr/local/cuda/lib64']
