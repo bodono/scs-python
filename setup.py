@@ -192,16 +192,21 @@ def install_scs(**kwargs):
   ext_modules = [_scs_direct, _scs_indirect, _scs_python]
 
   if args.gpu:
+    library_dirs = []
+    if system() == 'Windows':
+      include_dirs += [os.environ['CUDA_PATH'] + '/include']
+      library_dirs = [os.environ['CUDA_PATH'] + '/lib/x64']
+    else:
+      include_dirs += ['/usr/local/cuda/include']
+      library_dirs = ['/usr/local/cuda/lib', '/usr/local/cuda/lib64']
     if args.gpu_atrans:
        define_macros += [('GPU_TRANSPOSE_MAT', 1)]  # for debugging
     _scs_gpu = Extension(
         name='_scs_gpu',
         sources=sources + glob('scs/linsys/gpu/*.c') + glob('scs/linsys/gpu/indirect/*.c'),
         define_macros=define_macros + [('GPU', None)],
-        include_dirs=include_dirs + ['scs/linsys/gpu/',
-            'scs/linsys/gpu/indirect', '/usr/local/cuda/include'],
-        library_dirs=['/usr/local/cuda/lib', '/usr/local/cuda/lib64'
-                     ],  # TODO probably not right for windows
+        include_dirs=include_dirs + ['scs/linsys/gpu/', 'scs/linsys/gpu/indirect'],
+        library_dirs=library_dirs,
         libraries=libraries + ['cudart', 'cublas', 'cusparse'],
         extra_compile_args=list(extra_compile_args))
     ext_modules += [_scs_gpu]
