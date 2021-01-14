@@ -51,6 +51,8 @@ def solve(probdata, cone, **kwargs):
   m = len(b)
   n = len(c)
 
+  if not A.has_sorted_indices:
+    A.sort_indices()
   Adata, Aindices, Acolptr = A.data, A.indices, A.indptr
   if A.shape != (m, n):
     raise ValueError('A shape not compatible with b,c')
@@ -68,7 +70,10 @@ def solve(probdata, cone, **kwargs):
              'may take a while.')
         P = P.tocsc()
       # extract upper triangular component only
-      P = sparse.triu(P, format='csc')
+      if sparse.tril(P, -1).data.size > 0:
+        P = sparse.triu(P, format='csc')
+      if not P.has_sorted_indices:
+        P.sort_indices()
       Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
 
   warm = {}
