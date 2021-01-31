@@ -320,6 +320,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "cg_rate",
                     "alpha",
                     "rho_x",
+                    "time_limit_secs",
                     "acceleration_lookback",
                     "acceleration_interval",
                     "write_data_filename",
@@ -329,18 +330,18 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffffllzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lffffffffllzz";
   char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddddllzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lddddddddllzz";
   char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffffiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!iffffffffiizz";
   char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddddiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!iddddddddiizz";
   char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
@@ -361,9 +362,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &PyBool_Type, &adaptive_scaling, &(d->stgs->max_iters),
           &(d->stgs->scale), &(d->stgs->eps_abs), &(d->stgs->eps_rel),
           &(d->stgs->eps_infeas), &(d->stgs->cg_rate), &(d->stgs->alpha),
-          &(d->stgs->rho_x), &(d->stgs->acceleration_lookback),
-          &(d->stgs->acceleration_interval), &(d->stgs->write_data_filename),
-          &(d->stgs->log_csv_filename))) {
+          &(d->stgs->rho_x), &(d->stgs->time_limit_secs),
+          &(d->stgs->acceleration_lookback), &(d->stgs->acceleration_interval),
+          &(d->stgs->write_data_filename), &(d->stgs->log_csv_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -503,6 +504,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
   if (d->stgs->scale < 0) {
     return finish_with_error(d, k, &ps, "scale must be positive");
+  }
+  if (d->stgs->time_limit_secs < 0) {
+    return finish_with_error(d, k, &ps, "time_limit_secs must be nonnegative");
   }
   if (d->stgs->eps_abs < 0) {
     return finish_with_error(d, k, &ps, "eps_abs must be positive");
