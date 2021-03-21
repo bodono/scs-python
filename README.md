@@ -11,6 +11,17 @@ To install using pip (recommended) use:
 ```shell
 pip install scs
 ```
+If you run into an error like this:
+```
+RuntimeError: Found /usr/lib/libcblas.dylib, but that file is a symbolic link to
+the MacOS Accelerate framework, which is not supported by NumPy
+```
+you can try:
+```shell
+brew install openblas
+OPENBLAS="$(brew --prefix openblas)" pip install scs
+```
+
 To install SCS from source:
 ```shell
 git clone --recursive https://github.com/bodono/scs-python.git
