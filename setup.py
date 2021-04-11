@@ -176,7 +176,8 @@ def install_scs(**kwargs):
   _scs_indirect = Extension(
       name='_scs_indirect',
       sources=sources + glob('scs/linsys/cpu/indirect/*.c'),
-      define_macros=list(define_macros) + [('INDIRECT', None)],
+      define_macros=list(define_macros) + [('PY_INDIRECT', None),
+                                           ('INDIRECT', None)],
       include_dirs=include_dirs + ['scs/linsys/cpu/indirect/'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
@@ -189,7 +190,7 @@ def install_scs(**kwargs):
     _scs_gpu = Extension(
         name='_scs_gpu',
         sources=sources + glob('scs/linsys/gpu/*.c') + glob('scs/linsys/gpu/indirect/*.c'),
-        define_macros=define_macros + [('GPU', None)],
+        define_macros=list(define_macros) + [('PY_GPU', None), ('INDIRECT', None)],
         include_dirs=include_dirs + ['scs/linsys/gpu/',
             'scs/linsys/gpu/indirect', '/usr/local/cuda/include'],
         library_dirs=['/usr/local/cuda/lib', '/usr/local/cuda/lib64'

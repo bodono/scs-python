@@ -614,9 +614,9 @@ static PyObject *moduleinit(void) {
 #if PY_MAJOR_VERSION >= 3
   m = PyModule_Create(&moduledef);
 #else
-#ifdef INDIRECT
+#ifdef PY_INDIRECT
   m = Py_InitModule("_scs_indirect", scs_methods);
-#elif defined GPU
+#elif defined PY_GPU
   m = Py_InitModule("_scs_gpu", scs_methods);
 #else
   m = Py_InitModule("_scs_direct", scs_methods);
@@ -634,9 +634,9 @@ static PyObject *moduleinit(void) {
 
 #if PY_MAJOR_VERSION >= 3
 PyMODINIT_FUNC
-#ifdef INDIRECT
+#ifdef PY_INDIRECT
 PyInit__scs_indirect(void)
-#elif defined GPU
+#elif defined PY_GPU
 PyInit__scs_gpu(void)
 #else
 PyInit__scs_direct(void)
@@ -647,9 +647,9 @@ PyInit__scs_direct(void)
 }
 #else
 PyMODINIT_FUNC
-#ifdef INDIRECT
+#ifdef PY_INDIRECT
 init_scs_indirect(void)
-#elif defined GPU
+#elif defined PY_GPU
 init_scs_gpu(void)
 #else
 init_scs_direct(void)
