@@ -37,7 +37,7 @@ def solve_feasible(use_indirect, gpu):
   }
   m = tools.get_scs_cone_dims(K)
   data, p_star = tools.gen_feasible(K, n=m // 3, density=0.01)
-  params = {'normalize': True, 'scale': 5, 'cg_rate': 2}
+  params = {'normalize': True, 'scale': 5}
 
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
   x = sol['x']
@@ -59,7 +59,7 @@ def solve_infeasible(use_indirect, gpu):
   }
   m = tools.get_scs_cone_dims(K)
   data = tools.gen_infeasible(K, n=m // 3)
-  params = {'normalize': True, 'scale': 0.5, 'cg_rate': 2}
+  params = {'normalize': True, 'scale': 0.5}
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
 
 
@@ -75,7 +75,7 @@ def solve_unbounded(use_indirect, gpu):
   }
   m = tools.get_scs_cone_dims(K)
   data = tools.gen_unbounded(K, n=m // 3)
-  params = {'normalize': True, 'scale': 0.5, 'cg_rate': 2}
+  params = {'normalize': True, 'scale': 0.5}
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
 
 

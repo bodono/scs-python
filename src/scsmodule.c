@@ -317,7 +317,6 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "eps_abs",
                     "eps_rel",
                     "eps_infeas",
-                    "cg_rate",
                     "alpha",
                     "rho_x",
                     "time_limit_secs",
@@ -330,19 +329,19 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lffffffffllzz";
-  char *outarg_string = "{s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffffllzz";
+  char *outarg_string = "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lddddddddllzz";
-  char *outarg_string = "{s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddddllzz";
+  char *outarg_string = "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!iffffffffiizz";
-  char *outarg_string = "{s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffffiizz";
+  char *outarg_string = "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!iddddddddiizz";
-  char *outarg_string = "{s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddddiizz";
+  char *outarg_string = "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
   npy_intp veclen[1];
@@ -361,7 +360,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &PyBool_Type, &adaptive_scaling, &(d->stgs->max_iters),
           &(d->stgs->scale), &(d->stgs->eps_abs), &(d->stgs->eps_rel),
-          &(d->stgs->eps_infeas), &(d->stgs->cg_rate), &(d->stgs->alpha),
+          &(d->stgs->eps_infeas), &(d->stgs->alpha),
           &(d->stgs->rho_x), &(d->stgs->time_limit_secs),
           &(d->stgs->acceleration_lookback), &(d->stgs->acceleration_interval),
           &(d->stgs->write_data_filename), &(d->stgs->log_csv_filename))) {
@@ -517,9 +516,6 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (d->stgs->eps_infeas < 0) {
     return finish_with_error(d, k, &ps, "eps_infeas must be positive");
   }
-  if (d->stgs->cg_rate < 0) {
-    return finish_with_error(d, k, &ps, "cg_rate must be positive");
-  }
   if (d->stgs->alpha < 0) {
     return finish_with_error(d, k, &ps, "alpha must be positive");
   }
@@ -557,6 +553,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
       outarg_string,
       "statusVal", (scs_int)info.status_val,
       "iter", (scs_int)info.iter,
+      "scale_updates", (scs_int)info.scale_updates,
+      "scale", (scs_float)info.scale,
       "pobj", (scs_float)info.pobj,
       "dobj", (scs_float)info.dobj,
       "resPri", (scs_float)info.res_pri,
@@ -623,8 +621,8 @@ static PyObject *moduleinit(void) {
 #endif
 #endif
 
-  /*if (import_array() < 0) return SCS_NULL; // for numpy arrays */
-  /*if (import_cvxopt() < 0) return SCS_NULL; // for cvxopt support */
+  /* if (import_array() < 0) return SCS_NULL; // for numpy arrays */
+  /* if (import_cvxopt() < 0) return SCS_NULL; // for cvxopt support */
 
   if (m == SCS_NULL) {
     return SCS_NULL;
