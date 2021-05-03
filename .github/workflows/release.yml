@@ -46,7 +46,7 @@ jobs:
     strategy:
       matrix:
         arch: [x64, x86]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -68,7 +68,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: x86
       - name: Install Deps
-        run: conda install numpy scipy nose
+        run: conda install numpy scipy nose mkl
       - name: Build Wheel
         if: matrix.arch == 'x64'
         run: python setup.py bdist_wheel --scs 'CC="gcc.exe -m64" USE_LAPACK=1 BLASLDFLAGS="-Lopenblaslib -lopenblas"'
