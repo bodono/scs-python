@@ -63,7 +63,7 @@ jobs:
         if: matrix.arch == 'x86'
         with:
           activate-environment: scs
-          miniconda-version: "latest"
+          miniconda-version: "4.5.12"
           auto-update-conda: true
           channels: conda-forge
           python-version: ${{ matrix.python-version }}
