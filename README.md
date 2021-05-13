@@ -38,10 +38,6 @@ To test that SCS installed correctly and you have `pytest` installed, run
 ```shell
 pytest
 ```
-you can also solve a random cone problem (without `pytest`) using
-```shell
-python test/solve_random_cone_prob.py
-```
 
 After installing the SCS interface, you import SCS using
 ```python

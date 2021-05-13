@@ -8,23 +8,29 @@ import gen_random_cone_prob as tools
 #  Uses scs to solve a random cone problem  #
 #############################################
 
-
-def main():
-  flags = [(False, False), (True, False)]
-  try:
-    import _scs_gpu
-    flags += [(True, True)]
-  except ImportError:
-    pass
-
-  for (use_indirect, gpu) in flags:
-    np.random.seed(1)
-    solve_feasible(use_indirect, gpu)
-    solve_infeasible(use_indirect, gpu)
-    solve_unbounded(use_indirect, gpu)
+def import_error(msg):
+  print()
+  print('## IMPORT ERROR:' + msg)
+  print()
 
 
-def solve_feasible(use_indirect, gpu):
+try:
+  import pytest
+except ImportError:
+  import_error('Please install pytest to run tests.')
+  raise
+
+flags = [(False, False), (True, False)]
+try:
+  import _scs_gpu
+  flags += [(True, True)]
+except ImportError:
+  pass
+
+np.random.seed(1)
+
+@pytest.mark.parametrize("use_indirect,gpu", flags)
+def test_solve_feasible(use_indirect, gpu):
   # cone:
   K = {
       'f': 10,
@@ -47,7 +53,8 @@ def solve_feasible(use_indirect, gpu):
   print('dual error = ', (-np.dot(data['b'], y) - p_star) / p_star)
 
 
-def solve_infeasible(use_indirect, gpu):
+@pytest.mark.parametrize("use_indirect,gpu", flags)
+def test_solve_infeasible(use_indirect, gpu):
   K = {
       'f': 10,
       'l': 15,
@@ -63,7 +70,8 @@ def solve_infeasible(use_indirect, gpu):
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
 
 
-def solve_unbounded(use_indirect, gpu):
+@pytest.mark.parametrize("use_indirect,gpu", flags)
+def test_solve_unbounded(use_indirect, gpu):
   K = {
       'f': 10,
       'l': 15,
@@ -77,7 +85,3 @@ def solve_unbounded(use_indirect, gpu):
   data = tools.gen_unbounded(K, n=m // 3)
   params = {'normalize': True, 'scale': 0.5, 'cg_rate': 2}
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
-
-
-if __name__ == '__main__':
-  main()
