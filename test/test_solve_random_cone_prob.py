@@ -29,21 +29,22 @@ except ImportError:
 
 np.random.seed(1)
 
+# cone:
+K = {
+    'f': 10,
+    'l': 15,
+    'q': [5, 10, 0, 1],
+    's': [3, 4, 0, 0, 1],
+    'ep': 10,
+    'ed': 10,
+    'p': [-0.25, 0.5, 0.75, -0.33]
+}
+m = tools.get_scs_cone_dims(K)
+params = {'normalize': True, 'scale': 5, 'cg_rate': 2}
+
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_feasible(use_indirect, gpu):
-  # cone:
-  K = {
-      'f': 10,
-      'l': 15,
-      'q': [5, 10, 0, 1],
-      's': [3, 4, 0, 0, 1],
-      'ep': 10,
-      'ed': 10,
-      'p': [-0.25, 0.5, 0.75, -0.33]
-  }
-  m = tools.get_scs_cone_dims(K)
   data, p_star = tools.gen_feasible(K, n=m // 3, density=0.01)
-  params = {'normalize': True, 'scale': 5, 'cg_rate': 2}
 
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
   x = sol['x']
@@ -55,33 +56,11 @@ def test_solve_feasible(use_indirect, gpu):
 
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_infeasible(use_indirect, gpu):
-  K = {
-      'f': 10,
-      'l': 15,
-      'q': [5, 10, 0, 1],
-      's': [3, 4, 0, 0, 1],
-      'ep': 10,
-      'ed': 10,
-      'p': [-0.25, 0.5, 0.75, -0.33]
-  }
-  m = tools.get_scs_cone_dims(K)
   data = tools.gen_infeasible(K, n=m // 3)
-  params = {'normalize': True, 'scale': 0.5, 'cg_rate': 2}
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
 
 
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_unbounded(use_indirect, gpu):
-  K = {
-      'f': 10,
-      'l': 15,
-      'q': [5, 10, 0, 1],
-      's': [3, 4, 0, 0, 1],
-      'ep': 10,
-      'ed': 10,
-      'p': [-0.25, 0.5, 0.75, -0.33]
-  }
-  m = tools.get_scs_cone_dims(K)
   data = tools.gen_unbounded(K, n=m // 3)
-  params = {'normalize': True, 'scale': 0.5, 'cg_rate': 2}
   sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
