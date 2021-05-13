@@ -58,7 +58,8 @@ num_infeas = 10
 
 opts = {
     'max_iters': 100000,
-    'eps': 1e-5
+    'eps': 1e-5,
+    'verbose': False,
 }  # better accuracy than default to ensure test pass
 K = {
     'f': 10,

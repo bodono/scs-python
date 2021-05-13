@@ -40,7 +40,7 @@ K = {
     'p': [-0.25, 0.5, 0.75, -0.33]
 }
 m = tools.get_scs_cone_dims(K)
-params = {'normalize': True, 'scale': 5, 'cg_rate': 2}
+params = {'normalize': True, 'scale': 5, 'cg_rate': 2, 'verbose': False}
 
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_feasible(use_indirect, gpu):

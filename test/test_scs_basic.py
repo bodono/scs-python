@@ -52,7 +52,7 @@ FAIL = 'Failure'  # scs code for failure
   ]
 )
 def test_problems(cone, use_indirect, expected):
-  sol = scs.solve(data, cone=cone, use_indirect=use_indirect)
+  sol = scs.solve(data, cone=cone, use_indirect=use_indirect, verbose=False)
   assert_almost_equal(sol['x'][0], expected, decimal=2)
 
 
@@ -67,7 +67,7 @@ if platform.python_version_tuple() < ('3', '0', '0'):
     ]
   )
   def test_problems_with_longs(cone, use_indirect, expected):
-    sol = scs.solve(data, cone=cone, use_indirect=use_indirect)
+    sol = scs.solve(data, cone=cone, use_indirect=use_indirect, verbose=False)
     assert_almost_equal(sol['x'][0], expected, decimal=2)
 
 
@@ -87,5 +87,5 @@ def test_failures():
     with pytest.raises(TypeError):
       scs.solve(data, {'q': [], 'l': 2}, max_iters=1.1)
 
-  sol = scs.solve(data, {'q': [1], 'l': 0})
+  sol = scs.solve(data, {'q': [1], 'l': 0}, verbose=False)
   assert sol['info']['status'] == FAIL
