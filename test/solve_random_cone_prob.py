@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 import scs
 import numpy as np
-from scipy import sparse, randn
+from scipy import sparse
 import gen_random_cone_prob as tools
 
 #############################################
