@@ -43,10 +43,6 @@ data = {'A': A, 'b': b, 'c': c}
 FAIL = 'Failure'  # scs code for failure
 
 
-def check_failure(sol):
-  assert sol['info']['status'] == FAIL
-
-
 @pytest.mark.parametrize("cone,use_indirect,expected",
   [
     ({'q': [], 'l': 2}, False, 1),
@@ -91,4 +87,5 @@ def test_failures():
     with pytest.raises(TypeError):
       scs.solve(data, {'q': [], 'l': 2}, max_iters=1.1)
 
-  check_failure(scs.solve(data, {'q': [1], 'l': 0}))
+  sol = scs.solve(data, {'q': [1], 'l': 0})
+  assert sol['info']['status'] == FAIL
