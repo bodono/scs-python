@@ -10,7 +10,7 @@ def import_error(msg):
 
 
 try:
-  from nose.tools import assert_raises, assert_almost_equals
+  from nose.tools import assert_raises
 except ImportError:
   import_error('Please install nose to run tests.')
   raise
@@ -23,6 +23,7 @@ except ImportError:
 
 try:
   import numpy as np
+  from numpy.testing import assert_almost_equal
 except ImportError:
   import_error('Please install numpy.')
   raise
@@ -44,7 +45,7 @@ FAIL = 'Failure'  # scs code for failure
 
 
 def check_solution(solution, expected):
-  assert_almost_equals(solution, expected, places=2)
+  assert_almost_equal(solution, expected, decimal=2)
 
 
 def check_failure(sol):

@@ -16,12 +16,6 @@ def import_error(msg):
 
 
 try:
-  from nose.tools import assert_raises, assert_almost_equals
-except ImportError:
-  import_error('Please install nose to run tests.')
-  raise
-
-try:
   import scs
 except ImportError:
   import_error('You must install the scs module before running tests.')
@@ -29,6 +23,7 @@ except ImportError:
 
 try:
   import numpy as np
+  from numpy.testing import assert_almost_equal
 except ImportError:
   import_error('Please install numpy.')
   raise
@@ -42,7 +37,7 @@ except ImportError:
 
 
 def check_solution(solution, expected):
-  assert_almost_equals(solution, expected, places=2)
+  assert_almost_equal(solution, expected, decimal=2)
 
 
 def assert_(str1, str2):
