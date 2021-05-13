@@ -40,12 +40,6 @@ def check_solution(solution, expected):
   assert_almost_equal(solution, expected, decimal=2)
 
 
-def assert_(str1, str2):
-  if (str1 != str2):
-    print('assert failure: %s != %s' % (str1, str2))
-  assert str1 == str2
-
-
 np.random.seed(0)
 num_probs = 50
 
