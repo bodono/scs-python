@@ -35,7 +35,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       sudo apt-get install liblapack-dev;
       pip install --upgrade pip;
-      pip install numpy scipy nose;
+      pip install numpy scipy pytest;
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       brew update;
       brew install pyenv-virtualenv gcc openssl;
@@ -47,7 +47,7 @@ before_install:
       pyenv virtualenv testenv;
       python --version;
       sudo pip install --upgrade pip;
-      sudo pip install numpy scipy nose;
+      sudo pip install numpy scipy pytest;
     fi
 
 install:
@@ -57,7 +57,7 @@ install:
       sudo python setup.py install;
     fi
 script:
-  - cd test && nosetests test_scs_basic.py test_scs_rand.py test_scs_sdp.py test_scs_python_linsys.py
+  - pytest test/
 
 notifications:
   email:
