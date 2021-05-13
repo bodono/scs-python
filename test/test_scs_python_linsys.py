@@ -137,8 +137,8 @@ def test_python_linsys():
         max_iters=int(1e5), eps=1e-5,
     )
 
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
+    check_solution, np.dot(data['c'], sol['x']), p_star
+    check_solution, np.dot(-data['b'], sol['y']), p_star
 
     sol = scs.solve(
         data, K, verbose=False, use_indirect=False,
@@ -151,8 +151,8 @@ def test_python_linsys():
         max_iters=int(1e5), eps=1e-5,
     )
 
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
+    check_solution, np.dot(data['c'], sol['x']), p_star
+    check_solution, np.dot(-data['b'], sol['y']), p_star
 
 # for i,c in zip(range(4), test_python_linsys()):
 #     print(i,c)

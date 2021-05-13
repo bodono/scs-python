@@ -53,17 +53,17 @@ def check_failure(sol):
 
 def test_problems():
   sol = scs.solve(data, cone, use_indirect=False)
-  yield check_solution, sol['x'][0], 1
+  check_solution, sol['x'][0], 1
 
   new_cone = {'q': [2], 'l': 0}
   sol = scs.solve(data, new_cone, use_indirect=False)
-  yield check_solution, sol['x'][0], 0.5
+  check_solution, sol['x'][0], 0.5
 
   sol = scs.solve(data, cone, use_indirect=True)
-  yield check_solution, sol['x'][0], 1
+  check_solution, sol['x'][0], 1
 
   sol = scs.solve(data, new_cone, use_indirect=True)
-  yield check_solution, sol['x'][0], 0.5
+  check_solution, sol['x'][0], 0.5
 
 
 if platform.python_version_tuple() < ('3', '0', '0'):
@@ -71,15 +71,15 @@ if platform.python_version_tuple() < ('3', '0', '0'):
   def test_problems_with_longs():
     new_cone = {'q': [], 'l': long(2)}
     sol = scs.solve(data, new_cone, use_indirect=False)
-    yield check_solution, sol['x'][0], 1
+    check_solution, sol['x'][0], 1
     sol = scs.solve(data, new_cone, use_indirect=True)
-    yield check_solution, sol['x'][0], 1
+    check_solution, sol['x'][0], 1
 
     new_cone = {'q': [long(2)], 'l': 0}
     sol = scs.solve(data, new_cone, use_indirect=False)
-    yield check_solution, sol['x'][0], 0.5
+    check_solution, sol['x'][0], 0.5
     sol = scs.solve(data, new_cone, use_indirect=True)
-    yield check_solution, sol['x'][0], 0.5
+    check_solution, sol['x'][0], 0.5
 
 
 def check_keyword(error_type, keyword, value):
@@ -87,12 +87,12 @@ def check_keyword(error_type, keyword, value):
 
 
 def test_failures():
-  yield assert_raises, TypeError, scs.solve
-  yield assert_raises, ValueError, scs.solve, data, {'q': [4], 'l': -2}
+  assert_raises, TypeError, scs.solve
+  assert_raises, ValueError, scs.solve, data, {'q': [4], 'l': -2}
   # disable this until win64 types figured out
-  # yield check_keyword, ValueError, 'max_iters', -1
+  # check_keyword, ValueError, 'max_iters', -1
   # python 2.6 and before just cast float to int
   if platform.python_version_tuple() >= ('2', '7', '0'):
-    yield check_keyword, TypeError, 'max_iters', 1.1
+    check_keyword, TypeError, 'max_iters', 1.1
 
-  yield check_failure, scs.solve(data, {'q': [1], 'l': 0})
+  check_failure, scs.solve(data, {'q': [1], 'l': 0})

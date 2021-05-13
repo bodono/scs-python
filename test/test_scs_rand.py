@@ -80,25 +80,25 @@ def test_feasible():
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
 
     sol = scs.solve(data, K, use_indirect=False, **opts)
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
+    check_solution, np.dot(data['c'], sol['x']), p_star
+    check_solution, np.dot(-data['b'], sol['y']), p_star
 
     sol = scs.solve(data, K, use_indirect=True, **opts)
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
+    check_solution, np.dot(data['c'], sol['x']), p_star
+    check_solution, np.dot(-data['b'], sol['y']), p_star
 
 
 def test_infeasible():
   for i in range(num_infeas):
     data = tools.gen_infeasible(K, n=m // 3)
 
-    yield check_infeasible, scs.solve(data, K, use_indirect=False, **opts)
-    yield check_infeasible, scs.solve(data, K, use_indirect=True, **opts)
+    check_infeasible, scs.solve(data, K, use_indirect=False, **opts)
+    check_infeasible, scs.solve(data, K, use_indirect=True, **opts)
 
 
 def test_unbounded():
   for i in range(num_unb):
     data = tools.gen_unbounded(K, n=m // 2)
 
-    yield check_unbounded, scs.solve(data, K, use_indirect=False, **opts)
-    yield check_unbounded, scs.solve(data, K, use_indirect=True, **opts)
+    check_unbounded, scs.solve(data, K, use_indirect=False, **opts)
+    check_unbounded, scs.solve(data, K, use_indirect=True, **opts)
