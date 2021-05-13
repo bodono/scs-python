@@ -10,9 +10,9 @@ def import_error(msg):
 
 
 try:
-  from nose.tools import assert_raises
+  import pytest
 except ImportError:
-  import_error('Please install nose to run tests.')
+  import_error('Please install pytest to run tests.')
   raise
 
 try:
@@ -83,17 +83,20 @@ if platform.python_version_tuple() < ('3', '0', '0'):
     check_solution, sol['x'][0], 0.5
 
 
-def check_keyword(error_type, keyword, value):
-  assert_raises(error_type, scs.solve, data, cone, **{keyword: value})
-
-
 def test_failures():
-  assert_raises, TypeError, scs.solve
-  assert_raises, ValueError, scs.solve, data, {'q': [4], 'l': -2}
+  with pytest.raises(TypeError):
+    scs.solve()
+
+  with pytest.raises(ValueError):
+    scs.solve(data, {'q': [4], 'l': -2})
+
   # disable this until win64 types figured out
-  # check_keyword, ValueError, 'max_iters', -1
+  # with pytest.raises(ValueError)
+    # scs.solve(data, cone, max_iters=-1)
+
   # python 2.6 and before just cast float to int
   if platform.python_version_tuple() >= ('2', '7', '0'):
-    check_keyword, TypeError, 'max_iters', 1.1
+    with pytest.raises(TypeError):
+      scs.solve(data, cone, max_iters=1.1)
 
-  check_failure, scs.solve(data, {'q': [1], 'l': 0})
+  check_failure(scs.solve(data, {'q': [1], 'l': 0}))
