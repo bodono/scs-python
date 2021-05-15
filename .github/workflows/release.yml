@@ -21,11 +21,9 @@ jobs:
           CIBW_SKIP: "cp27-* cp34-* cp35-* pp* *win32"
           CIBW_BEFORE_ALL_LINUX: "yum install -y openblas-devel liblapack-dev"
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
-          CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2010_x86_64:latest
-          CIBW_MANYLINUX_I686_IMAGE: quay.io/pypa/manylinux2010_i686:latest
+          CIBW_BEFORE_ALL_WINDOWS: "python {package}/tools/openblas_support.py"
           CIBW_TEST_COMMAND: "nosetests {project}/test"
           CIBW_TEST_REQUIRES: nose
-          CIBW_ENVIRONMENT_WINDOWS: "CC=gcc USE_LAPACK=1"
       - uses: actions/upload-artifact@v2
         with:
           path: ./wheelhouse/*.whl

@@ -1,3 +1,34 @@
+# Copyright (c) 2001-2002 Enthought, Inc.  2003-2019, SciPy Developers.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above
+#    copyright notice, this list of conditions and the following
+#    disclaimer in the documentation and/or other materials provided
+#    with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import os
 import sys
 import glob
@@ -24,15 +55,15 @@ sha256_vals = {
 '6fe5b1e2a4baa16833724bcc94a80b22e9c99fc1b9a2ddbce4f1f82a8002d906',
 'openblas64_-v0.3.9-win_amd64-gcc_7_1_0.zip':
 '15d24a66c5b22cc7b3120e831658f491c7a063804c33813235044a6f8b56686d',
-'openblas-v0.3.9-macosx_10_9_x86_64-gf_1becaaa.tar.gz': 
+'openblas-v0.3.9-macosx_10_9_x86_64-gf_1becaaa.tar.gz':
 '8221397b9cfb8cb22f3efb7f228ef901e13f9fd89c7d7d0cb7b8a79b0610bf33',
-'openblas-v0.3.9-manylinux1_i686.tar.gz': 
+'openblas-v0.3.9-manylinux1_i686.tar.gz':
 '31abf8eccb697a320a998ce0f59045edc964602f815d78690c5a23839819261c',
 'openblas-v0.3.9-manylinux1_x86_64.tar.gz':
 'd9c39acbafae9b1daef19c2738ec938109a59e9322f93eb9a3c50869d220deff',
 'openblas-v0.3.9-win32-gcc_7_1_0.zip':
 '69a7dc265e8a8e45b358637d11cb1710ce88c4456634c7ce37d429b1d9bc9aaa',
-'openblas-v0.3.9-win_amd64-gcc_7_1_0.zip': 
+'openblas-v0.3.9-win_amd64-gcc_7_1_0.zip':
 '0cea06f4a2afebaa6255854f73f237802fc6b58eaeb1a8b1c22d87cc399e0d48',
 'openblas-v0.3.9-manylinux2014_aarch64.tar.gz':
 '10d5ef5e9e19af5c199b59a17f43763e0c85ecf13cbc8f2d91e076f7847cdb5e'
