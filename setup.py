@@ -222,7 +222,7 @@ def install_scs(**kwargs):
       packages=['scs'],
       ext_modules=ext_modules,
       cmdclass={'build_ext': build_ext_scs},
-      setup_requires=['numpy >= 1.7'],
+      setup_requires=['oldest-supported-numpy'],  # oldest-supported-numpy ensures that we build against the oldest supported numpy, which prevents issues with install/build ordering
       install_requires=['numpy >= 1.7', 'scipy >= 0.13.2'],
       license='MIT',
       zip_safe=False,
