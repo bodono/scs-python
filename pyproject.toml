@@ -1,7 +1,11 @@
 [build-system]
 requires = [
-  "setuptools",
-  "wheel",
-  "oldest-supported-numpy",
+    "numpy==1.17; python_version=='3.5'",
+    "numpy==1.17; python_version=='3.6'",
+    "numpy==1.17; python_version=='3.7'",
+    "numpy==1.17; python_version=='3.8'",
+    "numpy==1.19; python_version=='3.9'",
+    "setuptools",
+    "wheel",
 ]
 build-backend = "setuptools.build_meta"

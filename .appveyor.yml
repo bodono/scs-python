@@ -20,14 +20,12 @@ environment:
 build_script:
   - '%CONDAPATH%\Scripts\conda config --set always_yes yes'
   - '%CONDAPATH%\Scripts\conda update conda'
-  - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER% numpy scipy nose'
+  - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER% numpy scipy pytest'
   - '%CONDAPATH%\Scripts\activate C:\pythontest'
   - where python
   - git submodule update --init --recursive
   - python setup.py install
 
 test_script:
-  - cd test
-  - python solve_random_cone_prob.py
-  - nosetests
+  - pytest test/
 

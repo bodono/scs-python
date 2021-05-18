@@ -47,3 +47,4 @@ out
 *.dylib
 *.jar
 *.egg-info
+*.ipynb_checkpoints/
