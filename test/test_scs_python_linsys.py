@@ -16,12 +16,6 @@ def import_error(msg):
 
 
 try:
-  from nose.tools import assert_raises, assert_almost_equals
-except ImportError:
-  import_error('Please install nose to run tests.')
-  raise
-
-try:
   import scs
 except ImportError:
   import_error('You must install the scs module before running tests.')
@@ -29,6 +23,7 @@ except ImportError:
 
 try:
   import numpy as np
+  from numpy.testing import assert_almost_equal
 except ImportError:
   import_error('Please install numpy.')
   raise
@@ -42,13 +37,7 @@ except ImportError:
 
 
 def check_solution(solution, expected):
-  assert_almost_equals(solution, expected, places=2)
-
-
-def assert_(str1, str2):
-  if (str1 != str2):
-    print('assert failure: %s != %s' % (str1, str2))
-  assert str1 == str2
+  assert_almost_equal(solution, expected, decimal=2)
 
 
 np.random.seed(0)
@@ -137,8 +126,8 @@ def test_python_linsys():
         max_iters=int(1e5), eps=1e-5,
     )
 
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
+    check_solution, np.dot(data['c'], sol['x']), p_star
+    check_solution, np.dot(-data['b'], sol['y']), p_star
 
     sol = scs.solve(
         data, K, verbose=False, use_indirect=False,
@@ -151,8 +140,8 @@ def test_python_linsys():
         max_iters=int(1e5), eps=1e-5,
     )
 
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
+    check_solution, np.dot(data['c'], sol['x']), p_star
+    check_solution, np.dot(-data['b'], sol['y']), p_star
 
 # for i,c in zip(range(4), test_python_linsys()):
 #     print(i,c)

@@ -34,13 +34,9 @@ numpy and scipy to be installed. You can install the gpu interface using
 python setup.py install --scs --gpu
 ```
 
-To test that SCS installed correctly and you have `nose` installed, run
+To test that SCS installed correctly and you have `pytest` installed, run
 ```shell
-nosetests
-```
-you can also solve a random cone problem (without `nose`) using
-```shell
-python test/solve_random_cone_prob.py
+pytest
 ```
 
 After installing the SCS interface, you import SCS using

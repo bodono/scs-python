@@ -12,9 +12,9 @@ def import_error(msg):
 
 
 try:
-  from nose.tools import assert_raises, assert_almost_equals
+  import pytest
 except ImportError:
-  import_error('Please install nose to run tests.')
+  import_error('Please install pytest to run tests.')
   raise
 
 try:
@@ -25,6 +25,7 @@ except ImportError:
 
 try:
   import numpy as np
+  from numpy.testing import assert_almost_equal
 except ImportError:
   import_error('Please install numpy.')
   raise
@@ -34,10 +35,6 @@ try:
 except ImportError:
   import_error('Please install scipy.')
   raise
-
-
-def check_solution(solution, expected):
-  assert_almost_equals(solution, expected, places=2)
 
 
 def assert_(str1, str2):
@@ -61,7 +58,8 @@ num_infeas = 10
 
 opts = {
     'max_iters': 100000,
-    'eps': 1e-5
+    'eps': 1e-5,
+    'verbose': False,
 }  # better accuracy than default to ensure test pass
 K = {
     'f': 10,
@@ -75,30 +73,29 @@ K = {
 m = tools.get_scs_cone_dims(K)
 
 
-def test_feasible():
+@pytest.mark.parametrize("use_indirect", [False, True])
+def test_feasible(use_indirect):
   for i in range(num_feas):
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
 
-    sol = scs.solve(data, K, use_indirect=False, **opts)
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
-
-    sol = scs.solve(data, K, use_indirect=True, **opts)
-    yield check_solution, np.dot(data['c'], sol['x']), p_star
-    yield check_solution, np.dot(-data['b'], sol['y']), p_star
+    sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
+    assert_almost_equal(np.dot(data['c'], sol['x']), p_star, decimal=2)
+    assert_almost_equal(np.dot(-data['b'], sol['y']), p_star, decimal=2)
 
 
-def test_infeasible():
+@pytest.mark.parametrize("use_indirect", [False, True])
+def test_infeasible(use_indirect):
   for i in range(num_infeas):
     data = tools.gen_infeasible(K, n=m // 3)
 
-    yield check_infeasible, scs.solve(data, K, use_indirect=False, **opts)
-    yield check_infeasible, scs.solve(data, K, use_indirect=True, **opts)
+    sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
+    check_infeasible(sol)
 
 
-def test_unbounded():
+@pytest.mark.parametrize("use_indirect", [False, True])
+def test_unbounded(use_indirect):
   for i in range(num_unb):
     data = tools.gen_unbounded(K, n=m // 2)
 
-    yield check_unbounded, scs.solve(data, K, use_indirect=False, **opts)
-    yield check_unbounded, scs.solve(data, K, use_indirect=True, **opts)
+    sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
+    check_unbounded(sol)
