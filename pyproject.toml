@@ -1,5 +1,6 @@
 [build-system]
 requires = [
+    "numpy==1.17; python_version=='3.5'",
     "numpy==1.17; python_version=='3.6'",
     "numpy==1.17; python_version=='3.7'",
     "numpy==1.17; python_version=='3.8'",
