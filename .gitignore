@@ -1,4 +1,5 @@
 *.iml
+*ipynb_checkpoints*
 examples/DIMACS/
 local.mk
 sftp-config.json
