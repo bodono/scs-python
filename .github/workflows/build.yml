@@ -22,7 +22,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          miniconda-version: "latest"
+          channels: conda-forge,anaconda
           activate-environment: scs
 
       - name: Deps
