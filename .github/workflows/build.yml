@@ -30,10 +30,7 @@ jobs:
       - name: Deps
         run: |
           conda info
-          conda install mkl lapack numpy scipy pytest
-          ls C:\\Miniconda\\envs\\scs
-          ls C:\\Miniconda\\envs\\scs\\Library
-          ls C:\\Miniconda\\envs\\scs\\Library\\bin
+          conda install mkl openblas lapack numpy scipy pytest
 
       - name: Install
         run: |
