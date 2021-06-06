@@ -31,8 +31,9 @@ jobs:
         run: |
           conda info
           conda install mkl lapack numpy scipy pytest
-          ls C:\Miniconda\envs\scs
-          ls C:\Miniconda\envs\scs\Library\lib
+          ls C:\\Miniconda\\envs\\scs
+          ls C:\\Miniconda\\envs\\scs\\Library
+          ls C:\\Miniconda\\envs\\scs\\Library\\lib
 
       - name: Install
         run: |
