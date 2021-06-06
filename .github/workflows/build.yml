@@ -11,6 +11,7 @@ jobs:
       run:
         shell: bash -l {0}
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest]
         #os: [ubuntu-latest, macos-latest, windows-latest]
@@ -33,12 +34,10 @@ jobs:
 
       - name: Install
         run: |
-          ls C:/Miniconda/envs/scs\Library\lib
-          conda info
+          ls C:/Miniconda/envs/scs\\Library\\lib
           python setup.py install
 
       - name: Test
         run: |
-          conda info
           pytest
 
