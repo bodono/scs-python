@@ -28,7 +28,7 @@ jobs:
       - name: Deps
         run: |
           conda info
-          conda install numpy scipy mkl pytest
+          conda install mkl lapack numpy scipy pytest
 
       - name: Install
         run: |
