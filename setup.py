@@ -118,12 +118,20 @@ class build_ext_scs(build_ext):
     blas_info, lapack_info = get_infos()
 
     if blas_info or lapack_info:
+      library_dirs = blas_info.pop(
+          'library_dirs', []) + lapack_info.pop('library_dirs', [])
+      new_library_dirs = []
+      for d in library_dirs:
+        head, tail = os.path.split(d)
+        new_library_dirs.append(os.path.join(head, 'bin')
+
+      library_dirs += new_library_dirs
+
       self.copy['define_macros'] = [('USE_LAPACK', None)] + blas_info.pop(
           'define_macros', []) + lapack_info.pop('define_macros', [])
       self.copy['include_dirs'] += blas_info.pop(
           'include_dirs', []) + lapack_info.pop('include_dirs', [])
-      self.copy['library_dirs'] = blas_info.pop(
-          'library_dirs', []) + lapack_info.pop('library_dirs', [])
+      self.copy['library_dirs'] = library_dirs
       self.copy['libraries'] = blas_info.pop('libraries', []) + lapack_info.pop(
           'libraries', [])
       self.copy['extra_link_args'] = blas_info.pop(
