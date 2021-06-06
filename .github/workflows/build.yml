@@ -32,6 +32,7 @@ jobs:
 
       - name: Install
         run: |
+          ls C:/Miniconda/envs/scs\Library\lib
           conda info
           python setup.py install
 
