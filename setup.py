@@ -123,7 +123,7 @@ class build_ext_scs(build_ext):
       new_library_dirs = []
       for d in library_dirs:
         head, tail = os.path.split(d)
-        new_library_dirs.append(os.path.join(head, 'bin')
+        new_library_dirs.append(os.path.join(head, 'bin'))
 
       library_dirs += new_library_dirs
 
