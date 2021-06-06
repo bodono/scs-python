@@ -24,16 +24,19 @@ jobs:
     
       - name: Deps
         run: |
+          conda activate scs
           conda info
           conda install numpy scipy mkl pytest
 
       - name: Install
         run: |
+          conda activate scs
           conda info
           python setup.py install 
 
       - name: Test
         run: |
+          conda activate scs
           conda info
           pytest
 
