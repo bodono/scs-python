@@ -34,7 +34,6 @@ jobs:
 
       - name: Install
         run: |
-          ls C:/Miniconda/envs/scs\\Library\\lib
           python setup.py install
 
       - name: Test
