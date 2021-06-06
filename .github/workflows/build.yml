@@ -21,8 +21,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           miniconda-version: "latest"
           activate-environment: scs
-      - run: |
+    
+      - name: Deps
+        run: |
           conda info
-          python setup.py install --user
+          conda install numpy scipy mkl pytest
+
+      - name: Install
+        run: |
+          conda info
+          python setup.py install 
+
+      - name: Test
+        run: |
+          conda info
           pytest
 
