@@ -65,7 +65,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.arch }}
       - name: Run tests
-        shell: bash -l {0}
+        shell: bash
         run: |
           set -e
           which python
