@@ -1,4 +1,3 @@
-import scs
 import numpy as np
 from scipy import sparse
 
@@ -159,7 +158,7 @@ def proj_sdp(z, n):
   a = np.dot(v, np.dot(np.diag(w), np.transpose(v)))
   a[didx] = a[didx] / np.sqrt(2.)
   z = a[tidx]
-  return z
+  return np.real(z)
 
 
 def proj_pow(v, a):
@@ -221,7 +220,8 @@ def project_exp_bisection(v):
   s = v[1]
   t = v[2]
   # v in cl(Kexp)
-  if (s * np.exp(r / s) <= t and s > 0) or (r <= 0 and s == 0 and t >= 0):
+  if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (r <= 0 and s == 0 and
+                                                      t >= 0):
     return v
   # -v in Kexp^*
   if (-r < 0 and r * np.exp(s / r) <= -np.exp(1) * t) or (-r == 0 and
