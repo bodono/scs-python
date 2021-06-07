@@ -59,6 +59,12 @@ jobs:
         run: conda install numpy scipy nose mkl openblas lapack
       - name: Build Wheel
         run: python setup.py bdist_wheel
+      - name: Repair Wheel
+        shell: bash -l {0}
+        run: |
+          set -e
+          pip install delvewheel
+          delvewheel repair dist/*whl
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -69,7 +75,7 @@ jobs:
         run: |
           set -e
           which python
-          pip install dist/*whl
+          pip install wheelhouse/*whl
           pip install pytest
           pytest
       - uses: actions/upload-artifact@v2
