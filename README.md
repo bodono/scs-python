@@ -1,8 +1,7 @@
 scs-python
 ===
 
-[![Build Status](https://travis-ci.org/bodono/scs-python.svg?branch=master)](https://travis-ci.org/bodono/scs-python)
-[![Build status](https://ci.appveyor.com/api/projects/status/ep9hnbkgd70t9yv1/branch/master?svg=true)](https://ci.appveyor.com/project/bodono/scs-python/branch/master)
+![Build Status](https://github.com/bodono/scs-python/actions/workflows/build.yml/badge.svg)
 
 Python interface for [SCS](https://github.com/cvxgrp/scs) 2.0.0 and higher.
 
@@ -11,6 +10,17 @@ To install using pip (recommended) use:
 ```shell
 pip install scs
 ```
+If you run into an error like this:
+```
+RuntimeError: Found /usr/lib/libcblas.dylib, but that file is a symbolic link to
+the MacOS Accelerate framework, which is not supported by NumPy
+```
+you can try:
+```shell
+brew install openblas
+OPENBLAS="$(brew --prefix openblas)" pip install scs
+```
+
 To install SCS from source:
 ```shell
 git clone --recursive https://github.com/bodono/scs-python.git
@@ -23,13 +33,9 @@ numpy and scipy to be installed. You can install the gpu interface using
 python setup.py install --scs --gpu
 ```
 
-To test that SCS installed correctly and you have `nose` installed, run
+To test that SCS installed correctly and you have `pytest` installed, run
 ```shell
-nosetests
-```
-you can also solve a random cone problem (without `nose`) using
-```shell
-python test/solve_random_cone_prob.py
+pytest
 ```
 
 After installing the SCS interface, you import SCS using

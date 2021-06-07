@@ -1,6 +1,5 @@
-import scs
 import numpy as np
-from scipy import sparse, randn
+from scipy import sparse
 
 #############################################
 #      Generate random cone problems        #
@@ -9,13 +8,13 @@ from scipy import sparse, randn
 
 def gen_feasible(K, n, density):
   m = get_scs_cone_dims(K)
-  z = randn(m,)
+  z = np.random.randn(m,)
   y = proj_dual_cone(z, K)  # y = s - z;
   s = y - z  # s = proj_cone(z,K)
 
   A = sparse.rand(m, n, density, format='csc')
-  A.data = randn(A.nnz)
-  x = randn(n)
+  A.data = np.random.randn(A.nnz)
+  x = np.random.randn(n)
   c = -np.transpose(A).dot(y)
   b = A.dot(x) + s
 
@@ -26,31 +25,31 @@ def gen_feasible(K, n, density):
 def gen_infeasible(K, n):
   m = get_scs_cone_dims(K)
 
-  z = randn(m,)
+  z = np.random.randn(m,)
   y = proj_dual_cone(z, K)  # y = s - z;
-  A = randn(m, n)
+  A = np.random.randn(m, n)
   A = A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y)**2  # dense...
 
-  b = randn(m)
+  b = np.random.randn(m)
   b = -b / np.dot(b, y)
 
-  data = {'A': sparse.csc_matrix(A), 'b': b, 'c': randn(n)}
+  data = {'A': sparse.csc_matrix(A), 'b': b, 'c': np.random.randn(n)}
   return data
 
 
 def gen_unbounded(K, n):
   m = get_scs_cone_dims(K)
 
-  z = randn(m)
+  z = np.random.randn(m)
   s = proj_cone(z, K)
-  A = randn(m, n)
-  x = randn(n)
+  A = np.random.randn(m, n)
+  x = np.random.randn(n)
   A = A - np.outer(s + A.dot(x), x) / np.linalg.norm(x)**2
   # dense...
-  c = randn(n)
+  c = np.random.randn(n)
   c = -c / np.dot(c, x)
 
-  data = {'A': sparse.csc_matrix(A), 'b': randn(m), 'c': c}
+  data = {'A': sparse.csc_matrix(A), 'b': np.random.randn(m), 'c': c}
   return data
 
 
@@ -159,7 +158,7 @@ def proj_sdp(z, n):
   a = np.dot(v, np.dot(np.diag(w), np.transpose(v)))
   a[didx] = a[didx] / np.sqrt(2.)
   z = a[tidx]
-  return z
+  return np.real(z)
 
 
 def proj_pow(v, a):
@@ -221,7 +220,8 @@ def project_exp_bisection(v):
   s = v[1]
   t = v[2]
   # v in cl(Kexp)
-  if (s * np.exp(r / s) <= t and s > 0) or (r <= 0 and s == 0 and t >= 0):
+  if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (r <= 0 and s == 0 and
+                                                      t >= 0):
     return v
   # -v in Kexp^*
   if (-r < 0 and r * np.exp(s / r) <= -np.exp(1) * t) or (-r == 0 and

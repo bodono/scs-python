@@ -1,0 +1,41 @@
+---
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,anaconda
+          activate-environment: scs
+
+      - name: Deps
+        run: |
+          conda info
+          conda install mkl openblas lapack numpy scipy pytest
+
+      - name: Install
+        run: |
+          python setup.py install
+
+      - name: Test
+        run: |
+          pytest
+
