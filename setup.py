@@ -154,7 +154,7 @@ def install_scs(**kwargs):
   if args.float32:
     define_macros += [('SFLOAT', 1)]  # single precision floating point
   if args.extraverbose:
-    define_macros += [('EXTRA_VERBOSE', 999)]  # for debugging
+    define_macros += [('VERBOSITY', 999)]  # for debugging
   if args.blas64:
     define_macros += [('BLAS64', 1)]  # 64 bit blas
   if not args.int32 and not args.gpu:
