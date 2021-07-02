@@ -192,8 +192,8 @@ def install_scs(**kwargs):
     else:
       include_dirs += ['/usr/local/cuda/include']
       library_dirs = ['/usr/local/cuda/lib', '/usr/local/cuda/lib64']
-    if args.gpu_atrans:
-       define_macros += [('GPU_TRANSPOSE_MAT', 1)]  # for debugging
+    if args.gpu_atrans:  # Should be True by default
+       define_macros += [('GPU_TRANSPOSE_MAT', 1)]
     _scs_gpu = Extension(
         name='_scs_gpu',
         sources=sources + glob('scs/linsys/gpu/*.c') + glob('scs/linsys/gpu/indirect/*.c'),
