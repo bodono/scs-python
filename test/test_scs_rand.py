@@ -44,11 +44,11 @@ def assert_(str1, str2):
 
 
 def check_infeasible(sol):
-  assert_(sol['info']['status'], 'Infeasible')
+  assert_(sol['info']['status'], 'infeasible')
 
 
 def check_unbounded(sol):
-  assert_(sol['info']['status'], 'Unbounded')
+  assert_(sol['info']['status'], 'unbounded')
 
 
 np.random.seed(0)

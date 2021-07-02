@@ -40,7 +40,7 @@ b = np.array([1., -0.])
 A = sp.csc_matrix([1., -1.]).T.tocsc()
 data = {'A': A, 'b': b, 'c': c}
 
-FAIL = 'Failure'  # scs code for failure
+FAIL = 'failure'  # scs code for failure
 
 
 @pytest.mark.parametrize("cone,use_indirect,expected",

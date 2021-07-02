@@ -44,11 +44,11 @@ def assert_(str1, str2):
 
 
 def check_infeasible(sol):
-  assert_(sol['info']['status'], 'Infeasible')
+  assert_(sol['info']['status'], 'infeasible')
 
 
 def check_unbounded(sol):
-  assert_(sol['info']['status'], 'Unbounded')
+  assert_(sol['info']['status'], 'unbounded')
 
 
 np.random.seed(0)
@@ -58,8 +58,9 @@ num_infeas = 10
 
 opts = {
     'max_iters': 100000,
-    'eps_abs': 1e-5
-}  # better accuracy than default to ensure test pass
+    'eps_abs': 1e-5,
+    'eps_infeas': 1e-5
+}
 K = {
     'f': 10,
     'l': 25,

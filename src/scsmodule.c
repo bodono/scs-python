@@ -454,10 +454,10 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
   /* box cone */
   if (get_cone_float_arr("bu", &(k->bu), &bsizeu, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field bu");
+    return finish_with_error(d, k, &ps, "failed to parse cone field bu (must be passed as list, not numpy array)");
   }
   if (get_cone_float_arr("bl", &(k->bl), &bsizel, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field bl");
+    return finish_with_error(d, k, &ps, "failed to parse cone field bl (must be passed as list, not numpy array)");
   }
   if (bsizeu != bsizel) {
     return finish_with_error(d, k, &ps, "bu different dimension to bl");

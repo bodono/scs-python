@@ -41,7 +41,10 @@ K = {
     'p': [-0.25, 0.5, 0.75, -0.33]
 }
 m = tools.get_scs_cone_dims(K)
-params = {'normalize': True, 'scale': 5, 'cg_rate': 2, 'verbose': True}
+params = {'verbose': True,
+          'eps_abs': 1e-5,
+          'eps_rel': 1e-5,
+          'eps_infeas': 1e-5}
 
 
 @pytest.mark.parametrize('use_indirect,gpu', flags)
