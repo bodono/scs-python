@@ -463,7 +463,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error(d, k, &ps, "bu different dimension to bl");
   }
   if (bsizeu > 0) {
-    k->bsize = bsizeu + 1; /* cone = (s,t), add 1 for t */
+    k->bsize = bsizeu; /* cone = (t,s), bsize = len(s) */
   }
   /* end box cone */
   if (get_cone_arr_dim("q", &(k->q), &(k->qsize), cone) < 0) {
