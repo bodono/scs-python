@@ -97,3 +97,4 @@ def solve(probdata, cone, **kwargs):
                                 Pindices, Pcolptr, b, c, cone, warm, **kwargs)
   return _scs_direct.csolve((m, n), Adata, Aindices, Acolptr, Pdata, Pindices,
                             Pcolptr, b, c, cone, warm, **kwargs)
+

@@ -7,288 +7,299 @@ from scipy import sparse
 
 
 def gen_feasible(K, n, density):
-  m = get_scs_cone_dims(K)
-  z = np.random.randn(m,)
-  y = proj_dual_cone(z, K)  # y = s - z;
-  s = y - z  # s = proj_cone(z,K)
+    m = get_scs_cone_dims(K)
+    z = np.random.randn(
+        m,
+    )
+    y = proj_dual_cone(z, K)  # y = s - z;
+    s = y - z  # s = proj_cone(z,K)
 
-  A = sparse.rand(m, n, density, format='csc')
-  A.data = np.random.randn(A.nnz)
-  x = np.random.randn(n)
-  c = -np.transpose(A).dot(y)
-  b = A.dot(x) + s
+    A = sparse.rand(m, n, density, format="csc")
+    A.data = np.random.randn(A.nnz)
+    x = np.random.randn(n)
+    c = -np.transpose(A).dot(y)
+    b = A.dot(x) + s
 
-  data = {'A': A, 'b': b, 'c': c}
-  return data, np.dot(c, x)
+    data = {"A": A, "b": b, "c": c}
+    return data, np.dot(c, x)
 
 
 def gen_infeasible(K, n):
-  m = get_scs_cone_dims(K)
+    m = get_scs_cone_dims(K)
 
-  z = np.random.randn(m,)
-  y = proj_dual_cone(z, K)  # y = s - z;
-  A = np.random.randn(m, n)
-  A = A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y)**2  # dense...
+    z = np.random.randn(
+        m,
+    )
+    y = proj_dual_cone(z, K)  # y = s - z;
+    A = np.random.randn(m, n)
+    A = A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y) ** 2  # dense...
 
-  b = np.random.randn(m)
-  b = -b / np.dot(b, y)
+    b = np.random.randn(m)
+    b = -b / np.dot(b, y)
 
-  data = {'A': sparse.csc_matrix(A), 'b': b, 'c': np.random.randn(n)}
-  return data
+    data = {"A": sparse.csc_matrix(A), "b": b, "c": np.random.randn(n)}
+    return data
 
 
 def gen_unbounded(K, n):
-  m = get_scs_cone_dims(K)
+    m = get_scs_cone_dims(K)
 
-  z = np.random.randn(m)
-  s = proj_cone(z, K)
-  A = np.random.randn(m, n)
-  x = np.random.randn(n)
-  A = A - np.outer(s + A.dot(x), x) / np.linalg.norm(x)**2
-  # dense...
-  c = np.random.randn(n)
-  c = -c / np.dot(c, x)
+    z = np.random.randn(m)
+    s = proj_cone(z, K)
+    A = np.random.randn(m, n)
+    x = np.random.randn(n)
+    A = A - np.outer(s + A.dot(x), x) / np.linalg.norm(x) ** 2
+    # dense...
+    c = np.random.randn(n)
+    c = -c / np.dot(c, x)
 
-  data = {'A': sparse.csc_matrix(A), 'b': np.random.randn(m), 'c': c}
-  return data
+    data = {"A": sparse.csc_matrix(A), "b": np.random.randn(m), "c": c}
+    return data
 
 
 def pos(x):
-  return (x + abs(x)) / 2
+    return (x + abs(x)) / 2
 
 
 def get_scs_cone_dims(K):
-  l = K['f'] + K['l']
-  for i in range(0, len(K['q'])):
-    l = l + K['q'][i]
+    l = K["f"] + K["l"]
+    for i in range(0, len(K["q"])):
+        l = l + K["q"][i]
 
-  for i in range(0, len(K['s'])):
-    l = l + get_sd_cone_size(K['s'][i])
+    for i in range(0, len(K["s"])):
+        l = l + get_sd_cone_size(K["s"][i])
 
-  l = l + K['ep'] * 3
-  l = l + K['ed'] * 3
-  l = l + len(K['p']) * 3
-  return int(l)
+    l = l + K["ep"] * 3
+    l = l + K["ed"] * 3
+    l = l + len(K["p"]) * 3
+    return int(l)
 
 
 def proj_dual_cone(z, c):
-  return z + proj_cone(-z, c)
+    return z + proj_cone(-z, c)
 
 
 def get_sd_cone_size(n):
-  return int((n * (n + 1)) / 2)
+    return int((n * (n + 1)) / 2)
 
 
 def proj_cone(z, c):
-  z = np.copy(z)
-  free_len = c['f']
-  lp_len = c['l']
-  q = c['q']
-  s = c['s']
-  p = c['p']
-  # free/zero cone
-  z[0:free_len] = 0
-  # lp cone
-  z[free_len:lp_len + free_len] = pos(z[free_len:lp_len + free_len])
-  # SOCs
-  idx = lp_len + free_len
-  for i in range(0, len(q)):
-    z[idx:idx + q[i]] = proj_soc(z[idx:idx + q[i]])
-    idx = idx + q[i]
-  # SDCs
-  for i in range(0, len(s)):
-    sz = get_sd_cone_size(s[i])
-    z[idx:idx + sz] = proj_sdp(z[idx:idx + sz], s[i])
-    idx = idx + sz
-  # Exp primal
-  for i in range(0, c['ep']):
-    z[idx:idx + 3] = project_exp_bisection(z[idx:idx + 3])
-    idx = idx + 3
-  # Exp dual
-  for i in range(0, c['ed']):
-    z[idx:idx + 3] = z[idx:idx + 3] + project_exp_bisection(-z[idx:idx + 3])
-    idx = idx + 3
-  # Power
-  for i in range(0, len(p)):
-    if p[i] >= 0:  # primal
-      z[idx:idx + 3] = proj_pow(z[idx:idx + 3], p[i])
-    else:  # dual
-      z[idx:idx + 3] = z[idx:idx + 3] + proj_pow(-z[idx:idx + 3], -p[i])
-    idx = idx + 3
-  return z
+    z = np.copy(z)
+    free_len = c["f"]
+    lp_len = c["l"]
+    q = c["q"]
+    s = c["s"]
+    p = c["p"]
+    # free/zero cone
+    z[0:free_len] = 0
+    # lp cone
+    z[free_len : lp_len + free_len] = pos(z[free_len : lp_len + free_len])
+    # SOCs
+    idx = lp_len + free_len
+    for i in range(0, len(q)):
+        z[idx : idx + q[i]] = proj_soc(z[idx : idx + q[i]])
+        idx = idx + q[i]
+    # SDCs
+    for i in range(0, len(s)):
+        sz = get_sd_cone_size(s[i])
+        z[idx : idx + sz] = proj_sdp(z[idx : idx + sz], s[i])
+        idx = idx + sz
+    # Exp primal
+    for i in range(0, c["ep"]):
+        z[idx : idx + 3] = project_exp_bisection(z[idx : idx + 3])
+        idx = idx + 3
+    # Exp dual
+    for i in range(0, c["ed"]):
+        z[idx : idx + 3] = z[idx : idx + 3] + project_exp_bisection(-z[idx : idx + 3])
+        idx = idx + 3
+    # Power
+    for i in range(0, len(p)):
+        if p[i] >= 0:  # primal
+            z[idx : idx + 3] = proj_pow(z[idx : idx + 3], p[i])
+        else:  # dual
+            z[idx : idx + 3] = z[idx : idx + 3] + proj_pow(-z[idx : idx + 3], -p[i])
+        idx = idx + 3
+    return z
 
 
 def proj_soc(tt):
-  tt = np.copy(tt)
-  if len(tt) == 0:
-    return
-  elif len(tt) == 1:
-    return pos(tt)
+    tt = np.copy(tt)
+    if len(tt) == 0:
+        return
+    elif len(tt) == 1:
+        return pos(tt)
 
-  v1 = tt[0]
-  v2 = tt[1:]
-  if np.linalg.norm(v2) <= -v1:
-    v2 = np.zeros(len(v2))
-    v1 = 0
-  elif np.linalg.norm(v2) > abs(v1):
-    v2 = 0.5 * (1 + v1 / np.linalg.norm(v2)) * v2
-    v1 = np.linalg.norm(v2)
-  tt[0] = v1
-  tt[1:] = v2
-  return tt
+    v1 = tt[0]
+    v2 = tt[1:]
+    if np.linalg.norm(v2) <= -v1:
+        v2 = np.zeros(len(v2))
+        v1 = 0
+    elif np.linalg.norm(v2) > abs(v1):
+        v2 = 0.5 * (1 + v1 / np.linalg.norm(v2)) * v2
+        v1 = np.linalg.norm(v2)
+    tt[0] = v1
+    tt[1:] = v2
+    return tt
 
 
 def proj_sdp(z, n):
-  z = np.copy(z)
-  if n == 0:
-    return
-  elif n == 1:
-    return pos(z)
-  tidx = np.triu_indices(n)
-  tidx = (tidx[1], tidx[0])
-  didx = np.diag_indices(n)
+    z = np.copy(z)
+    if n == 0:
+        return
+    elif n == 1:
+        return pos(z)
+    tidx = np.triu_indices(n)
+    tidx = (tidx[1], tidx[0])
+    didx = np.diag_indices(n)
 
-  a = np.zeros((n, n))
-  a[tidx] = z
-  a = (a + np.transpose(a))
-  a[didx] = a[didx] / np.sqrt(2.)
+    a = np.zeros((n, n))
+    a[tidx] = z
+    a = a + np.transpose(a)
+    a[didx] = a[didx] / np.sqrt(2.0)
 
-  w, v = np.linalg.eig(a)  # cols of v are eigenvectors
-  w = pos(w)
-  a = np.dot(v, np.dot(np.diag(w), np.transpose(v)))
-  a[didx] = a[didx] / np.sqrt(2.)
-  z = a[tidx]
-  return np.real(z)
+    w, v = np.linalg.eig(a)  # cols of v are eigenvectors
+    w = pos(w)
+    a = np.dot(v, np.dot(np.diag(w), np.transpose(v)))
+    a[didx] = a[didx] / np.sqrt(2.0)
+    z = a[tidx]
+    return np.real(z)
 
 
 def proj_pow(v, a):
-  CONE_MAX_ITERS = 20
-  CONE_TOL = 1e-8
+    CONE_MAX_ITERS = 20
+    CONE_TOL = 1e-8
 
-  if v[0] >= 0 and v[1] >= 0 and (v[0]**a) * (v[1]**(1 - a)) >= abs(v[2]):
+    if v[0] >= 0 and v[1] >= 0 and (v[0] ** a) * (v[1] ** (1 - a)) >= abs(v[2]):
+        return v
+
+    if (
+        v[0] <= 0
+        and v[1] <= 0
+        and ((-v[0] / a) ** a) * ((-v[1] / (1 - a)) ** (1 - a)) >= abs(v[2])
+    ):
+        return np.zeros(
+            3,
+        )
+
+    xh = v[0]
+    yh = v[1]
+    zh = v[2]
+    rh = abs(zh)
+    r = rh / 2
+    for iter in range(0, CONE_MAX_ITERS):
+        x = calc_x(r, xh, rh, a)
+        y = calc_x(r, yh, rh, 1 - a)
+
+        f = calc_f(x, y, r, a)
+        if abs(f) < CONE_TOL:
+            break
+
+        dxdr = calcdxdr(x, xh, rh, r, a)
+        dydr = calcdxdr(y, yh, rh, r, (1 - a))
+        fp = calc_fp(x, y, dxdr, dydr, a)
+
+        r = min(max(r - f / fp, 0), rh)
+
+    z = np.sign(zh) * r
+    v[0] = x
+    v[1] = y
+    v[2] = z
     return v
-
-  if (v[0] <= 0 and v[1] <= 0 and
-      ((-v[0] / a)**a) * ((-v[1] / (1 - a))**(1 - a)) >= abs(v[2])):
-    return np.zeros(3,)
-
-  xh = v[0]
-  yh = v[1]
-  zh = v[2]
-  rh = abs(zh)
-  r = rh / 2
-  for iter in range(0, CONE_MAX_ITERS):
-    x = calc_x(r, xh, rh, a)
-    y = calc_x(r, yh, rh, 1 - a)
-
-    f = calc_f(x, y, r, a)
-    if abs(f) < CONE_TOL:
-      break
-
-    dxdr = calcdxdr(x, xh, rh, r, a)
-    dydr = calcdxdr(y, yh, rh, r, (1 - a))
-    fp = calc_fp(x, y, dxdr, dydr, a)
-
-    r = min(max(r - f / fp, 0), rh)
-
-  z = np.sign(zh) * r
-  v[0] = x
-  v[1] = y
-  v[2] = z
-  return v
 
 
 def calc_x(r, xh, rh, a):
-  return max(0.5 * (xh + np.sqrt(xh * xh + 4 * a * (rh - r) * r)), 1e-12)
+    return max(0.5 * (xh + np.sqrt(xh * xh + 4 * a * (rh - r) * r)), 1e-12)
 
 
 def calcdxdr(x, xh, rh, r, a):
-  return a * (rh - 2 * r) / (2 * x - xh)
+    return a * (rh - 2 * r) / (2 * x - xh)
 
 
 def calc_f(x, y, r, a):
-  return (x**a) * (y**(1 - a)) - r
+    return (x ** a) * (y ** (1 - a)) - r
 
 
 def calc_fp(x, y, dxdr, dydr, a):
-  return (x**a) * (y**(1 - a)) * (a * dxdr / x + (1 - a) * dydr / y) - 1
+    return (x ** a) * (y ** (1 - a)) * (a * dxdr / x + (1 - a) * dydr / y) - 1
 
 
 def project_exp_bisection(v):
-  v = np.copy(v)
-  r = v[0]
-  s = v[1]
-  t = v[2]
-  # v in cl(Kexp)
-  if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (r <= 0 and s == 0 and
-                                                      t >= 0):
-    return v
-  # -v in Kexp^*
-  if (-r < 0 and r * np.exp(s / r) <= -np.exp(1) * t) or (-r == 0 and
-                                                          -s >= 0 and -t >= 0):
-    return np.zeros(3,)
-  # special case with analytical solution
-  if r < 0 and s < 0:
-    v[1] = 0
-    v[2] = max(v[2], 0)
-    return v
+    v = np.copy(v)
+    r = v[0]
+    s = v[1]
+    t = v[2]
+    # v in cl(Kexp)
+    if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (r <= 0 and s == 0 and t >= 0):
+        return v
+    # -v in Kexp^*
+    if (-r < 0 and r * np.exp(s / r) <= -np.exp(1) * t) or (
+        -r == 0 and -s >= 0 and -t >= 0
+    ):
+        return np.zeros(
+            3,
+        )
+    # special case with analytical solution
+    if r < 0 and s < 0:
+        v[1] = 0
+        v[2] = max(v[2], 0)
+        return v
 
-  x = np.copy(v)
-  ub, lb = get_rho_ub(v)
-  for iter in range(0, 100):
-    rho = (ub + lb) / 2
-    g, x = calc_grad(v, rho, x)
-    if g > 0:
-      lb = rho
-    else:
-      ub = rho
-    if ub - lb < 1e-6:
-      break
-  return x
+    x = np.copy(v)
+    ub, lb = get_rho_ub(v)
+    for iter in range(0, 100):
+        rho = (ub + lb) / 2
+        g, x = calc_grad(v, rho, x)
+        if g > 0:
+            lb = rho
+        else:
+            ub = rho
+        if ub - lb < 1e-6:
+            break
+    return x
 
 
 def get_rho_ub(v):
-  lb = 0
-  rho = 2**(-3)
-  g, z = calc_grad(v, rho, v)
-  while g > 0:
-    lb = rho
-    rho = rho * 2
-    g, z = calc_grad(v, rho, z)
-  ub = rho
-  return ub, lb
+    lb = 0
+    rho = 2 ** (-3)
+    g, z = calc_grad(v, rho, v)
+    while g > 0:
+        lb = rho
+        rho = rho * 2
+        g, z = calc_grad(v, rho, z)
+    ub = rho
+    return ub, lb
 
 
 def calc_grad(v, rho, warm_start):
-  x = solve_with_rho(v, rho, warm_start[1])
-  if x[1] == 0:
-    g = x[0]
-  else:
-    g = (x[0] + x[1] * np.log(x[1] / x[2]))
-  return g, x
+    x = solve_with_rho(v, rho, warm_start[1])
+    if x[1] == 0:
+        g = x[0]
+    else:
+        g = x[0] + x[1] * np.log(x[1] / x[2])
+    return g, x
 
 
 def solve_with_rho(v, rho, w):
-  x = np.zeros(3)
-  x[2] = newton_exp_onz(rho, v[1], v[2], w)
-  x[1] = (1 / rho) * (x[2] - v[2]) * x[2]
-  x[0] = v[0] - rho
-  return x
+    x = np.zeros(3)
+    x[2] = newton_exp_onz(rho, v[1], v[2], w)
+    x[1] = (1 / rho) * (x[2] - v[2]) * x[2]
+    x[0] = v[0] - rho
+    return x
 
 
 def newton_exp_onz(rho, y_hat, z_hat, w):
-  t = max(max(w - z_hat, -z_hat), 1e-6)
-  for iter in range(0, 100):
-    f = (1 / rho**2) * t * (t + z_hat) - y_hat / rho + np.log(t / rho) + 1
-    fp = (1 / rho**2) * (2 * t + z_hat) + 1 / t
+    t = max(max(w - z_hat, -z_hat), 1e-6)
+    for iter in range(0, 100):
+        f = (1 / rho ** 2) * t * (t + z_hat) - y_hat / rho + np.log(t / rho) + 1
+        fp = (1 / rho ** 2) * (2 * t + z_hat) + 1 / t
 
-    t = t - f / fp
-    if t <= -z_hat:
-      t = -z_hat
-      break
-    elif t <= 0:
-      t = 0
-      break
-    elif abs(f) < 1e-6:
-      break
-  return t + z_hat
+        t = t - f / fp
+        if t <= -z_hat:
+            t = -z_hat
+            break
+        elif t <= 0:
+            t = 0
+            break
+        elif abs(f) < 1e-6:
+            break
+    return t + z_hat
