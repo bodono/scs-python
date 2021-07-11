@@ -245,3 +245,5 @@ def install_scs(**kwargs):
                         'those cones. See http://github.com/cvxgrp/scs for '
                         'more details.'))
 
+install_scs()
+
