@@ -45,7 +45,6 @@ def assert_(str1, str2):
 
 
 def check_infeasible(sol):
-<<<<<<< HEAD
   assert_(sol['info']['status'], 'infeasible')
 
 
