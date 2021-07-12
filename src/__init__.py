@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
 from warnings import warn
 from scipy import sparse
 import _scs_direct
@@ -9,6 +8,19 @@ __sizeof_int__ = _scs_direct.sizeof_int()
 __sizeof_float__ = _scs_direct.sizeof_float()
 
 _USE_INDIRECT_DEFAULT = False
+
+
+# SCS return integers correspond to one of these flags: (copied from scs/include/glbopts.h)
+INFEASIBLE_INACCURATE = -7  # SCS best guess infeasible
+UNBOUNDED_INACCURATE = -6   # SCS best guess unbounded
+SIGINT = -5                 # interrupted by sig int
+FAILED = -4                 # SCS failed
+INDETERMINATE = -3          # indeterminate (norm too small)
+INFEASIBLE = -2             # primal infeasible, dual unbounded
+UNBOUNDED = -1              # primal unbounded, dual infeasible
+UNFINISHED = 0              # never returned, used as placeholder
+SOLVED = 1                  # problem solved to desired accuracy
+SOLVED_INACCURATE = 2       # SCS best guess solved
 
 
 def solve(probdata, cone, **kwargs):
