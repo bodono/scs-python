@@ -1,6 +1,6 @@
 #include <Python.h>
 
-#include "amatrix.h"
+#include "scs_matrix.h"
 #include "cones.h"
 #include "glbopts.h"
 #include "numpy/arrayobject.h"
@@ -350,7 +350,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   d->stgs = (ScsSettings *)scs_malloc(sizeof(ScsSettings));
 
   /* set defaults */
-  SCS(set_default_settings)(d);
+  SCS(set_default_settings)(d->stgs);
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
