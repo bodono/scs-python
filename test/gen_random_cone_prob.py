@@ -8,9 +8,7 @@ from scipy import sparse
 
 def gen_feasible(K, n, density):
     m = get_scs_cone_dims(K)
-    z = np.random.randn(
-        m,
-    )
+    z = np.random.randn(m)
     y = proj_dual_cone(z, K)  # y = s - z;
     s = y - z  # s = proj_cone(z,K)
 
@@ -27,9 +25,7 @@ def gen_feasible(K, n, density):
 def gen_infeasible(K, n):
     m = get_scs_cone_dims(K)
 
-    z = np.random.randn(
-        m,
-    )
+    z = np.random.randn(m)
     y = proj_dual_cone(z, K)  # y = s - z;
     A = np.random.randn(m, n)
     A = A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y) ** 2  # dense...

@@ -59,8 +59,9 @@ num_infeas = 10
 
 opts = {
     'max_iters': 100000,
-    'eps_abs': 1e-5
-}  # better accuracy than default to ensure test pass
+    'eps_abs': 1e-5,
+    'eps_infeas': 1e-5,
+}
 K = {
     "f": 10,
     "l": 25,
@@ -86,7 +87,7 @@ def test_feasible(use_indirect):
 @pytest.mark.parametrize("use_indirect", [False, True])
 def test_infeasible(use_indirect):
     for i in range(num_infeas):
-        data = tools.gen_infeasible(K, n=m // 3)
+        data = tools.gen_infeasible(K, n=m // 2)
 
         sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
         check_infeasible(sol)

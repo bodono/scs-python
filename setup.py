@@ -194,7 +194,7 @@ def install_scs(**kwargs):
       name='_scs_indirect',
       sources=sources + glob('scs/linsys/cpu/indirect/*.c'),
       define_macros=list(define_macros) + [('PY_INDIRECT', None),
-                                           ('INDIRECT', None)],
+                                           ('INDIRECT', 1)],
       include_dirs=include_dirs + ['scs/linsys/cpu/indirect/'],
       libraries=list(libraries),
       extra_compile_args=list(extra_compile_args))
@@ -214,7 +214,7 @@ def install_scs(**kwargs):
     _scs_gpu = Extension(
         name='_scs_gpu',
         sources=sources + glob('scs/linsys/gpu/*.c') + glob('scs/linsys/gpu/indirect/*.c'),
-        define_macros=list(define_macros) + [('PY_GPU', None), ('INDIRECT', None)],
+        define_macros=list(define_macros) + [('PY_GPU', None), ('INDIRECT', 1)],
         include_dirs=include_dirs + ['scs/linsys/gpu/', 'scs/linsys/gpu/indirect'],
         library_dirs=library_dirs,
         libraries=libraries + ['cudart', 'cublas', 'cusparse'],

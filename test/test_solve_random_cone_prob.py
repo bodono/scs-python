@@ -67,7 +67,7 @@ def test_solve_feasible(use_indirect, gpu):
 
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_infeasible(use_indirect, gpu):
-    data = tools.gen_infeasible(K, n=m // 3)
+    data = tools.gen_infeasible(K, n=m // 2)
     sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
     y = sol["y"]
     np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
@@ -77,7 +77,7 @@ def test_solve_infeasible(use_indirect, gpu):
 
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_unbounded(use_indirect, gpu):
-    data = tools.gen_unbounded(K, n=m // 3)
+    data = tools.gen_unbounded(K, n=m // 2)
     sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
     x = sol["x"]
     s = sol["s"]
