@@ -1,10 +1,10 @@
 #include <Python.h>
 
-#include "scs_matrix.h"
 #include "cones.h"
 #include "glbopts.h"
 #include "numpy/arrayobject.h"
 #include "scs.h"
+#include "scs_matrix.h"
 #include "util.h"
 
 /* IMPORTANT: This code now uses numpy array types. It is a private C module
@@ -41,29 +41,29 @@ struct ScsPyData {
  * types. */
 int scs_get_int_type(void) {
   switch (sizeof(scs_int)) {
-    case 1:
-      return NPY_INT8;
-    case 2:
-      return NPY_INT16;
-    case 4:
-      return NPY_INT32;
-    case 8:
-      return NPY_INT64;
-    default:
-      return NPY_INT32; /* defaults to 4 byte int */
+  case 1:
+    return NPY_INT8;
+  case 2:
+    return NPY_INT16;
+  case 4:
+    return NPY_INT32;
+  case 8:
+    return NPY_INT64;
+  default:
+    return NPY_INT32; /* defaults to 4 byte int */
   }
 }
 
 int scs_get_float_type(void) {
   switch (sizeof(scs_float)) {
-    case 2:
-      return NPY_FLOAT16;
-    case 4:
-      return NPY_FLOAT32;
-    case 8:
-      return NPY_FLOAT64;
-    default:
-      return NPY_FLOAT64; /* defaults to double */
+  case 2:
+    return NPY_FLOAT16;
+  case 4:
+    return NPY_FLOAT32;
+  case 8:
+    return NPY_FLOAT64;
+  default:
+    return NPY_FLOAT64; /* defaults to double */
   }
 }
 
@@ -330,18 +330,22 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 #ifdef DLONG
 #ifdef SFLOAT
   char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffffllzz";
-  char *outarg_string = "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+  char *outarg_string =
+      "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
   char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddddllzz";
-  char *outarg_string = "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+  char *outarg_string =
+      "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #else
 #ifdef SFLOAT
   char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffffiizz";
-  char *outarg_string = "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+  char *outarg_string =
+      "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
 #else
   char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddddiizz";
-  char *outarg_string = "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+  char *outarg_string =
+      "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
 #endif
 #endif
   npy_intp veclen[1];
@@ -360,10 +364,10 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &PyBool_Type, &adaptive_scaling, &(d->stgs->max_iters),
           &(d->stgs->scale), &(d->stgs->eps_abs), &(d->stgs->eps_rel),
-          &(d->stgs->eps_infeas), &(d->stgs->alpha),
-          &(d->stgs->rho_x), &(d->stgs->time_limit_secs),
-          &(d->stgs->acceleration_lookback), &(d->stgs->acceleration_interval),
-          &(d->stgs->write_data_filename), &(d->stgs->log_csv_filename))) {
+          &(d->stgs->eps_infeas), &(d->stgs->alpha), &(d->stgs->rho_x),
+          &(d->stgs->time_limit_secs), &(d->stgs->acceleration_lookback),
+          &(d->stgs->acceleration_interval), &(d->stgs->write_data_filename),
+          &(d->stgs->log_csv_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -454,10 +458,14 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
   /* box cone */
   if (get_cone_float_arr("bu", &(k->bu), &bsizeu, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field bu (must be passed as list, not numpy array)");
+    return finish_with_error(d, k, &ps,
+                             "failed to parse cone field bu (must be passed as "
+                             "list, not numpy array)");
   }
   if (get_cone_float_arr("bl", &(k->bl), &bsizel, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field bl (must be passed as list, not numpy array)");
+    return finish_with_error(d, k, &ps,
+                             "failed to parse cone field bl (must be passed as "
+                             "list, not numpy array)");
   }
   if (bsizeu != bsizel) {
     return finish_with_error(d, k, &ps, "bu different dimension to bl");
@@ -485,9 +493,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   d->stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
   d->stgs->normalize =
       normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
-  d->stgs->adaptive_scaling =
-      adaptive_scaling ? (scs_int)PyObject_IsTrue(adaptive_scaling) :
-      ADAPTIVE_SCALING;
+  d->stgs->adaptive_scaling = adaptive_scaling
+                                  ? (scs_int)PyObject_IsTrue(adaptive_scaling)
+                                  : ADAPTIVE_SCALING;
 
   if (d->stgs->max_iters < 0) {
     return finish_with_error(d, k, &ps, "max_iters must be positive");
@@ -499,7 +507,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
   if (d->stgs->acceleration_interval < 0) {
     return finish_with_error(d, k, &ps,
-                            "acceleration_interval must be positive");
+                             "acceleration_interval must be positive");
   }
   if (d->stgs->scale < 0) {
     return finish_with_error(d, k, &ps, "scale must be positive");
@@ -550,21 +558,14 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   PyArray_ENABLEFLAGS((PyArrayObject *)s, NPY_ARRAY_OWNDATA);
 
   info_dict = Py_BuildValue(
-      outarg_string,
-      "statusVal", (scs_int)info.status_val,
-      "iter", (scs_int)info.iter,
-      "scale_updates", (scs_int)info.scale_updates,
-      "scale", (scs_float)info.scale,
-      "pobj", (scs_float)info.pobj,
-      "dobj", (scs_float)info.dobj,
-      "resPri", (scs_float)info.res_pri,
-      "resDual", (scs_float)info.res_dual,
-      "gap", (scs_float)info.gap,
-      "resInfeas", (scs_float)info.res_infeas,
-      "resUnbddA", (scs_float)info.res_unbdd_a,
-      "resUnbddP", (scs_float)info.res_unbdd_p,
-      "solveTime", (scs_float)(info.solve_time),
-      "setupTime", (scs_float)(info.setup_time),
+      outarg_string, "statusVal", (scs_int)info.status_val, "iter",
+      (scs_int)info.iter, "scale_updates", (scs_int)info.scale_updates, "scale",
+      (scs_float)info.scale, "pobj", (scs_float)info.pobj, "dobj",
+      (scs_float)info.dobj, "resPri", (scs_float)info.res_pri, "resDual",
+      (scs_float)info.res_dual, "gap", (scs_float)info.gap, "resInfeas",
+      (scs_float)info.res_infeas, "resUnbddA", (scs_float)info.res_unbdd_a,
+      "resUnbddP", (scs_float)info.res_unbdd_p, "solveTime",
+      (scs_float)(info.solve_time), "setupTime", (scs_float)(info.setup_time),
       "status", info.status);
 
   return_dict = Py_BuildValue("{s:O,s:O,s:O,s:O}", "x", x, "y", y, "s", s,
