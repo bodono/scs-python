@@ -200,7 +200,8 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
   return 0;
 }
 
-static void free_py_scs_data(ScsData *d, ScsCone *k, struct ScsPyData *ps) {
+static void free_py_scs_data(ScsData *d, ScsCone *k, ScsSettings *stgs,
+                             struct ScsPyData *ps) {
   if (ps->Ax) {
     Py_DECREF(ps->Ax);
   }
@@ -250,17 +251,17 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, struct ScsPyData *ps) {
     if (d->P) {
       scs_free(d->P);
     }
-    if (d->stgs) {
-      scs_free(d->stgs);
-    }
     scs_free(d);
+  }
+  if (stgs) {
+    scs_free(stgs);
   }
 }
 
-static PyObject *finish_with_error(ScsData *d, ScsCone *k, struct ScsPyData *ps,
-                                   char *str) {
+static PyObject *finish_with_error(ScsData *d, ScsCone *k, ScsSettings *stgs,
+                                   struct ScsPyData *ps, char *str) {
   PyErr_SetString(PyExc_ValueError, str);
-  free_py_scs_data(d, k, ps);
+  free_py_scs_data(d, k, stgs, ps);
   return SCS_NULL;
 }
 
@@ -282,11 +283,11 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   PyObject *cone, *warm = SCS_NULL;
   PyObject *verbose = SCS_NULL;
   PyObject *normalize = SCS_NULL;
-  PyObject *adaptive_scaling = SCS_NULL;
+  PyObject *adaptive_scale = SCS_NULL;
   /* get the typenum for the primitive scs_int and scs_float types */
   int scs_int_type = scs_get_int_type();
   int scs_float_type = scs_get_float_type();
-  scs_int bsizeu, bsizel;
+  scs_int bsizeu, bsizel, f_tmp;
   struct ScsPyData ps = {
       SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
       SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
@@ -294,6 +295,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   /* scs data structures */
   ScsData *d = (ScsData *)scs_calloc(1, sizeof(ScsData));
   ScsCone *k = (ScsCone *)scs_calloc(1, sizeof(ScsCone));
+  ScsSettings *stgs = (ScsSettings *)scs_calloc(1, sizeof(ScsSettings));
 
   ScsMatrix *A, *P;
   ScsSolution sol = {0};
@@ -311,9 +313,9 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "warm",
                     "verbose",
                     "normalize",
-                    "adaptive_scaling",
+                    "adaptive_scale",
                     "max_iters",
-                    "scale",
+                    "init_scale",
                     "eps_abs",
                     "eps_rel",
                     "eps_infeas",
@@ -351,10 +353,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   npy_intp veclen[1];
   PyObject *x, *y, *s, *return_dict, *info_dict;
 
-  d->stgs = (ScsSettings *)scs_malloc(sizeof(ScsSettings));
-
   /* set defaults */
-  SCS(set_default_settings)(d->stgs);
+  SCS(set_default_settings)(stgs);
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
@@ -362,12 +362,12 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &Pp, /* P can be None, so don't check is PyArray_Type */
           &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
-          &PyBool_Type, &adaptive_scaling, &(d->stgs->max_iters),
-          &(d->stgs->scale), &(d->stgs->eps_abs), &(d->stgs->eps_rel),
-          &(d->stgs->eps_infeas), &(d->stgs->alpha), &(d->stgs->rho_x),
-          &(d->stgs->time_limit_secs), &(d->stgs->acceleration_lookback),
-          &(d->stgs->acceleration_interval), &(d->stgs->write_data_filename),
-          &(d->stgs->log_csv_filename))) {
+          &PyBool_Type, &adaptive_scale, &(stgs->max_iters),
+          &(stgs->init_scale), &(stgs->eps_abs), &(stgs->eps_rel),
+          &(stgs->eps_infeas), &(stgs->alpha), &(stgs->rho_x),
+          &(stgs->time_limit_secs), &(stgs->acceleration_lookback),
+          &(stgs->acceleration_interval), &(stgs->write_data_filename),
+          &(stgs->log_csv_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     return SCS_NULL;
   }
@@ -384,13 +384,13 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 
   /* set A */
   if (!PyArray_ISFLOAT(Ax) || PyArray_NDIM(Ax) != 1) {
-    return finish_with_error(d, k, &ps, "Ax must be a numpy array of floats");
+    return finish_with_error(d, k, stgs, &ps, "Ax must be a numpy array of floats");
   }
   if (!PyArray_ISINTEGER(Ai) || PyArray_NDIM(Ai) != 1) {
-    return finish_with_error(d, k, &ps, "Ai must be a numpy array of ints");
+    return finish_with_error(d, k, stgs, &ps, "Ai must be a numpy array of ints");
   }
   if (!PyArray_ISINTEGER(Ap) || PyArray_NDIM(Ap) != 1) {
-    return finish_with_error(d, k, &ps, "Ap must be a numpy array of ints");
+    return finish_with_error(d, k, stgs, &ps, "Ap must be a numpy array of ints");
   }
   ps.Ax = scs_get_contiguous(Ax, scs_float_type);
   ps.Ai = scs_get_contiguous(Ai, scs_int_type);
@@ -407,13 +407,13 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   /* set P if passed in */
   if ((void *)Px != Py_None && (void *)Pi != Py_None && (void *)Pp != Py_None) {
     if (!PyArray_ISFLOAT(Px) || PyArray_NDIM(Px) != 1) {
-      return finish_with_error(d, k, &ps, "Px must be a numpy array of floats");
+      return finish_with_error(d, k, stgs, &ps, "Px must be a numpy array of floats");
     }
     if (!PyArray_ISINTEGER(Pi) || PyArray_NDIM(Pi) != 1) {
-      return finish_with_error(d, k, &ps, "Pi must be a numpy array of ints");
+      return finish_with_error(d, k, stgs, &ps, "Pi must be a numpy array of ints");
     }
     if (!PyArray_ISINTEGER(Pp) || PyArray_NDIM(Pp) != 1) {
-      return finish_with_error(d, k, &ps, "Pp must be a numpy array of ints");
+      return finish_with_error(d, k, stgs, &ps, "Pp must be a numpy array of ints");
     }
     ps.Px = scs_get_contiguous(Px, scs_float_type);
     ps.Pi = scs_get_contiguous(Pi, scs_int_type);
@@ -432,116 +432,126 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   /* set c */
   if (!PyArray_ISFLOAT(c) || PyArray_NDIM(c) != 1) {
     return finish_with_error(
-        d, k, &ps, "c must be a dense numpy array with one dimension");
+        d, k, stgs, &ps, "c must be a dense numpy array with one dimension");
   }
   if (PyArray_DIM(c, 0) != d->n) {
-    return finish_with_error(d, k, &ps, "c has incompatible dimension with A");
+    return finish_with_error(d, k, stgs, &ps, "c has incompatible dimension with A");
   }
   ps.c = scs_get_contiguous(c, scs_float_type);
   d->c = (scs_float *)PyArray_DATA(ps.c);
   /* set b */
   if (!PyArray_ISFLOAT(b) || PyArray_NDIM(b) != 1) {
     return finish_with_error(
-        d, k, &ps, "b must be a dense numpy array with one dimension");
+        d, k, stgs, &ps, "b must be a dense numpy array with one dimension");
   }
   if (PyArray_DIM(b, 0) != d->m) {
-    return finish_with_error(d, k, &ps, "b has incompatible dimension with A");
+    return finish_with_error(d, k, stgs, &ps, "b has incompatible dimension with A");
   }
   ps.b = scs_get_contiguous(b, scs_float_type);
   d->b = (scs_float *)PyArray_DATA(ps.b);
 
-  if (get_pos_int_param("f", &(k->f), 0, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field f");
+  if (get_pos_int_param("f", &(f_tmp), 0, cone) < 0) {
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field f");
+  }
+  if (get_pos_int_param("z", &(k->z), 0, cone) < 0) {
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field z");
+  }
+  if (f_tmp > 0) {
+    scs_printf("Deprecation warning: The 'f' field in the cone struct has \n"
+               "been replaced by 'z' to better reflect the Zero cone. Please \n"
+               "replace usage of 'f' with 'z'. If both 'f' and 'z' are set \n"
+               "we sum the two fields to get the final zero cone size.\n");
+    k->z += f_tmp;
   }
   if (get_pos_int_param("l", &(k->l), 0, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field l");
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field l");
   }
   /* box cone */
   if (get_cone_float_arr("bu", &(k->bu), &bsizeu, cone) < 0) {
-    return finish_with_error(d, k, &ps,
+    return finish_with_error(d, k, stgs, &ps,
                              "failed to parse cone field bu (must be passed as "
                              "list, not numpy array)");
   }
   if (get_cone_float_arr("bl", &(k->bl), &bsizel, cone) < 0) {
-    return finish_with_error(d, k, &ps,
+    return finish_with_error(d, k, stgs, &ps,
                              "failed to parse cone field bl (must be passed as "
                              "list, not numpy array)");
   }
   if (bsizeu != bsizel) {
-    return finish_with_error(d, k, &ps, "bu different dimension to bl");
+    return finish_with_error(d, k, stgs, &ps, "bu different dimension to bl");
   }
   if (bsizeu > 0) {
     k->bsize = bsizeu; /* cone = (t,s), bsize = len(s) */
   }
   /* end box cone */
   if (get_cone_arr_dim("q", &(k->q), &(k->qsize), cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field q");
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field q");
   }
   if (get_cone_arr_dim("s", &(k->s), &(k->ssize), cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field s");
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field s");
   }
   if (get_cone_float_arr("p", &(k->p), &(k->psize), cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field p");
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field p");
   }
   if (get_pos_int_param("ep", &(k->ep), 0, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field ep");
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field ep");
   }
   if (get_pos_int_param("ed", &(k->ed), 0, cone) < 0) {
-    return finish_with_error(d, k, &ps, "failed to parse cone field ed");
+    return finish_with_error(d, k, stgs, &ps, "failed to parse cone field ed");
   }
 
-  d->stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
-  d->stgs->normalize =
+  stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
+  stgs->normalize =
       normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
-  d->stgs->adaptive_scaling = adaptive_scaling
-                                  ? (scs_int)PyObject_IsTrue(adaptive_scaling)
-                                  : ADAPTIVE_SCALING;
+  stgs->adaptive_scale = adaptive_scale
+                                  ? (scs_int)PyObject_IsTrue(adaptive_scale)
+                                  : ADAPTIVE_SCALE;
 
-  if (d->stgs->max_iters < 0) {
-    return finish_with_error(d, k, &ps, "max_iters must be positive");
+  if (stgs->max_iters < 0) {
+    return finish_with_error(d, k, stgs, &ps, "max_iters must be positive");
   }
-  if (d->stgs->acceleration_lookback < 0) {
+  if (stgs->acceleration_lookback < 0) {
     /* hack - use type-I AA when lookback is < 0 */
-    /* return finish_with_error(d, k, &ps,
+    /* return finish_with_error(d, k, stgs, &ps,
                                "acceleration_lookback must be positive"); */
   }
-  if (d->stgs->acceleration_interval < 0) {
-    return finish_with_error(d, k, &ps,
+  if (stgs->acceleration_interval < 0) {
+    return finish_with_error(d, k, stgs, &ps,
                              "acceleration_interval must be positive");
   }
-  if (d->stgs->scale < 0) {
-    return finish_with_error(d, k, &ps, "scale must be positive");
+  if (stgs->init_scale <= 0) {
+    return finish_with_error(d, k, stgs, &ps, "init_scale must be positive");
   }
-  if (d->stgs->time_limit_secs < 0) {
-    return finish_with_error(d, k, &ps, "time_limit_secs must be nonnegative");
+  if (stgs->time_limit_secs < 0) {
+    return finish_with_error(d, k, stgs, &ps, "time_limit_secs must be nonnegative");
   }
-  if (d->stgs->eps_abs < 0) {
-    return finish_with_error(d, k, &ps, "eps_abs must be positive");
+  if (stgs->eps_abs < 0) {
+    return finish_with_error(d, k, stgs, &ps, "eps_abs must be positive");
   }
-  if (d->stgs->eps_rel < 0) {
-    return finish_with_error(d, k, &ps, "eps_rel must be positive");
+  if (stgs->eps_rel < 0) {
+    return finish_with_error(d, k, stgs, &ps, "eps_rel must be positive");
   }
-  if (d->stgs->eps_infeas < 0) {
-    return finish_with_error(d, k, &ps, "eps_infeas must be positive");
+  if (stgs->eps_infeas < 0) {
+    return finish_with_error(d, k, stgs, &ps, "eps_infeas must be positive");
   }
-  if (d->stgs->alpha < 0) {
-    return finish_with_error(d, k, &ps, "alpha must be positive");
+  if (stgs->alpha < 0) {
+    return finish_with_error(d, k, stgs, &ps, "alpha must be positive");
   }
-  if (d->stgs->rho_x < 0) {
-    return finish_with_error(d, k, &ps, "rho_x must be positive");
+  if (stgs->rho_x < 0) {
+    return finish_with_error(d, k, stgs, &ps, "rho_x must be positive");
   }
   /* parse warm start if set */
-  d->stgs->warm_start = WARM_START;
+  stgs->warm_start = WARM_START;
   if (warm) {
-    d->stgs->warm_start = get_warm_start("x", &(sol.x), d->n, warm);
-    d->stgs->warm_start |= get_warm_start("y", &(sol.y), d->m, warm);
-    d->stgs->warm_start |= get_warm_start("s", &(sol.s), d->m, warm);
+    stgs->warm_start = get_warm_start("x", &(sol.x), d->n, warm);
+    stgs->warm_start |= get_warm_start("y", &(sol.y), d->m, warm);
+    stgs->warm_start |= get_warm_start("s", &(sol.s), d->m, warm);
   }
 
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
-  scs(d, k, &sol, &info);
+  scs(d, k, stgs, &sol, &info);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
@@ -577,7 +587,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   Py_DECREF(info_dict);
 
   /* no longer need pointers to arrays that held primitives */
-  free_py_scs_data(d, k, &ps);
+  free_py_scs_data(d, k, stgs, &ps);
   return return_dict;
 }
 
