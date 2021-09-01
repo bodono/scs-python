@@ -457,10 +457,11 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error(d, k, stgs, &ps, "failed to parse cone field z");
   }
   if (f_tmp > 0) {
-    scs_printf("Deprecation warning: The 'f' field in the cone struct has \n"
-               "been replaced by 'z' to better reflect the Zero cone. Please \n"
-               "replace usage of 'f' with 'z'. If both 'f' and 'z' are set \n"
-               "we sum the two fields to get the final zero cone size.\n");
+    scs_printf("SCS deprecation warning: The 'f' field in the cone struct \n"
+               "has been replaced by 'z' to better reflect the Zero cone. \n"
+               "Please replace usage of 'f' with 'z'. If both 'f' and 'z' \n"
+               "are set then we sum the two fields to get the final zero \n"
+               "cone size.\n");
     k->z += f_tmp;
   }
   if (get_pos_int_param("l", &(k->l), 0, cone) < 0) {
