@@ -29,6 +29,7 @@ BLAS library.
 - Numpy version:
 - Scipy version:
 - Output of `get_info` print commands as above (if applicable):
+- Data file location dumped with `write_data_filename` (if applicable):
 
 ## Description
 A clear and concise description of the problem.
