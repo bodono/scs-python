@@ -315,7 +315,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
                     "normalize",
                     "adaptive_scale",
                     "max_iters",
-                    "init_scale",
+                    "scale",
                     "eps_abs",
                     "eps_rel",
                     "eps_infeas",
@@ -363,7 +363,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
           &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
           &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
           &PyBool_Type, &adaptive_scale, &(stgs->max_iters),
-          &(stgs->init_scale), &(stgs->eps_abs), &(stgs->eps_rel),
+          &(stgs->scale), &(stgs->eps_abs), &(stgs->eps_rel),
           &(stgs->eps_infeas), &(stgs->alpha), &(stgs->rho_x),
           &(stgs->time_limit_secs), &(stgs->acceleration_lookback),
           &(stgs->acceleration_interval), &(stgs->write_data_filename),
@@ -520,8 +520,8 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error(d, k, stgs, &ps,
                              "acceleration_interval must be positive");
   }
-  if (stgs->init_scale <= 0) {
-    return finish_with_error(d, k, stgs, &ps, "init_scale must be positive");
+  if (stgs->scale <= 0) {
+    return finish_with_error(d, k, stgs, &ps, "scale must be positive");
   }
   if (stgs->time_limit_secs < 0) {
     return finish_with_error(d, k, stgs, &ps, "time_limit_secs must be nonnegative");
