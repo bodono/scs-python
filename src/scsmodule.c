@@ -333,21 +333,21 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
 #ifdef SFLOAT
   char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffffllzz";
   char *outarg_string =
-      "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+      "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:l,s:l,s:s}";
 #else
   char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddddllzz";
   char *outarg_string =
-      "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+      "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:l,s:l,s:s}";
 #endif
 #else
 #ifdef SFLOAT
   char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffffiizz";
   char *outarg_string =
-      "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:s}";
+      "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:i,s:i,s:s}";
 #else
   char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddddiizz";
   char *outarg_string =
-      "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:s}";
+      "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:s}";
 #endif
 #endif
   npy_intp veclen[1];
@@ -586,6 +586,11 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
       "comp_slack", (scs_float)info.comp_slack,
       "solve_time", (scs_float)(info.solve_time),
       "setup_time", (scs_float)(info.setup_time),
+      "lin_sys_time", (scs_float)(info.lin_sys_time),
+      "cone_time", (scs_float)(info.cone_time),
+      "accel_time", (scs_float)(info.accel_time),
+      "rejected_accel_steps", (scs_int)info.rejected_accel_steps,
+      "accepted_accel_steps", (scs_int)info.accepted_accel_steps,
       "status", info.status);
 
   return_dict = Py_BuildValue("{s:O,s:O,s:O,s:O}", "x", x, "y", y, "s", s,
