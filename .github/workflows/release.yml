@@ -19,7 +19,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v1.11.1
         env:
-          CIBW_SKIP: "cp27-* cp34-* cp35-* cp36-* pp*"
+          CIBW_SKIP: "cp27-* cp34-* cp35-* cp36-* cp37-* pp*"
           CIBW_BEFORE_ALL_LINUX: "yum install -y openblas-devel liblapack-dev"
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
           CIBW_TEST_COMMAND: "pytest {project}/test"
