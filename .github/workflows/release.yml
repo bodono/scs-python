@@ -22,7 +22,7 @@ jobs:
           CIBW_SKIP: "cp27-* cp34-* cp35-* pp*"
           CIBW_BEFORE_ALL_LINUX: "yum install -y openblas-devel liblapack-dev"
           CIBW_BEFORE_ALL_MACOS: "brew install openblas lapack"
-          CIBW_TEST_COMMAND: "pytest {project}/test"
+          CIBW_TEST_COMMAND: "pytest"
           CIBW_TEST_REQUIRES: pytest
       - uses: actions/upload-artifact@v2
         with:
