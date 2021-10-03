@@ -164,7 +164,7 @@ def install_scs(**kwargs):
       'src/scsmodule.c',
   ] + glob('scs/src/*.c') + glob('scs/linsys/*.c')
   include_dirs = ['scs/include', 'scs/linsys']
-  define_macros = [('PYTHON', None), ('CTRLC', 1), ('VALIDATE', 1)]
+  define_macros = [('PYTHON', None), ('CTRLC', 1)]
 
   if system() == 'Linux':
     libraries += ['rt']
