@@ -270,11 +270,11 @@ static PyObject *version(PyObject *self) {
 }
 
 static PyObject *sizeof_int(PyObject *self) {
-  return Py_BuildValue("n", scs_sizeof_int());
+  return Py_BuildValue("n", sizeof(scs_int));
 }
 
 static PyObject *sizeof_float(PyObject *self) {
-  return Py_BuildValue("n", scs_sizeof_float());
+  return Py_BuildValue("n", sizeof(scs_float));
 }
 
 static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
@@ -354,7 +354,7 @@ static PyObject *csolve(PyObject *self, PyObject *args, PyObject *kwargs) {
   PyObject *x, *y, *s, *return_dict, *info_dict;
 
   /* set defaults */
-  SCS(set_default_settings)(stgs);
+  scs_set_default_settings(stgs);
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
