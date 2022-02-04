@@ -25,5 +25,5 @@
 #define PyInt_Check PyLong_Check
 #endif
 
-#include "scsmodule.h" /* SCS module definition */
 #include "scsobject.h" /* SCS object definition */
+#include "scsmodule.h" /* SCS module definition */
