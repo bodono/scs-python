@@ -14,7 +14,7 @@
  */
 
 #include "Python.h"            /* Python API */
-#include "glbopts.h"           /* Constant */
+#include "glbopts.h"           /* Constants and *alloc */
 #include "numpy/arrayobject.h" /* Numpy C API */
 #include "scs.h"               /* SCS API */
 #include "scs_types.h"         /* SCS primitive types */
