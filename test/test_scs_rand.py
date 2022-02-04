@@ -45,11 +45,11 @@ def assert_(str1, str2):
 
 
 def check_infeasible(sol):
-  assert_(sol['info']['status'], 'infeasible')
+    assert_(sol["info"]["status"], "infeasible")
 
 
 def check_unbounded(sol):
-  assert_(sol['info']['status'], 'unbounded')
+    assert_(sol["info"]["status"], "unbounded")
 
 
 np.random.seed(0)
@@ -58,9 +58,9 @@ num_unb = 10
 num_infeas = 10
 
 opts = {
-    'max_iters': 100000,
-    'eps_abs': 1e-5,
-    'eps_infeas': 1e-5,
+    "max_iters": 100000,
+    "eps_abs": 1e-5,
+    "eps_infeas": 1e-5,
 }
 K = {
     "f": 10,
@@ -91,6 +91,7 @@ def test_infeasible(use_indirect):
 
         sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
         check_infeasible(sol)
+
 
 # TODO: indirect solver has trouble in this test, so disable for now
 @pytest.mark.parametrize("use_indirect", [False])
