@@ -49,7 +49,9 @@ def _select_scs_module(stgs):
 
 class SCS(object):
     def __init__(self, probdata, cone, **settings):
-        """Solves convex cone problems.
+        """Initialize the SCS solver.
+
+        XXX
 
         @return dictionary with solution with keys:
              'x' - primal solution
@@ -143,7 +145,15 @@ class SCS(object):
         )
 
     def solve(self):
-        """XXX"""
+        """Solve the optimization problem.
+
+        @return dictionary with solution with keys:
+             'x' - primal solution
+             's' - primal slack solution
+             'y' - dual solution
+             'info' - information dictionary
+        """
+
         return self._solver.solve()
 
     def update_b_c(self, b_new=None, c_new=None, warm_start=True):

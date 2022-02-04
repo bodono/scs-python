@@ -162,7 +162,7 @@ def install_scs(**kwargs):
     libraries = []
     sources = (
         [
-            "src/scsmodule.c",
+            "src/scspy.c",
         ]
         + glob("scs/src/*.c")
         + glob("scs/linsys/*.c")

@@ -1,25 +1,16 @@
 #ifndef PY_SCSOBJECT_H
 #define PY_SCSOBJECT_H
 
-/* IMPORTANT: This code now uses numpy array types. It is a private C module
- * in the sense that end users only see the front-facing Python code in
- * "scs.py"; hence, we can get away with the inputs being numpy arrays of
- * the CSC data structures.
- *
- * WARNING: This code also does not check that the data for the sparse
- * matrices are *actually* in column compressed storage for a sparse matrix.
- * The C module is not designed to be used stand-alone. If the data provided
- * does not correspond to a CSR matrix, this code will just crash inelegantly.
- * Please use the "solve" interface in scs.py.
- */
+/* SCS Object type */
+typedef struct {
+  PyObject_HEAD ScsWork *work; /* Workspace */
+  ScsSolution *sol;            /* Solution, keep around for warm-starts */
+  scs_int m, n;
+} SCS;
 
-/* The PyInt variable is a PyLong in Python3.x.
- */
-#if PY_MAJOR_VERSION >= 3
-#define PyInt_AsLong PyLong_AsLong
-#define PyInt_Check PyLong_Check
-#endif
+static PyTypeObject SCS_Type;
 
+/* Just a helper struct to store the PyArrayObjects that need Py_DECREF */
 struct ScsPyData {
   PyArrayObject *Ax;
   PyArrayObject *Ai;
@@ -65,10 +56,8 @@ PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
   /* gets the pointer to the block of contiguous C memory */
   /* the overhead should be small unless the numpy array has been */
   /* reordered in some way or the data type doesn't quite match */
-  /* */
   /* the "new_owner" pointer has to have Py_DECREF called on it; it owns */
   /* the "new" array object created by PyArray_Cast */
-  /* */
   PyArrayObject *tmp_arr;
   PyArrayObject *new_owner;
   tmp_arr = PyArray_GETCONTIGUOUS(array);
@@ -254,19 +243,7 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, ScsSettings *stgs,
 
 static PyObject *finish_with_error(char *str) {
   PyErr_SetString(PyExc_ValueError, str);
-  Py_RETURN_NONE;
-}
-
-static PyObject *version(PyObject *self) {
-  return Py_BuildValue("s", scs_version());
-}
-
-static PyObject *sizeof_int(PyObject *self) {
-  return Py_BuildValue("n", sizeof(scs_int));
-}
-
-static PyObject *sizeof_float(PyObject *self) {
-  return Py_BuildValue("n", sizeof(scs_float));
+  return (PyObject *)SCS_NULL;
 }
 
 static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
@@ -280,10 +257,7 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   int scs_int_type = scs_get_int_type();
   int scs_float_type = scs_get_float_type();
   scs_int bsizeu, bsizel, f_tmp;
-  struct ScsPyData ps = {
-      SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
-      SCS_NULL, SCS_NULL, SCS_NULL, SCS_NULL,
-  };
+  struct ScsPyData ps = {0};
   /* scs data structures */
   ScsData *d = (ScsData *)scs_calloc(1, sizeof(ScsData));
   ScsCone *k = (ScsCone *)scs_calloc(1, sizeof(ScsCone));
@@ -333,29 +307,46 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
 #endif
 #endif
 
-  // Check that the workspace is not already initialized
+  /* Check that the workspace is not already initialized */
   if (self->work) {
     PyErr_SetString(PyExc_ValueError, "Workspace already setup!");
-    Py_RETURN_NONE;
+    return (PyObject *)SCS_NULL;
   }
 
   /* set defaults */
   scs_set_default_settings(stgs);
 
+  /* clang-format off */
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, argparse_string, kwlist, &(d->m), &(d->n),
-          &PyArray_Type, &Ax, &PyArray_Type, &Ai, &PyArray_Type, &Ap, &Px, &Pi,
-          &Pp, /* P can be None, so don't check is PyArray_Type */
-          &PyArray_Type, &b, &PyArray_Type, &c, &PyDict_Type, &cone,
-          &PyDict_Type, &warm, &PyBool_Type, &verbose, &PyBool_Type, &normalize,
-          &PyBool_Type, &adaptive_scale, &(stgs->max_iters), &(stgs->scale),
-          &(stgs->eps_abs), &(stgs->eps_rel), &(stgs->eps_infeas),
-          &(stgs->alpha), &(stgs->rho_x), &(stgs->time_limit_secs),
-          &(stgs->acceleration_lookback), &(stgs->acceleration_interval),
-          &(stgs->write_data_filename), &(stgs->log_csv_filename))) {
+          &PyArray_Type, &Ax,
+          &PyArray_Type, &Ai,
+          &PyArray_Type, &Ap,
+          /* P can be None, so don't check is PyArray_Type */
+          &Px, &Pi, &Pp,
+          &PyArray_Type, &b,
+          &PyArray_Type, &c,
+          &PyDict_Type, &cone,
+          &PyDict_Type, &warm,
+          &PyBool_Type, &verbose,
+          &PyBool_Type, &normalize,
+          &PyBool_Type, &adaptive_scale,
+          &(stgs->max_iters),
+          &(stgs->scale),
+          &(stgs->eps_abs),
+          &(stgs->eps_rel),
+          &(stgs->eps_infeas),
+          &(stgs->alpha),
+          &(stgs->rho_x),
+          &(stgs->time_limit_secs),
+          &(stgs->acceleration_lookback),
+          &(stgs->acceleration_interval),
+          &(stgs->write_data_filename),
+          &(stgs->log_csv_filename))) {
     PySys_WriteStderr("error parsing inputs\n");
     Py_RETURN_NONE;
   }
+  /* clang-format on */
 
   if (d->m < 0) {
     return finish_with_error("m must be a positive integer");
@@ -570,11 +561,11 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   /* no longer need pointers to arrays that held primitives */
   free_py_scs_data(d, k, stgs, &ps);
 
-  if (self->work) { // Workspace allocation correct
+  if (self->work) { /* Workspace allocation correct */
     Py_RETURN_NONE;
   }
   PyErr_SetString(PyExc_ValueError, "ScsWork allocation error!");
-  Py_RETURN_NONE;
+  return (PyObject *)SCS_NULL;
 }
 
 static PyObject *SCS_solve(SCS *self) {
@@ -599,7 +590,6 @@ static PyObject *SCS_solve(SCS *self) {
   ScsInfo info = {0};
   ScsSolution *sol = self->sol;
   npy_intp veclen[1];
-  scs_int exitflag;
   int scs_float_type = scs_get_float_type();
 
   if (!self->work) {
@@ -610,7 +600,7 @@ static PyObject *SCS_solve(SCS *self) {
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
-  exitflag = scs_solve(self->work, sol, &info);
+  scs_solve(self->work, sol, &info);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
@@ -632,21 +622,32 @@ static PyObject *SCS_solve(SCS *self) {
   s = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _s);
   PyArray_ENABLEFLAGS((PyArrayObject *)s, NPY_ARRAY_OWNDATA);
 
+  /* clang-format off */
   /* if you add fields to this remember to update outarg_string */
   info_dict = Py_BuildValue(
-      outarg_string, "status_val", (scs_int)info.status_val, "iter",
-      (scs_int)info.iter, "scale_updates", (scs_int)info.scale_updates, "scale",
-      (scs_float)info.scale, "pobj", (scs_float)info.pobj, "dobj",
-      (scs_float)info.dobj, "res_pri", (scs_float)info.res_pri, "res_dual",
-      (scs_float)info.res_dual, "gap", (scs_float)info.gap, "res_infeas",
-      (scs_float)info.res_infeas, "res_unbdd_a", (scs_float)info.res_unbdd_a,
-      "res_unbdd_p", (scs_float)info.res_unbdd_p, "comp_slack",
-      (scs_float)info.comp_slack, "solve_time", (scs_float)(info.solve_time),
-      "setup_time", (scs_float)(info.setup_time), "lin_sys_time",
-      (scs_float)(info.lin_sys_time), "cone_time", (scs_float)(info.cone_time),
-      "accel_time", (scs_float)(info.accel_time), "rejected_accel_steps",
-      (scs_int)info.rejected_accel_steps, "accepted_accel_steps",
-      (scs_int)info.accepted_accel_steps, "status", info.status);
+      outarg_string,
+      "status_val", (scs_int)info.status_val,
+      "iter", (scs_int)info.iter,
+      "scale_updates", (scs_int)info.scale_updates,
+      "scale", (scs_float)info.scale,
+      "pobj", (scs_float)info.pobj,
+      "dobj", (scs_float)info.dobj,
+      "res_pri", (scs_float)info.res_pri,
+      "res_dual", (scs_float)info.res_dual,
+      "gap", (scs_float)info.gap,
+      "res_infeas", (scs_float)info.res_infeas,
+      "res_unbdd_a", (scs_float)info.res_unbdd_a,
+      "res_unbdd_p", (scs_float)info.res_unbdd_p,
+      "comp_slack", (scs_float)info.comp_slack,
+      "solve_time", (scs_float)(info.solve_time),
+      "setup_time", (scs_float)(info.setup_time),
+      "lin_sys_time", (scs_float)(info.lin_sys_time),
+       "cone_time", (scs_float)(info.cone_time),
+      "accel_time", (scs_float)(info.accel_time),
+      "rejected_accel_steps", (scs_int)info.rejected_accel_steps,
+      "accepted_accel_steps", (scs_int)info.accepted_accel_steps,
+      "status", info.status);
+  /* clang-format on */
 
   return_dict = Py_BuildValue("{s:O,s:O,s:O,s:O}", "x", x, "y", y, "s", s,
                               "info", info_dict);
@@ -672,12 +673,12 @@ PyObject *SCS_update_b_c(SCS *self, PyObject *args) {
   PyArrayObject *b_new, *c_new;
   scs_float *b = SCS_NULL, *c = SCS_NULL;
 
-  // Check that the workspace is already initialized
+  /* Check that the workspace is already initialized */
   if (!self->work) {
     return finish_with_error("Workspace not initialized!");
   }
 
-  /* b,c can be None, so don't check is PyArray_Type */
+  /* b, c can be None, so don't check is PyArray_Type */
   if (!PyArg_ParseTuple(args, argparse_string, &b_new, &c_new, &PyBool_Type,
                         &warm_start)) {
     return finish_with_error("Error parsing inputs");
@@ -686,12 +687,13 @@ PyObject *SCS_update_b_c(SCS *self, PyObject *args) {
   if ((void *)c_new != Py_None) {
     if (!PyArray_ISFLOAT(c_new) || PyArray_NDIM(c_new) != 1) {
       return finish_with_error(
-          "c must be a dense numpy array with one dimension");
+          "c_new must be a dense numpy array with one dimension");
     }
     if ((scs_int)PyArray_DIM(c_new, 0) != self->n) {
-      return finish_with_error("c has incompatible dimension with A");
+      return finish_with_error("c_new has incompatible dimension with A");
     }
-    c = (scs_float *)PyArray_DATA(scs_get_contiguous(c_new, scs_float_type));
+    c_new = scs_get_contiguous(c_new, scs_float_type);
+    c = (scs_float *)PyArray_DATA(c_new);
   }
   /* set b */
   if ((void *)b_new != Py_None) {
@@ -702,32 +704,85 @@ PyObject *SCS_update_b_c(SCS *self, PyObject *args) {
     if (PyArray_DIM(b_new, 0) != self->m) {
       return finish_with_error("b_new has incompatible dimension with A");
     }
-    b = (scs_float *)PyArray_DATA(scs_get_contiguous(b_new, scs_float_type));
+    b_new = scs_get_contiguous(b_new, scs_float_type);
+    b = (scs_float *)PyArray_DATA(b_new);
   }
-
-  scs_int _warm_start = (scs_int)PyObject_IsTrue(warm_start);
 
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
-  scs_int exitflag = scs_update_b_c(self->work, b, c, _warm_start);
+  scs_update_b_c(self->work, b, c, (scs_int)PyObject_IsTrue(warm_start));
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
-  // XXX free
+  Py_DECREF(b_new);
+  Py_DECREF(c_new);
 
   Py_RETURN_NONE;
 }
 
-// Deallocate SCS object
+/* Deallocate SCS object */
 static scs_int SCS_dealloc(SCS *self) {
-  // Cleanup workspace if not null
   if (self->work) {
     scs_finish(self->work);
   }
-
-  // Cleanup python object
+  if (self->sol) {
+    scs_free(self->sol->x);
+    scs_free(self->sol->y);
+    scs_free(self->sol->s);
+    scs_free(self->sol);
+  }
+  /* Del python object */
   PyObject_Del(self);
 
   return 0;
 }
+
+static PyMethodDef scs_obj_methods[] = {
+    {"solve", (PyCFunction)SCS_solve, METH_VARARGS, PyDoc_STR("Solve problem")},
+    {"update_b_c", (PyCFunction)SCS_update_b_c, METH_VARARGS,
+     PyDoc_STR("Update b and / or c vector")},
+    {SCS_NULL, SCS_NULL} /* sentinel */
+};
+
+/* Define workspace type object */
+static PyTypeObject SCS_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0) "scs.SCS", /* tp_name */
+    sizeof(SCS),                              /* tp_basicsize */
+    0,                                        /* tp_itemsize */
+    (destructor)SCS_dealloc,                  /* tp_dealloc */
+    0,                                        /* tp_print */
+    0,                                        /* tp_getattr */
+    0,                                        /* tp_setattr */
+    0,                                        /* tp_compare */
+    0,                                        /* tp_repr */
+    0,                                        /* tp_as_number */
+    0,                                        /* tp_as_sequence */
+    0,                                        /* tp_as_mapping */
+    0,                                        /* tp_hash */
+    0,                                        /* tp_call */
+    0,                                        /* tp_str */
+    0,                                        /* tp_getattro */
+    0,                                        /* tp_setattro */
+    0,                                        /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT,                       /* tp_flags */
+    "SCS solver",                             /* tp_doc */
+    0,                                        /* tp_traverse */
+    0,                                        /* tp_clear */
+    0,                                        /* tp_richcompare */
+    0,                                        /* tp_weaklistoffset */
+    0,                                        /* tp_iter */
+    0,                                        /* tp_iternext */
+    scs_obj_methods,                          /* tp_methods */
+    0,                                        /* tp_members */
+    0,                                        /* tp_getset */
+    0,                                        /* tp_base */
+    0,                                        /* tp_dict */
+    0,                                        /* tp_descr_get */
+    0,                                        /* tp_descr_set */
+    0,                                        /* tp_dictoffset */
+    (initproc)SCS_init,                       /* tp_init */
+    0,                                        /* tp_alloc */
+    0,                                        /* tp_new */
+};
+
 #endif
