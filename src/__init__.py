@@ -156,6 +156,6 @@ class SCS(object):
 
         return self._solver.solve()
 
-    def update_b_c(self, b_new=None, c_new=None, warm_start=True):
+    def update(self, b_new=None, c_new=None):
         """XXX"""
-        self._solver.update_b_c(b_new, c_new, warm_start)
+        self._solver.update(b_new, c_new)

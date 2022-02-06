@@ -600,7 +600,7 @@ static PyObject *SCS_solve(SCS *self) {
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
-  scs_solve(self->work, sol, &info);
+  scs_solve(self->work, sol, &info, 1);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
@@ -660,15 +660,11 @@ static PyObject *SCS_solve(SCS *self) {
   return return_dict;
 }
 
-PyObject *SCS_update_b_c(SCS *self, PyObject *args) {
+PyObject *SCS_update(SCS *self, PyObject *args) {
   /* data structures for arguments */
 
-  PyObject *warm_start = SCS_NULL;
   /* get the typenum for the primitive scs_float type */
   int scs_float_type = scs_get_float_type();
-
-  /* parse the arguments and ensure they are the correct type */
-  char *argparse_string = "OOO!";
 
   PyArrayObject *b_new, *c_new;
   scs_float *b = SCS_NULL, *c = SCS_NULL;
@@ -679,8 +675,7 @@ PyObject *SCS_update_b_c(SCS *self, PyObject *args) {
   }
 
   /* b, c can be None, so don't check is PyArray_Type */
-  if (!PyArg_ParseTuple(args, argparse_string, &b_new, &c_new, &PyBool_Type,
-                        &warm_start)) {
+  if (!PyArg_ParseTuple(args, "OO", &b_new, &c_new)) {
     return finish_with_error("Error parsing inputs");
   }
   /* set c */
@@ -710,7 +705,7 @@ PyObject *SCS_update_b_c(SCS *self, PyObject *args) {
 
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
-  scs_update_b_c(self->work, b, c, (scs_int)PyObject_IsTrue(warm_start));
+  scs_update(self->work, b, c);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
@@ -739,7 +734,7 @@ static scs_int SCS_dealloc(SCS *self) {
 
 static PyMethodDef scs_obj_methods[] = {
     {"solve", (PyCFunction)SCS_solve, METH_VARARGS, PyDoc_STR("Solve problem")},
-    {"update_b_c", (PyCFunction)SCS_update_b_c, METH_VARARGS,
+    {"update", (PyCFunction)SCS_update, METH_VARARGS,
      PyDoc_STR("Update b and / or c vector")},
     {SCS_NULL, SCS_NULL} /* sentinel */
 };
