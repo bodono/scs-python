@@ -42,29 +42,26 @@ def _select_scs_module(stgs):
 
 
 class SCS(object):
-    def __init__(self, probdata, cone, **settings):
+    def __init__(self, data, cone, **settings):
         """Initialize the SCS solver.
 
-        XXX
+        @param data     Dictionary containing keys `P`, `A`, `b`, `c`.
+        @param cone     Dictionary containing cone information.
+        @param settings Settings as kwargs, see docs.
 
-        @return dictionary with solution with keys:
-             'x' - primal solution
-             's' - primal slack solution
-             'y' - dual solution
-             'info' - information dictionary
         """
         self._settings = settings
-        if not probdata or not cone:
+        if not data or not cone:
             raise ValueError("Missing data or cone information")
 
-        if "b" not in probdata or "c" not in probdata:
-            raise ValueError("Missing one or more of b, c from data dictionary")
-        if "A" not in probdata:
+        if "b" not in data or "c" not in data:
+            raise ValueError("Missing one of b, c from data dictionary")
+        if "A" not in data:
             raise ValueError("Missing A from data dictionary")
 
-        A = probdata["A"]
-        b = probdata["b"]
-        c = probdata["c"]
+        A = data["A"]
+        b = data["b"]
+        c = data["c"]
 
         if A is None or b is None or c is None:
             raise ValueError("Incomplete data specification")
@@ -94,8 +91,8 @@ class SCS(object):
             raise ValueError("A shape not compatible with b,c")
 
         Pdata, Pindices, Pcolptr = None, None, None
-        if "P" in probdata:
-            P = probdata["P"]
+        if "P" in data:
+            P = data["P"]
             if P is not None:
                 if not sparse.issparse(P):
                     raise TypeError("P is required to be a sparse matrix")
@@ -135,31 +132,46 @@ class SCS(object):
     def solve(self, warm_start=True, x=None, y=None, s=None):
         """Solve the optimization problem.
 
+        @param warm_start   Whether to warm-start. By default the solution of
+                            the previous problem is used as the warm-start. The
+                            warm-start can be overriden to another value by
+                            passing `x`, `y`, `s` args.
+        @param x            Primal warm-start override.
+        @param y            Dual warm-start override.
+        @param s            Slack warm-start override.
+
         @return dictionary with solution with keys:
              'x' - primal solution
              's' - primal slack solution
              'y' - dual solution
-             'info' - information dictionary
+             'info' - information dictionary (see docs)
         """
-
         return self._solver.solve(warm_start, x, y, s)
 
     def update(self, b_new=None, c_new=None):
-        """XXX"""
+        """Update the `b` vector, `c` vector, or both, before another solve.
+
+        After a solve we can reuse the SCS workspace in another solve if the
+        only problem data that has changed are the `b` and `c` vectors.
+
+        @param  b_new   New `b` vector.
+        @param  c_new	New `c` vector.
+
+        """
         self._solver.update(b_new, c_new)
 
 
 # Backwards compatible helper function that simply calls the main API.
-def solve(probdata, cone, **settings):
-    solver = SCS(probdata, cone, **settings)
+def solve(data, cone, **settings):
+    solver = SCS(data, cone, **settings)
 
     # Hack out the warm start data from old API
     x = y = s = None
-    if "x" in probdata:
-        x = probdata["x"]
-    if "y" in probdata:
-        y = probdata["y"]
-    if "s" in probdata:
-        s = probdata["s"]
+    if "x" in data:
+        x = data["x"]
+    if "y" in data:
+        y = data["y"]
+    if "s" in data:
+        s = data["s"]
 
     return solver.solve(warm_start=True, x=x, y=y, s=s)
