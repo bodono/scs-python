@@ -23,25 +23,6 @@ UNFINISHED = 0  # never returned, used as placeholder
 SOLVED = 1  # problem solved to desired accuracy
 SOLVED_INACCURATE = 2  # SCS best guess solved
 
-
-# Backwards compatible helper function that simply calls the main API.
-def solve(probdata, cone, **settings):
-    solver = SCS(probdata, cone, settings)
-
-    # Hack out the warm start data from old API
-    warm_x = warm_y = warm_s = None
-    if "x" in probdata:
-        warm_x = probdata["x"]
-    if "y" in probdata:
-        warm_y = probdata["y"]
-    if "s" in probdata:
-        warm_s = probdata["s"]
-
-    return solver.solve(
-        warm_start=True, warm_x=warm_x, warm_y=warm_y, warm_s=warm_s
-    )
-
-
 # Choose which SCS to import based on settings.
 def _select_scs_module(stgs):
     if stgs.pop("gpu", False):  # False by default
@@ -166,3 +147,21 @@ class SCS(object):
     def update(self, b_new=None, c_new=None):
         """XXX"""
         self._solver.update(b_new, c_new)
+
+
+# Backwards compatible helper function that simply calls the main API.
+def solve(probdata, cone, **settings):
+    solver = SCS(probdata, cone, settings)
+
+    # Hack out the warm start data from old API
+    warm_x = warm_y = warm_s = None
+    if "x" in probdata:
+        warm_x = probdata["x"]
+    if "y" in probdata:
+        warm_y = probdata["y"]
+    if "s" in probdata:
+        warm_s = probdata["s"]
+
+    return solver.solve(
+        warm_start=True, warm_x=warm_x, warm_y=warm_y, warm_s=warm_s
+    )
