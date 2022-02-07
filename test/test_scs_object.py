@@ -40,40 +40,38 @@ A = sp.csc_matrix([1.0, -1.0]).T.tocsc()
 data = {"A": A, "b": b, "c": c}
 cone = {"l": 2}
 
-@pytest.mark.parametrize(
-    "use_indirect", [False, True]
-)
+
+@pytest.mark.parametrize("use_indirect", [False, True])
 def test_update(use_indirect):
     # max x
     # s.t 0 <= x <= 1
     solver = scs.SCS(data, cone, use_indirect=use_indirect, verbose=False)
     sol = solver.solve()
-    assert_almost_equal(sol["x"][0], 1., decimal=2)
+    assert_almost_equal(sol["x"][0], 1.0, decimal=2)
 
     # min x
     # s.t 0 <= x <= 1
     c_new = np.array([1.0])
     solver.update(c_new=c_new)
     sol = solver.solve()
-    assert_almost_equal(sol["x"][0], 0., decimal=2)
+    assert_almost_equal(sol["x"][0], 0.0, decimal=2)
 
     # max x
     # s.t -1 <= x <= 1
     b_new = np.array([1.0, 1.0])
     solver.update(b_new=b_new)
     sol = solver.solve()
-    assert_almost_equal(sol["x"][0], -1., decimal=2)
+    assert_almost_equal(sol["x"][0], -1.0, decimal=2)
 
-@pytest.mark.parametrize(
-    "use_indirect", [False, True]
-)
+
+@pytest.mark.parametrize("use_indirect", [False, True])
 def test_warm_start(use_indirect):
     # max x
     # s.t 0 <= x <= 1
     solver = scs.SCS(data, cone, use_indirect=use_indirect, verbose=False)
     sol = solver.solve()
-    assert_almost_equal(sol["x"][0], 1., decimal=2)
+    assert_almost_equal(sol["x"][0], 1.0, decimal=2)
 
     sol = solver.solve()
-    assert_almost_equal(sol["x"][0], 1., decimal=2)
-    assert_array_less(sol['info']['iter'], 10)
+    assert_almost_equal(sol["x"][0], 1.0, decimal=2)
+    assert_array_less(sol["info"]["iter"], 10)
