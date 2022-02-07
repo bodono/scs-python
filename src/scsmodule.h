@@ -19,7 +19,7 @@ static PyMethodDef scs_module_methods[] = {
      "Int size (in bytes) SCS uses."},
     {"sizeof_float", (PyCFunction)sizeof_float, METH_NOARGS,
      "Float size (in bytes) SCS uses."},
-    {SCS_NULL, SCS_NULL} /* sentinel */
+    {NULL, NULL} /* sentinel */
 };
 
 /* Module initialization */
@@ -30,10 +30,10 @@ static struct PyModuleDef moduledef = {
     "Solve a convex cone problem using SCS.", /* m_doc */
     -1,                                       /* m_size */
     scs_module_methods,                       /* m_methods */
-    SCS_NULL,                                 /* m_reload */
-    SCS_NULL,                                 /* m_traverse */
-    SCS_NULL,                                 /* m_clear */
-    SCS_NULL,                                 /* m_free */
+    NULL,                                     /* m_reload */
+    NULL,                                     /* m_traverse */
+    NULL,                                     /* m_clear */
+    NULL,                                     /* m_free */
 };
 #endif
 
@@ -52,8 +52,8 @@ static PyObject *moduleinit(void) {
 #endif
 #endif
 
-  if (m == SCS_NULL) {
-    return SCS_NULL;
+  if (m == NULL) {
+    return NULL;
   }
 
   /* Initialize SCS_Type */

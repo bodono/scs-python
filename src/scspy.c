@@ -10,7 +10,6 @@
  * matrices are *actually* in column compressed storage for a sparse matrix.
  * The C module is not designed to be used stand-alone. If the data provided
  * does not correspond to a CSR matrix, this code will just crash inelegantly.
- * Please use the "solve" interface in scs.py.
  */
 
 #include "Python.h"            /* Python API */

@@ -151,17 +151,15 @@ class SCS(object):
 
 # Backwards compatible helper function that simply calls the main API.
 def solve(probdata, cone, **settings):
-    solver = SCS(probdata, cone, settings)
+    solver = SCS(probdata, cone, **settings)
 
     # Hack out the warm start data from old API
-    warm_x = warm_y = warm_s = None
+    x = y = s = None
     if "x" in probdata:
-        warm_x = probdata["x"]
+        x = probdata["x"]
     if "y" in probdata:
-        warm_y = probdata["y"]
+        y = probdata["y"]
     if "s" in probdata:
-        warm_s = probdata["s"]
+        s = probdata["s"]
 
-    return solver.solve(
-        warm_start=True, warm_x=warm_x, warm_y=warm_y, warm_s=warm_s
-    )
+    return solver.solve(warm_start=True, x=x, y=y, s=s)

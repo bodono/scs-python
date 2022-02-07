@@ -91,5 +91,5 @@ def test_failures():
         with pytest.raises(TypeError):
             scs.solve(data, {"q": [], "l": 2}, max_iters=1.1)
 
-    sol = scs.solve(data, {"q": [1], "l": 0}, verbose=False)
-    assert sol["info"]["status"] == FAIL
+    with pytest.raises(ValueError):
+        sol = scs.solve(data, {"q": [1], "l": 0}, verbose=False)
