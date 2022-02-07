@@ -135,7 +135,7 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
       if (parse_pos_scs_int(obj, q) < 0) {
         return printErr(key);
       }
-    } else if PyArray_Check (obj) {
+    } else if (PyArray_Check(obj)) {
       PyArrayObject *pobj = (PyArrayObject *)obj;
       if (!PyArray_ISINTEGER(pobj) || PyArray_NDIM(pobj) != 1) {
         return printErr(key);
@@ -176,7 +176,7 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
       n = 1;
       q = (scs_float *)scs_malloc(sizeof(scs_float));
       q[0] = (scs_float)PyFloat_AsDouble(obj);
-    } else if PyArray_Check (obj) {
+    } else if (PyArray_Check(obj)) {
       PyArrayObject *pobj = (PyArrayObject *)obj;
       if (!PyArray_ISFLOAT(pobj) || PyArray_NDIM(pobj) != 1) {
         return printErr(key);
