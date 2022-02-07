@@ -579,7 +579,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   if (self->work) { /* Workspace allocation correct */
     return 0;
   }
-  finish_with_error("ScsWork allocation error!");
+  return finish_with_error("ScsWork allocation error!");
 }
 
 static PyObject *SCS_solve(SCS *self, PyObject *args) {

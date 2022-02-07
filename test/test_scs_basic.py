@@ -88,7 +88,7 @@ def test_failures():
 
     # python 2.6 and before just cast float to int
     if platform.python_version_tuple() >= ("2", "7", "0"):
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             scs.solve(data, {"q": [], "l": 2}, max_iters=1.1)
 
     with pytest.raises(ValueError):
