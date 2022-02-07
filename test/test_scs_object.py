@@ -52,14 +52,14 @@ def test_update(use_indirect):
     # min x
     # s.t 0 <= x <= 1
     c_new = np.array([1.0])
-    solver.update(c_new=c_new)
+    solver.update(c=c_new)
     sol = solver.solve()
     assert_almost_equal(sol["x"][0], 0.0, decimal=2)
 
     # max x
     # s.t -1 <= x <= 1
     b_new = np.array([1.0, 1.0])
-    solver.update(b_new=b_new)
+    solver.update(b=b_new)
     sol = solver.solve()
     assert_almost_equal(sol["x"][0], -1.0, decimal=2)
 

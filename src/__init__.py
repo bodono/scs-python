@@ -148,17 +148,17 @@ class SCS(object):
         """
         return self._solver.solve(warm_start, x, y, s)
 
-    def update(self, b_new=None, c_new=None):
+    def update(self, b=None, c=None):
         """Update the `b` vector, `c` vector, or both, before another solve.
 
         After a solve we can reuse the SCS workspace in another solve if the
         only problem data that has changed are the `b` and `c` vectors.
 
-        @param  b_new   New `b` vector.
-        @param  c_new	New `c` vector.
+        @param  b   New `b` vector.
+        @param  c	New `c` vector.
 
         """
-        self._solver.update(b_new, c_new)
+        self._solver.update(b, c)
 
 
 # Backwards compatible helper function that simply calls the main API.
