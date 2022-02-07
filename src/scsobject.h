@@ -8,8 +8,6 @@ typedef struct {
   scs_int m, n;
 } SCS;
 
-static PyTypeObject SCS_Type;
-
 /* Just a helper struct to store the PyArrayObjects that need Py_DECREF */
 struct ScsPyData {
   PyArrayObject *Ax;
@@ -97,19 +95,17 @@ static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
   return 0;
 }
 
-/* gets warm starts from warm dict, doesn't destroy input warm start data */
-static scs_int get_warm_start(char *key, scs_float **x, scs_int l,
-                              PyObject *warm) {
-  PyArrayObject *x0 = (PyArrayObject *)PyDict_GetItemString(warm, key);
-  *x = (scs_float *)scs_calloc(l, sizeof(scs_float));
-  if (x0) {
+/* If warm start x0 is set, copy it to input location x */
+/* If not set, then do nothing */
+static scs_int get_warm_start(scs_float *x, scs_int l, PyArrayObject *x0) {
+  if ((void *)x0 != Py_None) {
     if (!PyArray_ISFLOAT(x0) || PyArray_NDIM(x0) != 1 ||
         PyArray_DIM(x0, 0) != l) {
       PySys_WriteStderr("Error parsing warm-start input\n");
       return 0;
     } else {
       PyArrayObject *px0 = scs_get_contiguous(x0, scs_get_float_type());
-      memcpy(*x, (scs_float *)PyArray_DATA(px0), l * sizeof(scs_float));
+      memcpy(x, (scs_float *)PyArray_DATA(px0), l * sizeof(scs_float));
       Py_DECREF(px0);
       return 1;
     }
@@ -249,7 +245,7 @@ static PyObject *finish_with_error(char *str) {
 static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   /* data structures for arguments */
   PyArrayObject *Ax, *Ai, *Ap, *Px, *Pi, *Pp, *c, *b;
-  PyObject *cone, *warm = SCS_NULL;
+  PyObject *cone;
   PyObject *verbose = SCS_NULL;
   PyObject *normalize = SCS_NULL;
   PyObject *adaptive_scale = SCS_NULL;
@@ -274,7 +270,6 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                     "b",
                     "c",
                     "cone",
-                    "warm",
                     "verbose",
                     "normalize",
                     "adaptive_scale",
@@ -295,15 +290,15 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!lfffffffllzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!lfffffffllzz";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!O!ldddddddllzz";
+  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!ldddddddllzz";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!ifffffffiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffffiizz";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!O!idddddddiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddddiizz";
 #endif
 #endif
 
@@ -323,11 +318,11 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
           &PyArray_Type, &Ai,
           &PyArray_Type, &Ap,
           /* P can be None, so don't check is PyArray_Type */
+          /* TODO: Is there some other type that can handle None? */
           &Px, &Pi, &Pp,
           &PyArray_Type, &b,
           &PyArray_Type, &c,
           &PyDict_Type, &cone,
-          &PyDict_Type, &warm,
           &PyBool_Type, &verbose,
           &PyBool_Type, &normalize,
           &PyBool_Type, &adaptive_scale,
@@ -543,14 +538,13 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("rho_x must be positive");
   }
-  /* parse warm start if set */
-  stgs->warm_start = WARM_START;
+  stgs->warm_start = WARM_START; /* False by default */
+
+  /* Initialize solution struct */
   self->sol = (ScsSolution *)scs_calloc(1, sizeof(ScsSolution));
-  if (warm) {
-    stgs->warm_start = get_warm_start("x", &(self->sol->x), d->n, warm);
-    stgs->warm_start |= get_warm_start("y", &(self->sol->y), d->m, warm);
-    stgs->warm_start |= get_warm_start("s", &(self->sol->s), d->m, warm);
-  }
+  self->sol->x = (scs_float *)scs_calloc(self->n, sizeof(scs_float));
+  self->sol->y = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
+  self->sol->s = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
 
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
@@ -568,25 +562,7 @@ static PyObject *SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   return (PyObject *)SCS_NULL;
 }
 
-static PyObject *SCS_solve(SCS *self) {
-/* parse the arguments and ensure they are the correct type */
-#ifdef DLONG
-#ifdef SFLOAT
-  char *outarg_string = "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
-                        "s:f,s:f,s:f,s:f,s:f,s:l,s:l,s:s}";
-#else
-  char *outarg_string = "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
-                        "s:d,s:d,s:d,s:d,s:d,s:l,s:l,s:s}";
-#endif
-#else
-#ifdef SFLOAT
-  char *outarg_string = "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
-                        "s:f,s:f,s:f,s:f,s:f,s:i,s:i,s:s}";
-#else
-  char *outarg_string = "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
-                        "s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:s}";
-#endif
-#endif
+static PyObject *SCS_solve(SCS *self, PyObject *args) {
   ScsInfo info = {0};
   ScsSolution *sol = self->sol;
   npy_intp veclen[1];
@@ -595,12 +571,35 @@ static PyObject *SCS_solve(SCS *self) {
   if (!self->work) {
     return finish_with_error("Workspace not initialized!");
   }
+
+  PyArrayObject *warm_x, *warm_y, *warm_s;
+  PyObject *warm_start;
+
+  /* clang-format off */
+  /* warm_* can be None, so don't check is PyArray_Type */
+  if (!PyArg_ParseTuple(args, "O!OOO",
+                        &PyBool_Type, &warm_start,
+                        &warm_x,
+                        &warm_y,
+                        &warm_s)) {
+    return finish_with_error("Error parsing inputs");
+  }
+  /* clang-format on */
+
+  scs_int _warm_start = (scs_int)PyObject_IsTrue(warm_start);
+
+  if (_warm_start) {
+    get_warm_start(self->sol->x, self->n, warm_x);
+    get_warm_start(self->sol->y, self->m, warm_y);
+    get_warm_start(self->sol->s, self->m, warm_s);
+  }
+
   PyObject *x, *y, *s, *return_dict, *info_dict;
   scs_float *_x, *_y, *_s;
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
-  scs_solve(self->work, sol, &info, 1);
+  scs_solve(self->work, sol, &info, _warm_start);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
@@ -621,6 +620,25 @@ static PyObject *SCS_solve(SCS *self) {
   memcpy(_s, sol->s, self->m * sizeof(scs_float));
   s = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _s);
   PyArray_ENABLEFLAGS((PyArrayObject *)s, NPY_ARRAY_OWNDATA);
+
+/* output arguments */
+#ifdef DLONG
+#ifdef SFLOAT
+  char *outarg_string = "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
+                        "s:f,s:f,s:f,s:f,s:f,s:l,s:l,s:s}";
+#else
+  char *outarg_string = "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
+                        "s:d,s:d,s:d,s:d,s:d,s:l,s:l,s:s}";
+#endif
+#else
+#ifdef SFLOAT
+  char *outarg_string = "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
+                        "s:f,s:f,s:f,s:f,s:f,s:i,s:i,s:s}";
+#else
+  char *outarg_string = "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
+                        "s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:s}";
+#endif
+#endif
 
   /* clang-format off */
   /* if you add fields to this remember to update outarg_string */

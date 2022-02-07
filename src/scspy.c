@@ -25,5 +25,7 @@
 #define PyInt_Check PyLong_Check
 #endif
 
+static PyTypeObject SCS_Type; /* Declare SCS object type */
+
 #include "scsmodule.h" /* SCS module definition */
 #include "scsobject.h" /* SCS object definition */

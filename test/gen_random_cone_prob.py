@@ -28,7 +28,9 @@ def gen_infeasible(K, n):
     z = np.random.randn(m)
     y = proj_dual_cone(z, K)  # y = s - z;
     A = np.random.randn(m, n)
-    A = A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y) ** 2  # dense...
+    A = (
+        A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y) ** 2
+    )  # dense...
 
     b = np.random.randn(m)
     b = -b / np.dot(b, y)
@@ -106,14 +108,18 @@ def proj_cone(z, c):
         idx = idx + 3
     # Exp dual
     for i in range(0, c["ed"]):
-        z[idx : idx + 3] = z[idx : idx + 3] + project_exp_bisection(-z[idx : idx + 3])
+        z[idx : idx + 3] = z[idx : idx + 3] + project_exp_bisection(
+            -z[idx : idx + 3]
+        )
         idx = idx + 3
     # Power
     for i in range(0, len(p)):
         if p[i] >= 0:  # primal
             z[idx : idx + 3] = proj_pow(z[idx : idx + 3], p[i])
         else:  # dual
-            z[idx : idx + 3] = z[idx : idx + 3] + proj_pow(-z[idx : idx + 3], -p[i])
+            z[idx : idx + 3] = z[idx : idx + 3] + proj_pow(
+                -z[idx : idx + 3], -p[i]
+            )
         idx = idx + 3
     return z
 
@@ -225,7 +231,9 @@ def project_exp_bisection(v):
     s = v[1]
     t = v[2]
     # v in cl(Kexp)
-    if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (r <= 0 and s == 0 and t >= 0):
+    if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (
+        r <= 0 and s == 0 and t >= 0
+    ):
         return v
     # -v in Kexp^*
     if (-r < 0 and r * np.exp(s / r) <= -np.exp(1) * t) or (

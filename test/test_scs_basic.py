@@ -69,7 +69,9 @@ if platform.python_version_tuple() < ("3", "0", "0"):
         ],
     )
     def test_problems_with_longs(cone, use_indirect, expected):
-        sol = scs.solve(data, cone=cone, use_indirect=use_indirect, verbose=False)
+        sol = scs.solve(
+            data, cone=cone, use_indirect=use_indirect, verbose=False
+        )
         assert_almost_equal(sol["x"][0], expected, decimal=2)
 
 

@@ -55,8 +55,12 @@ def test_solve_feasible(use_indirect, gpu):
     s = sol["s"]
     np.testing.assert_almost_equal(np.dot(data["c"], x), p_star, decimal=3)
     np.testing.assert_almost_equal(np.dot(data["c"], x), p_star, decimal=3)
-    np.testing.assert_array_less(np.linalg.norm(data["A"] @ x - data["b"] + s), 1e-3)
-    np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y + data["c"]), 1e-3)
+    np.testing.assert_array_less(
+        np.linalg.norm(data["A"] @ x - data["b"] + s), 1e-3
+    )
+    np.testing.assert_array_less(
+        np.linalg.norm(data["A"].T @ y + data["c"]), 1e-3
+    )
     np.testing.assert_almost_equal(s.T @ y, 0.0)
     np.testing.assert_almost_equal(s, tools.proj_cone(s, K), decimal=4)
     np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=4)

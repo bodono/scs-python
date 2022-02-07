@@ -24,12 +24,25 @@ SOLVED = 1  # problem solved to desired accuracy
 SOLVED_INACCURATE = 2  # SCS best guess solved
 
 
-# Backwards compatible helper function
+# Backwards compatible helper function that simply calls the main API.
 def solve(probdata, cone, **settings):
     solver = SCS(probdata, cone, settings)
-    return solver.solve()
+
+    # Hack out the warm start data from old API
+    warm_x = warm_y = warm_s = None
+    if "x" in probdata:
+        warm_x = probdata["x"]
+    if "y" in probdata:
+        warm_y = probdata["y"]
+    if "s" in probdata:
+        warm_s = probdata["s"]
+
+    return solver.solve(
+        warm_start=True, warm_x=warm_x, warm_y=warm_y, warm_s=warm_s
+    )
 
 
+# Choose which SCS to import based on settings.
 def _select_scs_module(stgs):
     if stgs.pop("gpu", False):  # False by default
         if not stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
@@ -109,8 +122,8 @@ class SCS(object):
                     raise ValueError("P shape not compatible with A,b,c")
                 if not sparse.isspmatrix_csc(P):
                     warn(
-                        "Converting P to a CSC (compressed sparse column) matrix; "
-                        "may take a while."
+                        "Converting P to a CSC (compressed sparse column) "
+                        "matrix; may take a while."
                     )
                     P = P.tocsc()
                 # extract upper triangular component only
@@ -120,15 +133,10 @@ class SCS(object):
                     P.sort_indices()
                 Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
 
-        warm = {}
-        if "x" in probdata:
-            warm["x"] = probdata["x"]
-        if "y" in probdata:
-            warm["y"] = probdata["y"]
-        if "s" in probdata:
-            warm["s"] = probdata["s"]
-
+        # Which scs are we using (scs_direct, scs_indirect, ...)
         _scs = _select_scs_module(self._settings)
+
+        # Initialize solver
         self._solver = _scs.SCS(
             (m, n),
             Adata,
@@ -140,11 +148,10 @@ class SCS(object):
             b,
             c,
             cone,
-            warm,
             **self._settings
         )
 
-    def solve(self):
+    def solve(self, warm_start=True, x=None, y=None, s=None):
         """Solve the optimization problem.
 
         @return dictionary with solution with keys:
@@ -154,7 +161,7 @@ class SCS(object):
              'info' - information dictionary
         """
 
-        return self._solver.solve()
+        return self._solver.solve(warm_start, x, y, s)
 
     def update(self, b_new=None, c_new=None):
         """XXX"""

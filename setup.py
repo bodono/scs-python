@@ -138,9 +138,9 @@ class build_ext_scs(build_ext):
             self.copy["library_dirs"] = blas_info.pop(
                 "library_dirs", []
             ) + lapack_info.pop("library_dirs", [])
-            self.copy["libraries"] = blas_info.pop("libraries", []) + lapack_info.pop(
+            self.copy["libraries"] = blas_info.pop(
                 "libraries", []
-            )
+            ) + lapack_info.pop("libraries", [])
             self.copy["extra_link_args"] = blas_info.pop(
                 "extra_link_args", []
             ) + lapack_info.pop("extra_link_args", [])
@@ -187,6 +187,7 @@ def install_scs(**kwargs):
         + glob("scs/linsys/cpu/direct/*.c")
         + glob("scs/linsys/external/amd/*.c")
         + glob("scs/linsys/external/qdldl/*.c"),
+        depends=glob("src/*.h"),
         define_macros=list(define_macros),
         include_dirs=include_dirs
         + [
@@ -201,7 +202,9 @@ def install_scs(**kwargs):
     _scs_indirect = Extension(
         name="_scs_indirect",
         sources=sources + glob("scs/linsys/cpu/indirect/*.c"),
-        define_macros=list(define_macros) + [("PY_INDIRECT", None), ("INDIRECT", 1)],
+        depends=glob("src/*.h"),
+        define_macros=list(define_macros)
+        + [("PY_INDIRECT", None), ("INDIRECT", 1)],
         include_dirs=include_dirs + ["scs/linsys/cpu/indirect/"],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
@@ -224,8 +227,11 @@ def install_scs(**kwargs):
             sources=sources
             + glob("scs/linsys/gpu/*.c")
             + glob("scs/linsys/gpu/indirect/*.c"),
-            define_macros=list(define_macros) + [("PY_GPU", None), ("INDIRECT", 1)],
-            include_dirs=include_dirs + ["scs/linsys/gpu/", "scs/linsys/gpu/indirect"],
+            depends=glob("src/*.h"),
+            define_macros=list(define_macros)
+            + [("PY_GPU", None), ("INDIRECT", 1)],
+            include_dirs=include_dirs
+            + ["scs/linsys/gpu/", "scs/linsys/gpu/indirect"],
             library_dirs=library_dirs,
             libraries=libraries + ["cudart", "cublas", "cusparse"],
             extra_compile_args=list(extra_compile_args),
