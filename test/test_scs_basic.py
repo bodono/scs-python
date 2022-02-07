@@ -1,4 +1,3 @@
-# nost test suite copied initially from ECOS project
 from __future__ import print_function
 import platform
 
@@ -36,7 +35,7 @@ except ImportError:
 
 # global data structures for problem
 c = np.array([-1.0])
-b = np.array([1.0, -0.0])
+b = np.array([1.0, 0.0])
 A = sp.csc_matrix([1.0, -1.0]).T.tocsc()
 data = {"A": A, "b": b, "c": c}
 
