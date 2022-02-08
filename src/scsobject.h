@@ -754,7 +754,7 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
 }
 
 /* Deallocate SCS object */
-static scs_int SCS_dealloc(SCS *self) {
+static scs_int SCS_finish(SCS *self) {
   if (self->work) {
     scs_finish(self->work);
   }
@@ -783,7 +783,7 @@ static PyTypeObject SCS_Type = {
     PyVarObject_HEAD_INIT(NULL, 0) "scs.SCS", /* tp_name */
     sizeof(SCS),                              /* tp_basicsize */
     0,                                        /* tp_itemsize */
-    (destructor)SCS_dealloc,                  /* tp_dealloc */
+    (destructor)SCS_finish,                   /* tp_dealloc */
     0,                                        /* tp_print */
     0,                                        /* tp_getattr */
     0,                                        /* tp_setattr */
