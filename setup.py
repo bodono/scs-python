@@ -138,9 +138,9 @@ class build_ext_scs(build_ext):
             self.copy["library_dirs"] = blas_info.pop(
                 "library_dirs", []
             ) + lapack_info.pop("library_dirs", [])
-            self.copy["libraries"] = blas_info.pop("libraries", []) + lapack_info.pop(
+            self.copy["libraries"] = blas_info.pop(
                 "libraries", []
-            )
+            ) + lapack_info.pop("libraries", [])
             self.copy["extra_link_args"] = blas_info.pop(
                 "extra_link_args", []
             ) + lapack_info.pop("extra_link_args", [])
@@ -158,92 +158,112 @@ class build_ext_scs(build_ext):
 
 
 def install_scs(**kwargs):
-  extra_compile_args = ['-O3']
-  libraries = []
-  sources = [
-      'src/scsmodule.c',
-  ] + glob('scs/src/*.c') + glob('scs/linsys/*.c')
-  include_dirs = ['scs/include', 'scs/linsys']
-  define_macros = [('PYTHON', None), ('CTRLC', 1)]
+    extra_compile_args = ["-O3"]
+    libraries = []
+    sources = (
+        [
+            "src/scspy.c",
+        ]
+        + glob("scs/src/*.c")
+        + glob("scs/linsys/*.c")
+    )
+    include_dirs = ["scs/include", "scs/linsys"]
+    define_macros = [("PYTHON", None), ("CTRLC", 1)]
 
-  if system() == 'Linux':
-    libraries += ['rt']
-  if args.float32:
-    define_macros += [('SFLOAT', 1)]  # single precision floating point
-  if args.extraverbose:
-    define_macros += [('VERBOSITY', 999)]  # for debugging
-  if args.blas64:
-    define_macros += [('BLAS64', 1)]  # 64 bit blas
-  if not args.int32 and not args.gpu:
-    define_macros += [('DLONG', 1)]  # longs for integer type
+    if system() == "Linux":
+        libraries += ["rt"]
+    if args.float32:
+        define_macros += [("SFLOAT", 1)]  # single precision floating point
+    if args.extraverbose:
+        define_macros += [("VERBOSITY", 999)]  # for debugging
+    if args.blas64:
+        define_macros += [("BLAS64", 1)]  # 64 bit blas
+    if not args.int32 and not args.gpu:
+        define_macros += [("DLONG", 1)]  # longs for integer type
 
-  define_macros += [('COPYAMATRIX', None)]
+    _scs_direct = Extension(
+        name="_scs_direct",
+        sources=sources
+        + glob("scs/linsys/cpu/direct/*.c")
+        + glob("scs/linsys/external/amd/*.c")
+        + glob("scs/linsys/external/qdldl/*.c"),
+        depends=glob("src/*.h"),
+        define_macros=list(define_macros),
+        include_dirs=include_dirs
+        + [
+            "scs/linsys/cpu/direct/",
+            "scs/linsys/external/amd",
+            "scs/linsys/external/dqlql",
+        ],
+        libraries=list(libraries),
+        extra_compile_args=list(extra_compile_args),
+    )
 
-  _scs_direct = Extension(
-      name='_scs_direct',
-      sources=sources + glob('scs/linsys/cpu/direct/*.c') +
-      glob('scs/linsys/external/amd/*.c') +
-      glob('scs/linsys/external/qdldl/*.c'),
-      define_macros=list(define_macros),
-      include_dirs=include_dirs + ['scs/linsys/cpu/direct/',
-          'scs/linsys/external/amd', 'scs/linsys/external/dqlql'],
-      libraries=list(libraries),
-      extra_compile_args=list(extra_compile_args))
+    _scs_indirect = Extension(
+        name="_scs_indirect",
+        sources=sources + glob("scs/linsys/cpu/indirect/*.c"),
+        depends=glob("src/*.h"),
+        define_macros=list(define_macros)
+        + [("PY_INDIRECT", None), ("INDIRECT", 1)],
+        include_dirs=include_dirs + ["scs/linsys/cpu/indirect/"],
+        libraries=list(libraries),
+        extra_compile_args=list(extra_compile_args),
+    )
 
-  _scs_indirect = Extension(
-      name='_scs_indirect',
-      sources=sources + glob('scs/linsys/cpu/indirect/*.c'),
-      define_macros=list(define_macros) + [('PY_INDIRECT', None),
-                                           ('INDIRECT', 1)],
-      include_dirs=include_dirs + ['scs/linsys/cpu/indirect/'],
-      libraries=list(libraries),
-      extra_compile_args=list(extra_compile_args))
+    ext_modules = [_scs_direct, _scs_indirect]
 
-  ext_modules = [_scs_direct, _scs_indirect]
+    if args.gpu:
+        library_dirs = []
+        if system() == "Windows":
+            include_dirs += [os.environ["CUDA_PATH"] + "/include"]
+            library_dirs = [os.environ["CUDA_PATH"] + "/lib/x64"]
+        else:
+            include_dirs += ["/usr/local/cuda/include"]
+            library_dirs = ["/usr/local/cuda/lib", "/usr/local/cuda/lib64"]
+        if args.gpu_atrans:  # Should be True by default
+            define_macros += [("GPU_TRANSPOSE_MAT", 1)]
+        _scs_gpu = Extension(
+            name="_scs_gpu",
+            sources=sources
+            + glob("scs/linsys/gpu/*.c")
+            + glob("scs/linsys/gpu/indirect/*.c"),
+            depends=glob("src/*.h"),
+            define_macros=list(define_macros)
+            + [("PY_GPU", None), ("INDIRECT", 1)],
+            include_dirs=include_dirs
+            + ["scs/linsys/gpu/", "scs/linsys/gpu/indirect"],
+            library_dirs=library_dirs,
+            libraries=libraries + ["cudart", "cublas", "cusparse"],
+            extra_compile_args=list(extra_compile_args),
+        )
+        ext_modules += [_scs_gpu]
 
-  if args.gpu:
-    library_dirs = []
-    if system() == 'Windows':
-      include_dirs += [os.environ['CUDA_PATH'] + '/include']
-      library_dirs = [os.environ['CUDA_PATH'] + '/lib/x64']
-    else:
-      include_dirs += ['/usr/local/cuda/include']
-      library_dirs = ['/usr/local/cuda/lib', '/usr/local/cuda/lib64']
-    if args.gpu_atrans:  # Should be True by default
-       define_macros += [('GPU_TRANSPOSE_MAT', 1)]
-    _scs_gpu = Extension(
-        name='_scs_gpu',
-        sources=sources + glob('scs/linsys/gpu/*.c') + glob('scs/linsys/gpu/indirect/*.c'),
-        define_macros=list(define_macros) + [('PY_GPU', None), ('INDIRECT', 1)],
-        include_dirs=include_dirs + ['scs/linsys/gpu/', 'scs/linsys/gpu/indirect'],
-        library_dirs=library_dirs,
-        libraries=libraries + ['cudart', 'cublas', 'cusparse'],
-        extra_compile_args=list(extra_compile_args))
-    ext_modules += [_scs_gpu]
+    setup(
+        name="scs",
+        version="3.2.0",
+        author="Brendan O'Donoghue",
+        author_email="bodonoghue85@gmail.com",
+        url="http://github.com/cvxgrp/scs",
+        description="scs: splitting conic solver",
+        package_dir={"scs": "src"},
+        packages=["scs"],
+        ext_modules=ext_modules,
+        cmdclass={"build_ext": build_ext_scs},
+        setup_requires=["numpy >= 1.7"],
+        install_requires=["numpy >= 1.7", "scipy >= 0.13.2"],
+        license="MIT",
+        zip_safe=False,
+        # TODO: update this:
+        long_description=(
+            "Solves convex cone programs via operator splitting. "
+            "Can solve: linear programs (LPs), second-order cone "
+            "programs (SOCPs), semidefinite programs (SDPs), "
+            "exponential cone programs (ECPs), and power cone "
+            "programs (PCPs), or problems with any combination of "
+            "those cones. See http://github.com/cvxgrp/scs for "
+            "more details."
+        ),
+    )
 
-  setup(
-      name='scs',
-      version='3.1.0',
-      author='Brendan O\'Donoghue',
-      author_email='bodonoghue85@gmail.com',
-      url='http://github.com/cvxgrp/scs',
-      description='scs: splitting conic solver',
-      package_dir={'scs': 'src'},
-      packages=['scs'],
-      ext_modules=ext_modules,
-      cmdclass={'build_ext': build_ext_scs},
-      setup_requires=['numpy >= 1.7'],
-      install_requires=['numpy >= 1.7', 'scipy >= 0.13.2'],
-      license='MIT',
-      zip_safe=False,
-      # TODO: update this:
-      long_description=('Solves convex cone programs via operator splitting. '
-                        'Can solve: linear programs (LPs), second-order cone '
-                        'programs (SOCPs), semidefinite programs (SDPs), '
-                        'exponential cone programs (ECPs), and power cone '
-                        'programs (PCPs), or problems with any combination of '
-                        'those cones. See http://github.com/cvxgrp/scs for '
-                        'more details.'))
 
 install_scs()
-

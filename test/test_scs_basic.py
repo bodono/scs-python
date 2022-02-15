@@ -1,4 +1,3 @@
-# nost test suite copied initially from ECOS project
 from __future__ import print_function
 import platform
 
@@ -36,11 +35,12 @@ except ImportError:
 
 # global data structures for problem
 c = np.array([-1.0])
-b = np.array([1.0, -0.0])
+b = np.array([1.0, 0.0])
 A = sp.csc_matrix([1.0, -1.0]).T.tocsc()
 data = {"A": A, "b": b, "c": c}
 
-FAIL = 'failure'  # scs code for failure
+FAIL = "failure"  # scs code for failure
+
 
 @pytest.mark.parametrize(
     "cone,use_indirect,expected",
@@ -68,7 +68,9 @@ if platform.python_version_tuple() < ("3", "0", "0"):
         ],
     )
     def test_problems_with_longs(cone, use_indirect, expected):
-        sol = scs.solve(data, cone=cone, use_indirect=use_indirect, verbose=False)
+        sol = scs.solve(
+            data, cone=cone, use_indirect=use_indirect, verbose=False
+        )
         assert_almost_equal(sol["x"][0], expected, decimal=2)
 
 
@@ -85,8 +87,8 @@ def test_failures():
 
     # python 2.6 and before just cast float to int
     if platform.python_version_tuple() >= ("2", "7", "0"):
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             scs.solve(data, {"q": [], "l": 2}, max_iters=1.1)
 
-    sol = scs.solve(data, {"q": [1], "l": 0}, verbose=False)
-    assert sol["info"]["status"] == FAIL
+    with pytest.raises(ValueError):
+        sol = scs.solve(data, {"q": [1], "l": 0}, verbose=False)

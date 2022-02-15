@@ -1,12 +1,6 @@
 name: build
 
-on:
-    pull_request:
-    push:
-        branches:
-            - master
-        tags:
-          - '*'
+on: [push, pull_request]
 
 jobs:
   cleanup-runs:
@@ -102,7 +96,7 @@ jobs:
           echo "DEPLOY=$( [[ $GITHUB_EVENT_NAME == 'push' && $GITHUB_REF == 'refs/tags'* ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV        
 
       - name: Build wheels
-        if: ${{env.DEPLOY == 'True' || env.DEPLOY == 'True'}}
+        if: ${{env.DEPLOY == 'True'}}
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
           CIBW_BUILD: "cp3${{env.PYTHON_SUBVERSION}}-*"

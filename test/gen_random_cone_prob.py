@@ -28,7 +28,9 @@ def gen_infeasible(K, n):
     z = np.random.randn(m)
     y = proj_dual_cone(z, K)  # y = s - z;
     A = np.random.randn(m, n)
-    A = A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y) ** 2  # dense...
+    A = (
+        A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y) ** 2
+    )  # dense...
 
     b = np.random.randn(m)
     b = -b / np.dot(b, y)
@@ -106,14 +108,18 @@ def proj_cone(z, c):
         idx = idx + 3
     # Exp dual
     for i in range(0, c["ed"]):
-        z[idx : idx + 3] = z[idx : idx + 3] + project_exp_bisection(-z[idx : idx + 3])
+        z[idx : idx + 3] = z[idx : idx + 3] + project_exp_bisection(
+            -z[idx : idx + 3]
+        )
         idx = idx + 3
     # Power
     for i in range(0, len(p)):
         if p[i] >= 0:  # primal
             z[idx : idx + 3] = proj_pow(z[idx : idx + 3], p[i])
         else:  # dual
-            z[idx : idx + 3] = z[idx : idx + 3] + proj_pow(-z[idx : idx + 3], -p[i])
+            z[idx : idx + 3] = z[idx : idx + 3] + proj_pow(
+                -z[idx : idx + 3], -p[i]
+            )
         idx = idx + 3
     return z
 
@@ -212,11 +218,11 @@ def calcdxdr(x, xh, rh, r, a):
 
 
 def calc_f(x, y, r, a):
-    return (x ** a) * (y ** (1 - a)) - r
+    return (x**a) * (y ** (1 - a)) - r
 
 
 def calc_fp(x, y, dxdr, dydr, a):
-    return (x ** a) * (y ** (1 - a)) * (a * dxdr / x + (1 - a) * dydr / y) - 1
+    return (x**a) * (y ** (1 - a)) * (a * dxdr / x + (1 - a) * dydr / y) - 1
 
 
 def project_exp_bisection(v):
@@ -225,7 +231,9 @@ def project_exp_bisection(v):
     s = v[1]
     t = v[2]
     # v in cl(Kexp)
-    if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (r <= 0 and s == 0 and t >= 0):
+    if (s > 0 and t > 0 and r <= s * np.log(t / s)) or (
+        r <= 0 and s == 0 and t >= 0
+    ):
         return v
     # -v in Kexp^*
     if (-r < 0 and r * np.exp(s / r) <= -np.exp(1) * t) or (
@@ -286,8 +294,8 @@ def solve_with_rho(v, rho, w):
 def newton_exp_onz(rho, y_hat, z_hat, w):
     t = max(max(w - z_hat, -z_hat), 1e-6)
     for iter in range(0, 100):
-        f = (1 / rho ** 2) * t * (t + z_hat) - y_hat / rho + np.log(t / rho) + 1
-        fp = (1 / rho ** 2) * (2 * t + z_hat) + 1 / t
+        f = (1 / rho**2) * t * (t + z_hat) - y_hat / rho + np.log(t / rho) + 1
+        fp = (1 / rho**2) * (2 * t + z_hat) + 1 / t
 
         t = t - f / fp
         if t <= -z_hat:
