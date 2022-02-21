@@ -75,3 +75,9 @@ def test_warm_start(use_indirect):
     sol = solver.solve()
     assert_almost_equal(sol["x"][0], 1.0, decimal=2)
     assert_array_less(sol["info"]["iter"], 10)
+
+    sol = solver.solve(x=None)
+    sol = solver.solve(x=np.array([7.0]), y=None, s=None)
+
+    with pytest.raises(ValueError):
+        sol = solver.solve(x=np.array([1.0, 2.0]))

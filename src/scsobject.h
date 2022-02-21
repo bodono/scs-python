@@ -96,20 +96,15 @@ static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
 }
 
 /* If warm start x0 is set, copy it to input location x */
-/* If not set, then do nothing */
 static scs_int get_warm_start(scs_float *x, scs_int l, PyArrayObject *x0) {
-  if ((void *)x0 != Py_None) {
-    if (!PyArray_ISFLOAT(x0) || PyArray_NDIM(x0) != 1 ||
-        PyArray_DIM(x0, 0) != l) {
-      PySys_WriteStderr("Error parsing warm-start input\n");
-      return 0;
-    } else {
-      PyArrayObject *px0 = scs_get_contiguous(x0, scs_get_float_type());
-      memcpy(x, (scs_float *)PyArray_DATA(px0), l * sizeof(scs_float));
-      Py_DECREF(px0);
-      return 1;
-    }
+  if (!PyArray_ISFLOAT(x0) || PyArray_NDIM(x0) != 1 ||
+      PyArray_DIM(x0, 0) != l) {
+    PySys_WriteStderr("Error parsing warm-start input\n");
+    return -1;
   }
+  PyArrayObject *px0 = scs_get_contiguous(x0, scs_get_float_type());
+  memcpy(x, (scs_float *)PyArray_DATA(px0), l * sizeof(scs_float));
+  Py_DECREF(px0);
   return 0;
 }
 
@@ -609,9 +604,22 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   scs_int _warm_start = (scs_int)PyObject_IsTrue(warm_start);
 
   if (_warm_start) {
-    get_warm_start(self->sol->x, self->n, warm_x);
-    get_warm_start(self->sol->y, self->m, warm_y);
-    get_warm_start(self->sol->s, self->m, warm_s);
+    /* If any of these of missing, we use the values in sol */
+    if ((void *)warm_x != Py_None) {
+      if (get_warm_start(self->sol->x, self->n, warm_x) < 0) {
+        return none_with_error("Unable to parse x warm-start");
+      }
+    }
+    if ((void *)warm_y != Py_None) {
+      if (get_warm_start(self->sol->y, self->n, warm_y) < 0) {
+        return none_with_error("Unable to parse y warm-start");
+      }
+    }
+    if ((void *)warm_s != Py_None) {
+      if (get_warm_start(self->sol->s, self->n, warm_s) < 0) {
+        return none_with_error("Unable to parse s warm-start");
+      }
+    }
   }
 
   PyObject *x, *y, *s, *return_dict, *info_dict;
