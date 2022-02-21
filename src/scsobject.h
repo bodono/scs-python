@@ -621,6 +621,8 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
       }
     }
   }
+  /* else: SCS will overwite sol if _warm_start is false */
+  /* so we don't need to set to zeros here */
 
   PyObject *x, *y, *s, *return_dict, *info_dict;
   scs_float *_x, *_y, *_s;
