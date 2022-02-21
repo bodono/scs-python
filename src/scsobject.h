@@ -611,12 +611,12 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
       }
     }
     if ((void *)warm_y != Py_None) {
-      if (get_warm_start(self->sol->y, self->n, warm_y) < 0) {
+      if (get_warm_start(self->sol->y, self->m, warm_y) < 0) {
         return none_with_error("Unable to parse y warm-start");
       }
     }
     if ((void *)warm_s != Py_None) {
-      if (get_warm_start(self->sol->s, self->n, warm_s) < 0) {
+      if (get_warm_start(self->sol->s, self->m, warm_s) < 0) {
         return none_with_error("Unable to parse s warm-start");
       }
     }
