@@ -184,14 +184,14 @@ def install_scs(**kwargs):
     _scs_direct = Extension(
         name="_scs_direct",
         sources=sources
-        + glob("scs/linsys/cpu/direct/*.c")
+        + glob("scs/linsys/mkl/direct/*.c")
         + glob("scs/linsys/external/amd/*.c")
         + glob("scs/linsys/external/qdldl/*.c"),
         depends=glob("src/*.h"),
         define_macros=list(define_macros),
         include_dirs=include_dirs
         + [
-            "scs/linsys/cpu/direct/",
+            "scs/linsys/mkl/direct/",
             "scs/linsys/external/amd",
             "scs/linsys/external/dqlql",
         ],
@@ -201,16 +201,17 @@ def install_scs(**kwargs):
 
     _scs_indirect = Extension(
         name="_scs_indirect",
-        sources=sources + glob("scs/linsys/cpu/indirect/*.c"),
+        sources=sources + glob("scs/linsys/mkl/indirect/*.c"),
         depends=glob("src/*.h"),
         define_macros=list(define_macros)
         + [("PY_INDIRECT", None), ("INDIRECT", 1)],
-        include_dirs=include_dirs + ["scs/linsys/cpu/indirect/"],
+        include_dirs=include_dirs + ["scs/linsys/mkl/indirect/"],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
     )
 
-    ext_modules = [_scs_direct, _scs_indirect]
+    #ext_modules = [_scs_direct, _scs_indirect]
+    ext_modules = [_scs_direct]
 
     if args.gpu:
         library_dirs = []
