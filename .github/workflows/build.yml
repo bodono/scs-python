@@ -47,7 +47,7 @@ jobs:
           fi
       - name: Test
         run: |
-          python setup.py install
+          python setup.py install --scs --mkl
           pytest
           rm -rf build/
       - name: Build and test windows wheels
