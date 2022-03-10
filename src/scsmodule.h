@@ -47,6 +47,8 @@ static PyObject *moduleinit(void) {
   m = Py_InitModule("_scs_indirect", scs_module_methods);
 #elif defined PY_GPU
   m = Py_InitModule("_scs_gpu", scs_module_methods);
+#elif defined PY_MKL
+  m = Py_InitModule("_scs_mkl", scs_module_methods);
 #else
   m = Py_InitModule("_scs_direct", scs_module_methods);
 #endif
@@ -75,6 +77,8 @@ PyMODINIT_FUNC
 PyInit__scs_indirect(void)
 #elif defined PY_GPU
 PyInit__scs_gpu(void)
+#elif defined PY_MKL
+PyInit__scs_mkl(void)
 #else
 PyInit__scs_direct(void)
 #endif
@@ -88,6 +92,8 @@ PyMODINIT_FUNC
 init_scs_indirect(void)
 #elif defined PY_GPU
 init_scs_gpu(void)
+#elif defined PY_MKL
+init_scs_mkl(void)
 #else
 init_scs_direct(void)
 #endif
