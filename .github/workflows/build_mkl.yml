@@ -36,11 +36,7 @@ jobs:
           channels: conda-forge,anaconda
       - name: Install dependencies
         run: |
-          if [[ "$PYTHON_VERSION" == "3.6" ]] || [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]] || [[ "$PYTHON_VERSION" == "3.9" ]]; then
-            conda install mkl scipy=1.5 numpy=1.19 pytest libblas=*=*mkl
-          elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-            conda install mkl scipy=1.7 numpy=1.21 pytest libblas=*=*mkl
-          fi
+          conda install mkl scipy numpy pytest libblas=*=*mkl
       - name: Test
         run: |
           python setup.py install --scs --mkl
