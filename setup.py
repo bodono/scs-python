@@ -105,11 +105,13 @@ def get_infos():
     blas_info = get_info("blas_opt")
     if not blas_info:
         blas_info = get_info("blas")
+    print("Blas info:")
     print(blas_info)
 
     lapack_info = get_info("lapack_opt")
     if not lapack_info:
         lapack_info = get_info("lapack")
+    print("Lapack info:")
     print(lapack_info)
 
     return blas_info, lapack_info
