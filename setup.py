@@ -244,26 +244,26 @@ def install_scs(**kwargs):
     if args.mkl:
         # TODO: This heuristic attempts to determine if MKL is installed.
         # Replace with something better.
-        blas_info, lapack_info = get_infos()
-        blibs = blas_info["libraries"] + lapack_info["libraries"]
-        if not any("mkl" in s for s in blibs):
-            print(
-                "MKL not found in blas / lapack info dicts, skipping SCS-MKL "
-                "install. Please install MKL and retry. If you think this is "
-                "an error please let us know by opening GitHub issue."
-            )
-        else:
-            # MKL should be included in the libraries already:
-            _scs_mkl = Extension(
-                name="_scs_mkl",
-                sources=sources + glob("scs/linsys/mkl/direct/*.c"),
-                depends=glob("src/*.h"),
-                define_macros=list(define_macros) + [("PY_MKL", None)],
-                include_dirs=include_dirs + ["scs/linsys/mkl/direct/"],
-                libraries=list(libraries),
-                extra_compile_args=list(extra_compile_args),
-            )
-            ext_modules += [_scs_mkl]
+        # blas_info, lapack_info = get_infos()
+        # blibs = blas_info["libraries"] + lapack_info["libraries"]
+        # if not any("mkl" in s for s in blibs):
+        #     print(
+        #         "MKL not found in blas / lapack info dicts, skipping SCS-MKL "
+        #         "install. Please install MKL and retry. If you think this is "
+        #         "an error please let us know by opening GitHub issue."
+        #     )
+        # else:
+        # MKL should be included in the libraries already:
+        _scs_mkl = Extension(
+            name="_scs_mkl",
+            sources=sources + glob("scs/linsys/mkl/direct/*.c"),
+            depends=glob("src/*.h"),
+            define_macros=list(define_macros) + [("PY_MKL", None)],
+            include_dirs=include_dirs + ["scs/linsys/mkl/direct/"],
+            libraries=list(libraries),
+            extra_compile_args=list(extra_compile_args),
+        )
+        ext_modules += [_scs_mkl]
 
     setup(
         name="scs",
