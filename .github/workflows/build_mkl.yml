@@ -1,0 +1,48 @@
+name: build_mkl
+
+on: [push, pull_request]
+
+jobs:
+  cleanup-runs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: rokroskar/workflow-run-cleanup-action@master
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    if: "!startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/master'"
+
+  build:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-18.04, macos-10.15, windows-2022 ]
+        python-version: [3.6, 3.7, 3.8, 3.9, "3.10" ]
+
+    env:
+      PYTHON_VERSION: ${{ matrix.python-version }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,anaconda
+      - name: Install dependencies
+        run: |
+          if [[ "$PYTHON_VERSION" == "3.6" ]] || [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]] || [[ "$PYTHON_VERSION" == "3.9" ]]; then
+            conda install scipy=1.5 numpy=1.19 pytest mkl
+          elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
+            conda install scipy=1.7 numpy=1.21 pytest mkl
+          fi
+      - name: Test
+        run: |
+          python setup.py install --scs --mkl
+          pytest
+          rm -rf build/
