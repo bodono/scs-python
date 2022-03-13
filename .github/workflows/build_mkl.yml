@@ -19,7 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, macos-10.15, windows-2022 ]
+        # Windows not reporting MKL location correctly
+        os: [ ubuntu-18.04, macos-10.15 ] # windows-2022
         python-version: [3.6, 3.7, 3.8, 3.9, "3.10" ]
 
     env:
@@ -36,7 +37,7 @@ jobs:
           channels: conda-forge,anaconda
       - name: Install dependencies
         run: |
-          conda install mkl scipy numpy pytest libblas=*=*mkl
+          conda install mkl scipy numpy pytest
       - name: Test
         run: |
           python setup.py install --scs --mkl

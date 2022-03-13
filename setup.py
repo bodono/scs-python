@@ -245,8 +245,9 @@ def install_scs(**kwargs):
         # TODO: This heuristic attempts to determine if MKL is installed.
         # Replace with something better.
         blas_info, lapack_info = get_infos()
-        blibs = blas_info["libraries"] + lapack_info["libraries"]
-        if not any("mkl" in s for s in blibs):
+        if "libraries" in blas_info and "libraries" in lapack_info:
+            blibs = blas_info["libraries"] + lapack_info["libraries"]
+        if not any("mkl" in s for s in (blibs or [])):
             print(
                 "MKL not found in blas / lapack info dicts, skipping SCS-MKL "
                 "install. Please install MKL and retry. If you think this is "
