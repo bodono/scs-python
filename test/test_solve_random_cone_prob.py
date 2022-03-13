@@ -33,7 +33,7 @@ np.random.seed(1)
 
 # cone:
 K = {
-    "f": 10,
+    "z": 10,
     "l": 15,
     "q": [5, 10, 0, 1],
     "s": [3, 4, 0, 0, 1, 10],
@@ -48,8 +48,8 @@ params = {"verbose": True, "eps_abs": 1e-5, "eps_rel": 1e-5, "eps_infeas": 1e-5}
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_feasible(use_indirect, gpu):
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-
-    sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    solver = scs.SCS(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    sol = solver.solve()
     x = sol["x"]
     y = sol["y"]
     s = sol["s"]
@@ -69,7 +69,8 @@ def test_solve_feasible(use_indirect, gpu):
 @pytest.mark.parametrize("use_indirect,gpu", flags)
 def test_solve_infeasible(use_indirect, gpu):
     data = tools.gen_infeasible(K, n=m // 2)
-    sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    solver = scs.SCS(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    sol = solver.solve()
     y = sol["y"]
     np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
     np.testing.assert_array_less(data["b"].T @ y, -0.1)
@@ -80,7 +81,8 @@ def test_solve_infeasible(use_indirect, gpu):
 @pytest.mark.parametrize("use_indirect,gpu", [(False, False)])
 def test_solve_unbounded(use_indirect, gpu):
     data = tools.gen_unbounded(K, n=m // 2)
-    sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    solver = scs.SCS(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    sol = solver.solve()
     x = sol["x"]
     s = sol["s"]
     np.testing.assert_array_less(np.linalg.norm(data["A"] @ x + s), 1e-3)

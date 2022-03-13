@@ -63,7 +63,7 @@ opts = {
     "eps_infeas": 1e-5,
 }
 K = {
-    "f": 10,
+    "z": 10,
     "l": 25,
     "q": [5, 10, 0, 1],
     "s": [2, 1, 2, 0, 1],
@@ -78,8 +78,8 @@ m = tools.get_scs_cone_dims(K)
 def test_feasible(use_indirect):
     for i in range(num_feas):
         data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-
-        sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
+        solver = scs.SCS(data, K, use_indirect=use_indirect, **opts)
+        sol = solver.solve()
         assert_almost_equal(np.dot(data["c"], sol["x"]), p_star, decimal=2)
         assert_almost_equal(np.dot(-data["b"], sol["y"]), p_star, decimal=2)
 
@@ -88,8 +88,8 @@ def test_feasible(use_indirect):
 def test_infeasible(use_indirect):
     for i in range(num_infeas):
         data = tools.gen_infeasible(K, n=m // 2)
-
-        sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
+        solver = scs.SCS(data, K, use_indirect=use_indirect, **opts)
+        sol = solver.solve()
         check_infeasible(sol)
 
 
@@ -98,6 +98,6 @@ def test_infeasible(use_indirect):
 def test_unbounded(use_indirect):
     for i in range(num_unb):
         data = tools.gen_unbounded(K, n=m // 2)
-
-        sol = scs.solve(data, K, use_indirect=use_indirect, **opts)
+        solver = scs.SCS(data, K, use_indirect=use_indirect, **opts)
+        sol = solver.solve()
         check_unbounded(sol)

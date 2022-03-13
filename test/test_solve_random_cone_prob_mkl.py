@@ -25,7 +25,7 @@ np.random.seed(1)
 
 # cone:
 K = {
-    "f": 10,
+    "z": 10,
     "l": 15,
     "q": [5, 10, 0, 1],
     "s": [3, 4, 0, 0, 1, 10],
@@ -42,8 +42,8 @@ try:
 
     def test_solve_feasible():
         data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-
-        sol = scs.solve(data, K, mkl=True, **params)
+        solver = scs.SCS(data, K, mkl=True, **params)
+        sol = solver.solve()
         x = sol["x"]
         y = sol["y"]
         s = sol["s"]
@@ -61,7 +61,8 @@ try:
 
     def test_solve_infeasible():
         data = tools.gen_infeasible(K, n=m // 2)
-        sol = scs.solve(data, K, mkl=True, **params)
+        solver = scs.SCS(data, K, mkl=True, **params)
+        sol = solver.solve()
         y = sol["y"]
         np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
         np.testing.assert_array_less(data["b"].T @ y, -0.1)
@@ -69,7 +70,8 @@ try:
 
     def test_solve_unbounded():
         data = tools.gen_unbounded(K, n=m // 2)
-        sol = scs.solve(data, K, mkl=True, **params)
+        solver = scs.SCS(data, K, mkl=True, **params)
+        sol = solver.solve()
         x = sol["x"]
         s = sol["s"]
         np.testing.assert_array_less(np.linalg.norm(data["A"] @ x + s), 1e-3)
