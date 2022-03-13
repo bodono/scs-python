@@ -42,6 +42,14 @@ cone = {"l": 2}
 
 
 @pytest.mark.parametrize("use_indirect", [False, True])
+def test_backwards_compatibility(use_indirect):
+    # max x
+    # s.t 0 <= x <= 1
+    sol = scs.solve(data, cone, use_indirect=use_indirect, verbose=False)
+    assert_almost_equal(sol["x"][0], 1.0, decimal=2)
+
+
+@pytest.mark.parametrize("use_indirect", [False, True])
 def test_update(use_indirect):
     # max x
     # s.t 0 <= x <= 1

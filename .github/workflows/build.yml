@@ -1,6 +1,12 @@
 name: build
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
 
 jobs:
   cleanup-runs:
@@ -10,6 +16,48 @@ jobs:
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
     if: "!startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/master'"
+
+  lint:
+    name: black formatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: rickstaa/action-black@v1
+        with:
+          black_args: ". --line-length=80 --check"
+
+  build_mkl:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows not reporting MKL location correctly
+        os: [ ubuntu-18.04, macos-10.15 ] # windows-2022
+        python-version: [3.6, 3.7, 3.8, 3.9, "3.10" ]
+
+    env:
+      PYTHON_VERSION: ${{ matrix.python-version }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,anaconda
+      - name: Install dependencies
+        run: |
+          conda install mkl scipy numpy pytest
+      - name: Test
+        run: |
+          python setup.py install --scs --mkl
+          pytest
+          rm -rf build/
 
   build:
     runs-on: ${{ matrix.os }}

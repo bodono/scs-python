@@ -52,7 +52,8 @@ FAIL = "failure"  # scs code for failure
     ],
 )
 def test_problems(cone, use_indirect, expected):
-    sol = scs.solve(data, cone=cone, use_indirect=use_indirect, verbose=False)
+    solver = scs.SCS(data, cone=cone, use_indirect=use_indirect, verbose=False)
+    sol = solver.solve()
     assert_almost_equal(sol["x"][0], expected, decimal=2)
 
 

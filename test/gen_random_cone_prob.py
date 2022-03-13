@@ -60,7 +60,7 @@ def pos(x):
 
 
 def get_scs_cone_dims(K):
-    l = K["f"] + K["l"]
+    l = K["z"] + K["l"]
     for i in range(0, len(K["q"])):
         l = l + K["q"][i]
 
@@ -83,7 +83,7 @@ def get_sd_cone_size(n):
 
 def proj_cone(z, c):
     z = np.copy(z)
-    free_len = c["f"]
+    free_len = c["z"]
     lp_len = c["l"]
     q = c["q"]
     s = c["s"]
