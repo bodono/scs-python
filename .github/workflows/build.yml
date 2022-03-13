@@ -48,7 +48,7 @@ jobs:
       - name: Test
         run: |
           python setup.py install
-          pytest --ignore=test/test_solve_random_cone_prob_mkl.py
+          pytest
           rm -rf build/
       - name: Build and test windows wheels
         if: ${{env.DEPLOY == 'True' && startsWith(matrix.os, 'windows')}}
@@ -57,7 +57,7 @@ jobs:
           python -m pip install delvewheel
           delvewheel repair dist/*whl
           pip install wheelhouse/*whl --force-reinstall
-          pytest --ignore=test/test_solve_random_cone_prob_mkl.py
+          pytest
       - name: Upload artifacts to github
         if: ${{env.DEPLOY == 'True' && startsWith(matrix.os, 'windows')}}
         uses: actions/upload-artifact@v1
@@ -109,7 +109,7 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: CFLAGS='-Wno-error=implicit-function-declaration'
           CIBW_BUILD_VERBOSITY: 3
           CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: pytest {package} --ignore=test/test_solve_random_cone_prob_mkl.py
+          CIBW_TEST_COMMAND: pytest {package}
         uses: joerick/cibuildwheel@v2.3.1
 
       - name: Build source
