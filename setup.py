@@ -30,6 +30,15 @@ parser.add_argument(
     help="Also compile the GPU CUDA version of SCS",
 )
 parser.add_argument(
+    "--mkl",
+    dest="mkl",
+    action="store_true",
+    default=False,
+    help="Also compile the MKL version of SCS. MKL must be installed for this "
+    "to succeed. This option will be removed soon after which we shall "
+    "install the MKL version by default if MKL is available.",
+)
+parser.add_argument(
     "--float",
     dest="float32",
     action="store_true",
@@ -98,11 +107,13 @@ def get_infos():
     blas_info = get_info("blas_opt")
     if not blas_info:
         blas_info = get_info("blas")
+    print("Blas info:")
     print(blas_info)
 
     lapack_info = get_info("lapack_opt")
     if not lapack_info:
         lapack_info = get_info("lapack")
+    print("Lapack info:")
     print(lapack_info)
 
     return blas_info, lapack_info
@@ -160,13 +171,7 @@ class build_ext_scs(build_ext):
 def install_scs(**kwargs):
     extra_compile_args = ["-O3"]
     libraries = []
-    sources = (
-        [
-            "src/scspy.c",
-        ]
-        + glob("scs/src/*.c")
-        + glob("scs/linsys/*.c")
-    )
+    sources = ["src/scspy.c"] + glob("scs/src/*.c") + glob("scs/linsys/*.c")
     include_dirs = ["scs/include", "scs/linsys"]
     define_macros = [("PYTHON", None), ("CTRLC", 1)]
 
@@ -238,9 +243,34 @@ def install_scs(**kwargs):
         )
         ext_modules += [_scs_gpu]
 
+    if args.mkl:
+        # TODO: This heuristic attempts to determine if MKL is installed.
+        # Replace with something better.
+        blas_info, lapack_info = get_infos()
+        if "libraries" in blas_info and "libraries" in lapack_info:
+            blibs = blas_info["libraries"] + lapack_info["libraries"]
+        if not any("mkl" in s for s in (blibs or [])):
+            print(
+                "MKL not found in blas / lapack info dicts, skipping SCS-MKL "
+                "install. Please install MKL and retry. If you think this is "
+                "an error please let us know by opening GitHub issue."
+            )
+        else:
+            # MKL should be included in the libraries already:
+            _scs_mkl = Extension(
+                name="_scs_mkl",
+                sources=sources + glob("scs/linsys/mkl/direct/*.c"),
+                depends=glob("src/*.h"),
+                define_macros=list(define_macros) + [("PY_MKL", None)],
+                include_dirs=include_dirs + ["scs/linsys/mkl/direct/"],
+                libraries=list(libraries),
+                extra_compile_args=list(extra_compile_args),
+            )
+            ext_modules += [_scs_mkl]
+
     setup(
         name="scs",
-        version="3.2.0",
+        version="3.2.1",
         author="Brendan O'Donoghue",
         author_email="bodonoghue85@gmail.com",
         url="http://github.com/cvxgrp/scs",
@@ -255,12 +285,12 @@ def install_scs(**kwargs):
         zip_safe=False,
         # TODO: update this:
         long_description=(
-            "Solves convex cone programs via operator splitting. "
+            "Solves convex quadratic cone programs via operator splitting. "
             "Can solve: linear programs (LPs), second-order cone "
             "programs (SOCPs), semidefinite programs (SDPs), "
             "exponential cone programs (ECPs), and power cone "
             "programs (PCPs), or problems with any combination of "
-            "those cones. See http://github.com/cvxgrp/scs for "
+            "those cones. See https://www.cvxgrp.org/scs/ for "
             "more details."
         ),
     )
