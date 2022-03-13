@@ -34,7 +34,9 @@ parser.add_argument(
     dest="mkl",
     action="store_true",
     default=False,
-    help="Also compile the MKL version of SCS (this option will be removed soon)",
+    help="Also compile the MKL version of SCS. MKL must be installed for this "
+    "to succeed. This option will be removed soon after which we shall "
+    "install the MKL version by default if MKL is available.",
 )
 parser.add_argument(
     "--float",
