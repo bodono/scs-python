@@ -18,7 +18,7 @@ def main():
     except ImportError:
         pass
 
-    for (use_indirect, gpu) in flags:
+    for use_indirect, gpu in flags:
         np.random.seed(1)
         solve_feasible(use_indirect, gpu)
         solve_infeasible(use_indirect, gpu)

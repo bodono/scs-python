@@ -1,18 +1,13 @@
-from __future__ import print_function
-from distutils.msvccompiler import MSVCCompiler
 from glob import glob
 
 from platform import system
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-import shutil
-import tempfile
 import argparse
 import os
-import subprocess
 import sys
 
-SCS_ARG_MARK = "--scs"
+SCS_ARG_MARK = "--scs"  # used to pass custom arguments to setup
 
 parser = argparse.ArgumentParser(description="Compilation args for SCS.")
 parser.add_argument(
@@ -37,6 +32,15 @@ parser.add_argument(
     help="Also compile the MKL version of SCS. MKL must be installed for this "
     "to succeed. This option will be removed soon after which we shall "
     "install the MKL version by default if MKL is available.",
+)
+parser.add_argument(
+    "--openmp",
+    dest="openmp",
+    action="store_true",
+    default=False,
+    help="Compile with OpenMP parallelization enabled. This can make SCS"
+    "faster, but requires a compiler with openMP support, the user "
+    "must control how many threads OpenMP uses.",
 )
 parser.add_argument(
     "--float",
@@ -170,10 +174,15 @@ class build_ext_scs(build_ext):
 
 def install_scs(**kwargs):
     extra_compile_args = ["-O3"]
+    extra_link_args = []
     libraries = []
     sources = ["src/scspy.c"] + glob("scs/src/*.c") + glob("scs/linsys/*.c")
     include_dirs = ["scs/include", "scs/linsys"]
     define_macros = [("PYTHON", None), ("CTRLC", 1)]
+    if args.openmp:
+        extra_compile_args += ["-fopenmp"]
+        extra_link_args += ["-fopenmp"]
+        # define_macros += [("_OPENMP", None)]  # TODO: do we need this?
 
     if system() == "Linux":
         libraries += ["rt"]
@@ -202,6 +211,7 @@ def install_scs(**kwargs):
         ],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
+        extra_link_args=list(extra_link_args),
     )
 
     _scs_indirect = Extension(
@@ -213,6 +223,7 @@ def install_scs(**kwargs):
         include_dirs=include_dirs + ["scs/linsys/cpu/indirect/"],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
+        extra_link_args=list(extra_link_args),
     )
 
     ext_modules = [_scs_direct, _scs_indirect]
@@ -240,37 +251,40 @@ def install_scs(**kwargs):
             library_dirs=library_dirs,
             libraries=libraries + ["cudart", "cublas", "cusparse"],
             extra_compile_args=list(extra_compile_args),
+            extra_link_args=list(extra_link_args),
         )
         ext_modules += [_scs_gpu]
 
     if args.mkl:
         # TODO: This heuristic attempts to determine if MKL is installed.
         # Replace with something better.
+        blibs = None
         blas_info, lapack_info = get_infos()
         if "libraries" in blas_info and "libraries" in lapack_info:
             blibs = blas_info["libraries"] + lapack_info["libraries"]
         if not any("mkl" in s for s in (blibs or [])):
-            print(
-                "MKL not found in blas / lapack info dicts, skipping SCS-MKL "
-                "install. Please install MKL and retry. If you think this is "
-                "an error please let us know by opening GitHub issue."
+            raise ValueError(
+                "MKL not found in blas / lapack info dicts so cannot install "
+                "MKL-linked version of SCS. Please install MKL and retry. "
+                "If you think this is an error please let us know by opening "
+                "a GitHub issue."
             )
-        else:
-            # MKL should be included in the libraries already:
-            _scs_mkl = Extension(
-                name="_scs_mkl",
-                sources=sources + glob("scs/linsys/mkl/direct/*.c"),
-                depends=glob("src/*.h"),
-                define_macros=list(define_macros) + [("PY_MKL", None)],
-                include_dirs=include_dirs + ["scs/linsys/mkl/direct/"],
-                libraries=list(libraries),
-                extra_compile_args=list(extra_compile_args),
-            )
-            ext_modules += [_scs_mkl]
+        # MKL should be included in the libraries already:
+        _scs_mkl = Extension(
+            name="_scs_mkl",
+            sources=sources + glob("scs/linsys/mkl/direct/*.c"),
+            depends=glob("src/*.h"),
+            define_macros=list(define_macros) + [("PY_MKL", None)],
+            include_dirs=include_dirs + ["scs/linsys/mkl/direct/"],
+            libraries=list(libraries),
+            extra_compile_args=list(extra_compile_args),
+            extra_link_args=list(extra_link_args),
+        )
+        ext_modules += [_scs_mkl]
 
     setup(
         name="scs",
-        version="3.2.2",
+        version="3.2.3",
         author="Brendan O'Donoghue",
         author_email="bodonoghue85@gmail.com",
         url="http://github.com/cvxgrp/scs",
