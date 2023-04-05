@@ -182,7 +182,7 @@ def install_scs(**kwargs):
     if args.openmp:
         extra_compile_args += ["-fopenmp"]
         extra_link_args += ["-fopenmp"]
-        define_macros += [("_OPENMP", None)]  # TODO: do we need this?
+        # define_macros += [("_OPENMP", None)]  # TODO: do we need this?
 
     if system() == "Linux":
         libraries += ["rt"]
