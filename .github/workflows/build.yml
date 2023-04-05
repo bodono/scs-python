@@ -96,7 +96,7 @@ jobs:
           fi
       - name: Test
         run: |
-          pip install . --verbose
+          python setup.py install
           pytest
           rm -rf build/
       - name: Build and test windows wheels
