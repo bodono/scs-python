@@ -34,6 +34,15 @@ parser.add_argument(
     "install the MKL version by default if MKL is available.",
 )
 parser.add_argument(
+    "--openmp",
+    dest="openmp",
+    action="store_true",
+    default=False,
+    help="Compile with OpenMP parallelization enabled. This can make SCS"
+    "faster, but requires a compiler with openMP support, the user "
+    "must control how many threads OpenMP uses.",
+)
+parser.add_argument(
     "--float",
     dest="float32",
     action="store_true",
@@ -165,6 +174,10 @@ class build_ext_scs(build_ext):
 
 def install_scs(**kwargs):
     extra_compile_args = ["-O3"]
+    extra_link_args = []
+    if args.openmp:
+        extra_compile_args += ["-fopenmp"]
+        extra_link_args += ["-fopenmp"]
     libraries = []
     sources = ["src/scspy.c"] + glob("scs/src/*.c") + glob("scs/linsys/*.c")
     include_dirs = ["scs/include", "scs/linsys"]
@@ -197,6 +210,7 @@ def install_scs(**kwargs):
         ],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
+        extra_link_args=list(extra_link_args),
     )
 
     _scs_indirect = Extension(
@@ -208,6 +222,7 @@ def install_scs(**kwargs):
         include_dirs=include_dirs + ["scs/linsys/cpu/indirect/"],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
+        extra_link_args=list(extra_link_args),
     )
 
     ext_modules = [_scs_direct, _scs_indirect]
@@ -235,6 +250,7 @@ def install_scs(**kwargs):
             library_dirs=library_dirs,
             libraries=libraries + ["cudart", "cublas", "cusparse"],
             extra_compile_args=list(extra_compile_args),
+            extra_link_args=list(extra_link_args),
         )
         ext_modules += [_scs_gpu]
 
@@ -261,6 +277,7 @@ def install_scs(**kwargs):
             include_dirs=include_dirs + ["scs/linsys/mkl/direct/"],
             libraries=list(libraries),
             extra_compile_args=list(extra_compile_args),
+            extra_link_args=list(extra_link_args),
         )
         ext_modules += [_scs_mkl]
 
