@@ -54,7 +54,7 @@ jobs:
           conda install mkl scipy numpy pytest
       - name: Test
         run: |
-          python setup.py install --user --scs --mkl
+          python setup.py install --scs --mkl
           pytest
           rm -rf build/
 
@@ -96,7 +96,7 @@ jobs:
           fi
       - name: Test
         run: |
-          python setup.py install --user
+          python setup.py install
           pytest
           rm -rf build/
       - name: Build and test windows wheels
