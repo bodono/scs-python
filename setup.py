@@ -247,7 +247,7 @@ def install_scs(**kwargs):
             blibs = blas_info["libraries"] + lapack_info["libraries"]
         if not any("mkl" in s for s in (blibs or [])):
             raise ValueError(
-                "MKL not found in blas / lapack info dicts so cannot install"
+                "MKL not found in blas / lapack info dicts so cannot install "
                 "MKL-linked version of SCS. Please install MKL and retry. "
                 "If you think this is an error please let us know by opening "
                 "a GitHub issue."
