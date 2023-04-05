@@ -7,7 +7,7 @@ import argparse
 import os
 import sys
 
-SCS_ARG_MARK = "--scs"
+SCS_ARG_MARK = "--scs"  # used to pass custom arguments to setup
 
 parser = argparse.ArgumentParser(description="Compilation args for SCS.")
 parser.add_argument(
