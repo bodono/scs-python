@@ -52,6 +52,7 @@ jobs:
       - name: Install dependencies
         run: |
           conda install mkl scipy numpy pytest
+          conda install "libblas=*=*mkl"
       - name: Test
         run: |
           python setup.py install --scs --mkl
