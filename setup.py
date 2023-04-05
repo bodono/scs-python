@@ -1,15 +1,10 @@
-from __future__ import print_function
-from distutils.msvccompiler import MSVCCompiler
 from glob import glob
 
 from platform import system
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-import shutil
-import tempfile
 import argparse
 import os
-import subprocess
 import sys
 
 SCS_ARG_MARK = "--scs"
