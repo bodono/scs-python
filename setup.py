@@ -175,13 +175,14 @@ class build_ext_scs(build_ext):
 def install_scs(**kwargs):
     extra_compile_args = ["-O3"]
     extra_link_args = []
-    if args.openmp:
-        extra_compile_args += ["-fopenmp"]
-        extra_link_args += ["-fopenmp"]
     libraries = []
     sources = ["src/scspy.c"] + glob("scs/src/*.c") + glob("scs/linsys/*.c")
     include_dirs = ["scs/include", "scs/linsys"]
     define_macros = [("PYTHON", None), ("CTRLC", 1)]
+    if args.openmp:
+        extra_compile_args += ["-fopenmp"]
+        extra_link_args += ["-fopenmp"]
+        define_macros += [("_OPENMP", None)]  # TODO: do we need this?
 
     if system() == "Linux":
         libraries += ["rt"]
