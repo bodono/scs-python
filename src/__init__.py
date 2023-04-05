@@ -23,6 +23,7 @@ UNFINISHED = 0  # never returned, used as placeholder
 SOLVED = 1  # problem solved to desired accuracy
 SOLVED_INACCURATE = 2  # SCS best guess solved
 
+
 # Choose which SCS to import based on settings.
 def _select_scs_module(stgs):
     if stgs.pop("gpu", False):  # False by default
