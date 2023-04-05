@@ -54,7 +54,6 @@ jobs:
           conda install mkl scipy numpy pytest
       - name: Test
         run: |
-          pip install --upgrade pip
           python setup.py install --scs --mkl
           pytest
           rm -rf build/
@@ -97,14 +96,12 @@ jobs:
           fi
       - name: Test
         run: |
-          pip install --upgrade pip
           python setup.py install
           pytest
           rm -rf build/
       - name: Build and test windows wheels
         if: ${{env.DEPLOY == 'True' && startsWith(matrix.os, 'windows')}}
         run: |
-          pip install --upgrade pip
           python setup.py bdist_wheel
           python -m pip install delvewheel
           delvewheel repair dist/*whl
@@ -167,7 +164,6 @@ jobs:
       - name: Build source
         if: ${{env.DEPLOY == 'True' && env.SINGLE_ACTION_CONFIG == 'True'}}
         run: |
-          pip install --upgrade pip
           python setup.py sdist --dist-dir=wheelhouse
 
       - name: Upload artifacts to github
