@@ -8,4 +8,4 @@ test:
 	env/bin/pip install setuptools
 	env/bin/python setup.py install
 	env/bin/pip install pytest
-	/env/bin/pytest
+	env/bin/pytest
