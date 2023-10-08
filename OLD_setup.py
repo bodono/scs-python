@@ -93,6 +93,8 @@ if SCS_ARG_MARK in sys.argv:
 
 
 def get_infos():
+    if sys.version_info >= (3, 12):
+        return {}, {}
     import numpy
     from numpy.distutils.system_info import get_info
 
