@@ -28,10 +28,10 @@ print(incdir)
 
 py.extension_module(
     '_scs_direct',
-    
+
     'src/scspy.c',
     'scs_source/linsys/cpu/direct/private.c',
-    
+
     # scs_source/src:
     'scs_source/src/aa.c',
     'scs_source/src/cones.c',
@@ -43,14 +43,14 @@ py.extension_module(
     'scs_source/src/scs_version.c',
     'scs_source/src/scs.c',
     'scs_source/src/util.c',
-    
+
     # scs_source/linsys:
     'scs_source/linsys/scs_matrix.c',
     'scs_source/linsys/csparse.c',
-    
+
     # scs_source/linsys/external/qdldl:
     'scs_source/linsys/external/qdldl/qdldl.c',
-    
+
     # scs_source/linsys/external/amd:
     'scs_source/linsys/external/amd/amd_1.c',
     'scs_source/linsys/external/amd/amd_2.c',
@@ -66,7 +66,7 @@ py.extension_module(
     'scs_source/linsys/external/amd/amd_preprocess.c',
     'scs_source/linsys/external/amd/amd_valid.c',
     'scs_source/linsys/external/amd/SuiteSparse_config.c',
-    
+
     include_directories : [
         'src',
         'scs_source/include',
@@ -74,6 +74,39 @@ py.extension_module(
         'scs_source/linsys/cpu/direct',
         'scs_source/linsys/external/qdldl',
         'scs_source/linsys/external/amd',
+        incdir_numpy],
+    install: true,
+    c_args: ['-DPYTHON', '-DCTRLC=1', '-O3'],
+    dependencies: blas_deps,
+)
+
+py.extension_module(
+    '_scs_indirect',
+
+    'src/scspy.c',
+    'scs_source/linsys/cpu/indirect/private.c',
+
+    # scs_source/src:
+    'scs_source/src/aa.c',
+    'scs_source/src/cones.c',
+    'scs_source/src/ctrlc.c',
+    'scs_source/src/exp_cone.c',
+    'scs_source/src/linalg.c',
+    'scs_source/src/normalize.c',
+    'scs_source/src/rw.c',
+    'scs_source/src/scs_version.c',
+    'scs_source/src/scs.c',
+    'scs_source/src/util.c',
+
+    # scs_source/linsys:
+    'scs_source/linsys/scs_matrix.c',
+    'scs_source/linsys/csparse.c',
+
+    include_directories : [
+        'src',
+        'scs_source/include',
+        'scs_source/linsys',
+        'scs_source/linsys/cpu/indirect',
         incdir_numpy],
     install: true,
     c_args: ['-DPYTHON', '-DCTRLC=1', '-O3'],
