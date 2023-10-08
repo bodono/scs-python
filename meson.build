@@ -70,4 +70,5 @@ py.extension_module(
 	include_directories : [
 		incdir, pyincdir, linsysinc, directinc, qdldlinc, amdinc, incdir_numpy],
     install: true,
+	c_args: ['-DPYTHON', '-DCTRLC=1', '-O3']
 )
