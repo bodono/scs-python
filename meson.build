@@ -12,6 +12,11 @@ if not blas_deps[0].found()
     endif
 endif
 
+fs = import('fs')
+if not fs.exists('scs_source/README.md')
+  error('Missing the `scs_source` submodule! Run `git submodule update --init` to fix this.')
+endif
+
 # This uses the path as is, and avoids running the interpreter.
 incdir_numpy = run_command(py,['-c',
 '''import os
@@ -76,7 +81,7 @@ py.extension_module(
         'scs_source/linsys/external/amd',
         incdir_numpy],
     install: true,
-    c_args: ['-DPYTHON', '-DCTRLC=1', '-O3'],
+    c_args: ['-DPYTHON', '-DCTRLC=1'],
     dependencies: blas_deps,
 )
 
@@ -109,7 +114,7 @@ py.extension_module(
         'scs_source/linsys/cpu/indirect',
         incdir_numpy],
     install: true,
-    c_args: ['-DPYTHON', '-DCTRLC=1', '-O3', '-DPY_INDIRECT', '-DINDIRECT=1'],
+    c_args: ['-DPYTHON', '-DCTRLC=1', '-DPY_INDIRECT', '-DINDIRECT=1'],
     dependencies: blas_deps,
 )
 
