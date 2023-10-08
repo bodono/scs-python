@@ -10,5 +10,8 @@ readme = 'README.md'
 requires-python = '>=3.8'
 license = {file = 'LICENSE'}
 authors = [
-  {name = "Brendan O'Donoghue", email = "bodonoghue85@gmail.com"},
+  {name = "Brendan O'Donoghue", email = "bodonoghue85@gmail.com"}]
+dependencies = [
+   'numpy',
+   'scipy',
 ]
