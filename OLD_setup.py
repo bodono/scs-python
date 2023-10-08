@@ -93,8 +93,6 @@ if SCS_ARG_MARK in sys.argv:
 
 
 def get_infos():
-    if sys.version_info >= (3, 12):
-        return {}, {}
     import numpy
     from numpy.distutils.system_info import get_info
 
@@ -178,8 +176,8 @@ def install_scs(**kwargs):
     extra_compile_args = ["-O3"]
     extra_link_args = []
     libraries = []
-    sources = ["src/scspy.c"] + glob("scs/src/*.c") + glob("scs/linsys/*.c")
-    include_dirs = ["scs/include", "scs/linsys"]
+    sources = ["scs/scspy.c"] + glob("scs_source/src/*.c") + glob("scs_source/linsys/*.c")
+    include_dirs = ["scs_source/include", "scs_source/linsys"]
     define_macros = [("PYTHON", None), ("CTRLC", 1)]
     if args.openmp:
         extra_compile_args += ["-fopenmp"]
@@ -200,16 +198,16 @@ def install_scs(**kwargs):
     _scs_direct = Extension(
         name="_scs_direct",
         sources=sources
-        + glob("scs/linsys/cpu/direct/*.c")
-        + glob("scs/linsys/external/amd/*.c")
-        + glob("scs/linsys/external/qdldl/*.c"),
-        depends=glob("src/*.h"),
+        + glob("scs_source/linsys/cpu/direct/*.c")
+        + glob("scs_source/linsys/external/amd/*.c")
+        + glob("scs_source/linsys/external/qdldl/*.c"),
+        depends=glob("scs/*.h"),
         define_macros=list(define_macros),
         include_dirs=include_dirs
         + [
-            "scs/linsys/cpu/direct/",
-            "scs/linsys/external/amd",
-            "scs/linsys/external/dqlql",
+            "scs_source/linsys/cpu/direct/",
+            "scs_source/linsys/external/amd",
+            "scs_source/linsys/external/dqlql",
         ],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
@@ -218,11 +216,11 @@ def install_scs(**kwargs):
 
     _scs_indirect = Extension(
         name="_scs_indirect",
-        sources=sources + glob("scs/linsys/cpu/indirect/*.c"),
-        depends=glob("src/*.h"),
+        sources=sources + glob("scs_source/linsys/cpu/indirect/*.c"),
+        depends=glob("scs/*.h"),
         define_macros=list(define_macros)
         + [("PY_INDIRECT", None), ("INDIRECT", 1)],
-        include_dirs=include_dirs + ["scs/linsys/cpu/indirect/"],
+        include_dirs=include_dirs + ["scs_source/linsys/cpu/indirect/"],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
         extra_link_args=list(extra_link_args),
@@ -243,13 +241,13 @@ def install_scs(**kwargs):
         _scs_gpu = Extension(
             name="_scs_gpu",
             sources=sources
-            + glob("scs/linsys/gpu/*.c")
-            + glob("scs/linsys/gpu/indirect/*.c"),
-            depends=glob("src/*.h"),
+            + glob("scs_source/linsys/gpu/*.c")
+            + glob("scs_source/linsys/gpu/indirect/*.c"),
+            depends=glob("scs/*.h"),
             define_macros=list(define_macros)
             + [("PY_GPU", None), ("INDIRECT", 1)],
             include_dirs=include_dirs
-            + ["scs/linsys/gpu/", "scs/linsys/gpu/indirect"],
+            + ["scs_source/linsys/gpu/", "scs_source/linsys/gpu/indirect"],
             library_dirs=library_dirs,
             libraries=libraries + ["cudart", "cublas", "cusparse"],
             extra_compile_args=list(extra_compile_args),
@@ -274,10 +272,10 @@ def install_scs(**kwargs):
         # MKL should be included in the libraries already:
         _scs_mkl = Extension(
             name="_scs_mkl",
-            sources=sources + glob("scs/linsys/mkl/direct/*.c"),
-            depends=glob("src/*.h"),
+            sources=sources + glob("scs_source/linsys/mkl/direct/*.c"),
+            depends=glob("scs/*.h"),
             define_macros=list(define_macros) + [("PY_MKL", None)],
-            include_dirs=include_dirs + ["scs/linsys/mkl/direct/"],
+            include_dirs=include_dirs + ["scs_source/linsys/mkl/direct/"],
             libraries=list(libraries),
             extra_compile_args=list(extra_compile_args),
             extra_link_args=list(extra_link_args),
@@ -291,7 +289,7 @@ def install_scs(**kwargs):
         author_email="bodonoghue85@gmail.com",
         url="http://github.com/cvxgrp/scs",
         description="scs: splitting conic solver",
-        package_dir={"scs": "src"},
+        package_dir={"scs": "scs"},
         packages=["scs"],
         ext_modules=ext_modules,
         cmdclass={"build_ext": build_ext_scs},
