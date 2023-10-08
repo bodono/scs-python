@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-10.15 ] # windows-latest not finding MKL
-        python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11"]
+        python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11" ]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
@@ -54,7 +54,7 @@ jobs:
           conda install mkl scipy numpy pytest
       - name: Test
         run: |
-          python setup.py install --scs --mkl
+          python OLD_setup.py install --scs --mkl
           pytest
           rm -rf build/
 
@@ -67,7 +67,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11"]
+        python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11" ]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
@@ -86,7 +86,7 @@ jobs:
           conda install scipy numpy pytest
       - name: Test
         run: |
-          python setup.py install --scs --openmp
+          python OLD_setup.py install --scs --openmp
           pytest
           rm -rf build/
 
@@ -128,13 +128,14 @@ jobs:
           fi
       - name: Test
         run: |
-          python setup.py install
+          python -m pip install .
           pytest
           rm -rf build/
       - name: Build and test windows wheels
         if: ${{env.DEPLOY == 'True' && startsWith(matrix.os, 'windows')}}
         run: |
-          python setup.py bdist_wheel
+          python -m pip install build
+          python -m build
           python -m pip install delvewheel
           delvewheel repair dist/*whl
           pip install wheelhouse/*whl --force-reinstall
@@ -196,7 +197,8 @@ jobs:
       - name: Build source
         if: ${{env.DEPLOY == 'True' && env.SINGLE_ACTION_CONFIG == 'True'}}
         run: |
-          python setup.py sdist --dist-dir=wheelhouse
+          python -m pip install build
+          python -m build --outdir=wheelhouse
 
       - name: Upload artifacts to github
         if: ${{env.DEPLOY == 'True'}}
