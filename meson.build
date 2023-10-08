@@ -28,6 +28,9 @@ except Exception:
 print(incdir)
 '''], check: true).stdout().strip()
 
+# rw.c emits a lot of -Wunused-result warnings, silence them for now:
+c_args = cc.get_supported_arguments('-Wno-unused-result')
+
 # meson doesn't support wildcards 
 # https://mesonbuild.com/FAQ.html#why-cant-i-specify-target-files-with-a-wildcard
 
@@ -81,7 +84,7 @@ py.extension_module(
         'scs_source/linsys/external/amd',
         incdir_numpy],
     install: true,
-    c_args: ['-DPYTHON', '-DCTRLC=1', '-DUSE_LAPACK=1'],
+    c_args: c_args + ['-DPYTHON', '-DCTRLC=1', '-DUSE_LAPACK=1'],
     dependencies: blas_deps,
 )
 
@@ -114,8 +117,7 @@ py.extension_module(
         'scs_source/linsys/cpu/indirect',
         incdir_numpy],
     install: true,
-    c_args: ['-DPYTHON', '-DCTRLC=1', '-DPY_INDIRECT', '-DINDIRECT=1',
-	'-DUSE_LAPACK=1'],
+    c_args: c_args + ['-DPYTHON', '-DCTRLC=1', '-DPY_INDIRECT', '-DINDIRECT=1', '-DUSE_LAPACK=1'],
     dependencies: blas_deps,
 )
 
