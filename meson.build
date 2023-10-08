@@ -12,6 +12,11 @@ if not blas_deps[0].found()
     endif
 endif
 
+fs = import('fs')
+if not fs.exists('scs_source/README.md')
+  error('Missing the `scs_source` submodule! Run `git submodule update --init` to fix this.')
+endif
+
 # This uses the path as is, and avoids running the interpreter.
 incdir_numpy = run_command(py,['-c',
 '''import os
