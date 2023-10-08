@@ -29,7 +29,7 @@ print(incdir)
 py.extension_module(
     '_scs_direct',
 
-    'src/scspy.c',
+    'scs/scspy.c',
     'scs_source/linsys/cpu/direct/private.c',
 
     # scs_source/src:
@@ -68,7 +68,7 @@ py.extension_module(
     'scs_source/linsys/external/amd/SuiteSparse_config.c',
 
     include_directories : [
-        'src',
+        'scs',
         'scs_source/include',
         'scs_source/linsys',
         'scs_source/linsys/cpu/direct',
@@ -83,7 +83,7 @@ py.extension_module(
 py.extension_module(
     '_scs_indirect',
 
-    'src/scspy.c',
+    'scs/scspy.c',
     'scs_source/linsys/cpu/indirect/private.c',
 
     # scs_source/src:
@@ -103,7 +103,7 @@ py.extension_module(
     'scs_source/linsys/csparse.c',
 
     include_directories : [
-        'src',
+        'scs',
         'scs_source/include',
         'scs_source/linsys',
         'scs_source/linsys/cpu/indirect',
@@ -112,3 +112,5 @@ py.extension_module(
     c_args: ['-DPYTHON', '-DCTRLC=1', '-O3', '-DPY_INDIRECT', '-DINDIRECT=1'],
     dependencies: blas_deps,
 )
+
+py.install_sources('scs/__init__.py', subdir: 'scs')
