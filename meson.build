@@ -109,6 +109,6 @@ py.extension_module(
         'scs_source/linsys/cpu/indirect',
         incdir_numpy],
     install: true,
-    c_args: ['-DPYTHON', '-DCTRLC=1', '-O3'],
+    c_args: ['-DPYTHON', '-DCTRLC=1', '-O3', '-DPY_INDIRECT', '-DINDIRECT=1'],
     dependencies: blas_deps,
 )
