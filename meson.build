@@ -3,7 +3,12 @@ project('scs', 'c')
 py = import('python').find_installation(pure: false)
 
 cc = meson.get_compiler('c')
-blas_deps = [cc.find_library('openblas', required : false)]
+blas_deps = []
+if host_machine.system() == 'darwin'
+  blas_deps = [dependency('Accelerate')]
+else
+  blas_deps = [cc.find_library('openblas', required : false)]
+endif
 if not blas_deps[0].found()
     blas_deps = [cc.find_library('blas')]
     cblas_dep = cc.find_library('cblas', required : false)
