@@ -25,7 +25,7 @@ jobs:
       - uses: psf/black@stable
         with:
           options: ". --line-length=80 --check"
-          src: "./src"
+          src: "."
 
   build_mkl:
     runs-on: ${{ matrix.os }}
@@ -127,9 +127,16 @@ jobs:
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
             conda install scipy=1.9.3 numpy=1.23.4 pytest mkl openblas lapack
           fi
+      - name: Build
+        run: |
+          if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]]; then
+            python OLD_setup.py install
+          elif [[ "$PYTHON_VERSION" != "3.7" ]] && [[ "$PYTHON_VERSION" != "3.8" ]]; then
+            python -m pip install .
+          fi
       - name: Test
         run: |
-          python -m pip install .
+          python -m pip install pytest
           pytest
           rm -rf build/
       - name: Build and test windows wheels
