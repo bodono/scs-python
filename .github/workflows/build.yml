@@ -116,6 +116,8 @@ jobs:
             conda install scipy=1.7 numpy=1.21 pytest mkl openblas lapack
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
             conda install scipy=1.9.3 numpy=1.23.4 pytest mkl openblas lapack
+          elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
+            conda install scipy numpy pytest mkl openblas lapack
           fi
       - name: Build
         run: |
