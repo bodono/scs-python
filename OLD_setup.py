@@ -153,9 +153,9 @@ class build_ext_scs(build_ext):
             self.copy["library_dirs"] = blas_info.pop(
                 "library_dirs", []
             ) + lapack_info.pop("library_dirs", [])
-            self.copy["libraries"] = blas_info.pop("libraries", []) + lapack_info.pop(
+            self.copy["libraries"] = blas_info.pop(
                 "libraries", []
-            )
+            ) + lapack_info.pop("libraries", [])
             self.copy["extra_link_args"] = blas_info.pop(
                 "extra_link_args", []
             ) + lapack_info.pop("extra_link_args", [])
@@ -177,7 +177,9 @@ def install_scs(**kwargs):
     extra_link_args = []
     libraries = []
     sources = (
-        ["scs/scspy.c"] + glob("scs_source/src/*.c") + glob("scs_source/linsys/*.c")
+        ["scs/scspy.c"]
+        + glob("scs_source/src/*.c")
+        + glob("scs_source/linsys/*.c")
     )
     include_dirs = ["scs_source/include", "scs_source/linsys"]
     define_macros = [("PYTHON", None), ("CTRLC", 1)]
@@ -220,7 +222,8 @@ def install_scs(**kwargs):
         name="_scs_indirect",
         sources=sources + glob("scs_source/linsys/cpu/indirect/*.c"),
         depends=glob("scs/*.h"),
-        define_macros=list(define_macros) + [("PY_INDIRECT", None), ("INDIRECT", 1)],
+        define_macros=list(define_macros)
+        + [("PY_INDIRECT", None), ("INDIRECT", 1)],
         include_dirs=include_dirs + ["scs_source/linsys/cpu/indirect/"],
         libraries=list(libraries),
         extra_compile_args=list(extra_compile_args),
@@ -245,7 +248,8 @@ def install_scs(**kwargs):
             + glob("scs_source/linsys/gpu/*.c")
             + glob("scs_source/linsys/gpu/indirect/*.c"),
             depends=glob("scs/*.h"),
-            define_macros=list(define_macros) + [("PY_GPU", None), ("INDIRECT", 1)],
+            define_macros=list(define_macros)
+            + [("PY_GPU", None), ("INDIRECT", 1)],
             include_dirs=include_dirs
             + ["scs_source/linsys/gpu/", "scs_source/linsys/gpu/indirect"],
             library_dirs=library_dirs,

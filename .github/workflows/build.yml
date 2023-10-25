@@ -22,9 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: rickstaa/action-black@v1
+      - uses: psf/black@stable
         with:
-          black_args: ". --line-length=80 --check"
+          options: ". --line-length=80 --check"
+          src: "./src"
 
   build_mkl:
     runs-on: ${{ matrix.os }}
