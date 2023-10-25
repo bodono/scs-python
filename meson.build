@@ -89,7 +89,7 @@ py.extension_module(
         'scs_source/linsys/external/amd',
         incdir_numpy],
     install: true,
-    c_args: c_args + ['-DPYTHON', '-DCTRLC=1', '-DUSE_LAPACK=1'],
+    c_args: c_args + ['-DPYTHON', '-DCTRLC=1', '-DUSE_LAPACK=1', '-DDLONG=1'],
     dependencies: blas_deps,
 )
 
@@ -122,7 +122,8 @@ py.extension_module(
         'scs_source/linsys/cpu/indirect',
         incdir_numpy],
     install: true,
-    c_args: c_args + ['-DPYTHON', '-DCTRLC=1', '-DPY_INDIRECT', '-DINDIRECT=1', '-DUSE_LAPACK=1'],
+    c_args: c_args + ['-DPYTHON', '-DCTRLC=1', '-DPY_INDIRECT', '-DINDIRECT=1',
+         '-DUSE_LAPACK=1', '-DDLONG=1'],
     dependencies: blas_deps,
 )
 
