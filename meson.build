@@ -7,11 +7,11 @@ blas_deps = []
 if host_machine.system() == 'darwin'
   blas_deps = [dependency('Accelerate')]
 else
-  blas_deps = [cc.find_library('openblas', required : false)]
+  blas_deps = [cc.find_library('openblas', static: true, required : false)]
 endif
 if not blas_deps[0].found()
     blas_deps = [cc.find_library('blas')]
-    cblas_dep = cc.find_library('cblas', required : false)
+    cblas_dep = cc.find_library('cblas', static:true, required : false)
     if cblas_dep.found()
         blas_deps += cblas_dep
     endif
