@@ -17,27 +17,6 @@ if not blas_deps[0].found()
     endif
 endif
 
-# as a last fallback (used for building wheels in github CI)
-# we link statically anaconda-installed openblas
-if not blas_deps[0].found()
-	incdir_blas = run_command(py,['-c',
-'''import os
-import numpy as np
-print(np.show_config('dicts')['Build Dependencies']['blas']['include directory'])
-'''], check: true).stdout().strip()
-	libdir_blas = run_command(py,['-c',
-'''import os
-import numpy as np
-print(np.show_config('dicts')['Build Dependencies']['blas']['lib directory'])
-'''], check: true).stdout().strip()
-	blas_windows_include = include_directories(incdir_blas)
-	blas_windows_dll = static_library(libdir_blas)
-	blas_deps += declare_dependency(
-		link_whole : [blas_windows_dll],
-		include_directories : blas_windows_include)
-endif
-
-
 fs = import('fs')
 if not fs.exists('scs_source/README.md')
   error('Missing the `scs_source` submodule! Run `git submodule update --init` to fix this.')

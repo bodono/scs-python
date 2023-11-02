@@ -111,13 +111,13 @@ jobs:
       - name: Install dependencies
         run: |
           if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]] || [[ "$PYTHON_VERSION" == "3.9" ]]; then
-            conda install scipy=1.5 numpy=1.19 pytest mkl openblas lapack
+            conda install scipy=1.5 numpy=1.19 pytest mkl openblas lapack cmake
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-            conda install scipy=1.7 numpy=1.21 pytest mkl openblas lapack
+            conda install scipy=1.7 numpy=1.21 pytest mkl openblas lapack cmake
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
-            conda install scipy=1.9.3 numpy=1.23.4 pytest mkl openblas lapack
+            conda install scipy=1.9.3 numpy=1.23.4 pytest mkl openblas lapack cmake
           elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
-            conda install scipy numpy pytest mkl openblas lapack
+            conda install scipy numpy pytest mkl openblas lapack cmake
           fi
       - name: Build
         run: |
