@@ -14,6 +14,24 @@ if not blas_deps[0].found()
     cblas_dep = cc.find_library('cblas', static: get_option('link_blas_statically'), required : false)
     if cblas_dep.found()
         blas_deps += cblas_dep
+	else
+	    # as a last fallback (used for building wheels in github CI)
+		# we link statically anaconda-installed openblas
+		incdir_blas = run_command(py,['-c',
+'''import os
+import numpy as np
+print(np.show_config('dicts')['Build Dependencies']['blas']['include directory'])
+'''], check: true).stdout().strip()
+		libdir_blas = run_command(py,['-c',
+'''import os
+import numpy as np
+print(np.show_config('dicts')['Build Dependencies']['blas']['lib directory'])
+'''], check: true).stdout().strip()
+		blas_windows_include = include_directories(incdir_blas)
+		blas_windows_dll = static_library(libdir_blas)
+		blas_deps += declare_dependency(
+			link_whole : [blas_windows_dll],
+			include_directories : blas_windows_include)
     endif
 endif
 
