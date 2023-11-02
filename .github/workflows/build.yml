@@ -135,7 +135,7 @@ jobs:
         if: ${{env.DEPLOY == 'True' && startsWith(matrix.os, 'windows')}}
         run: |
           python -m pip install build
-          python -m build
+          python -m build -Csetup-args="-Dlink_blas_statically=True"
           python -m pip install delvewheel
           delvewheel repair dist/*whl
           pip install wheelhouse/*whl --force-reinstall
@@ -198,7 +198,7 @@ jobs:
         if: ${{env.DEPLOY == 'True' && env.SINGLE_ACTION_CONFIG == 'True'}}
         run: |
           python -m pip install build
-          python -m build --outdir=wheelhouse
+          python -m build -Csetup-args="-Dlink_blas_statically=True" --outdir=wheelhouse
 
       - name: Upload artifacts to github
         if: ${{env.DEPLOY == 'True'}}
