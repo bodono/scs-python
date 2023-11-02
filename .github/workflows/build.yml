@@ -125,7 +125,7 @@ jobs:
             python OLD_setup.py install
           elif [[ "$PYTHON_VERSION" != "3.7" ]] && [[ "$PYTHON_VERSION" != "3.8" ]]; then
             python -c "import numpy as np; print('NUMPY BLAS INFOS'); print(np.show_config())"
-            python -m pip install .
+            python -m pip install --verbose .
           fi
       - name: Test
         run: |
