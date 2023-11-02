@@ -20,15 +20,9 @@ endif
 # We find anaconda blas on windows for github CI
 if not blas_deps[0].found()
     message(run_command(py,['-c','''import os; print('CONDA LIB FOLDER'); print(os.listdir('C:/Miniconda/envs/test\\Library\\lib'))''']).stdout())
-    blas_deps = [cc.find_library('blas',
+    blas_deps = [cc.find_library('openblas',
         dirs: ['C:/Miniconda/envs/test\\Library\\lib'], # this is the location on github CI
         static: get_option('link_blas_statically'))]
-    cblas_dep = cc.find_library('cblas',
-        dirs: ['C:/Miniconda/envs/test\\Library\\lib'], # this is the location on github CI
-    static: get_option('link_blas_statically'), required : false)
-    if cblas_dep.found()
-        blas_deps += cblas_dep
-    endif
 endif
 
 fs = import('fs')
