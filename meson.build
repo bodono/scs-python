@@ -25,7 +25,7 @@ if host_machine.system() == 'windows' and not blas_deps[0].found()
     blas_deps = [cc.find_library('openblas',
         dirs: ['C:/Miniconda/envs/test\\Library\\lib'], # this is the location on github CI
         static: get_option('link_blas_statically'),
-        required : false))]
+        required : false)]
 endif
 
 # Since nothing above was required, we stop here if failed
