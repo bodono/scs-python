@@ -45,7 +45,7 @@ jobs:
           conda install mkl scipy numpy pytest
       - name: Test
         run: |
-          python OLD_setup.py install --scs --mkl
+          python legacy_setup.py install --scs --mkl
           pytest
           rm -rf build/
 
@@ -77,7 +77,7 @@ jobs:
           conda install scipy numpy pytest
       - name: Test
         run: |
-          python OLD_setup.py install --scs --openmp
+          python legacy_setup.py install --scs --openmp
           pytest
           rm -rf build/
 
@@ -122,7 +122,7 @@ jobs:
       - name: Build
         run: |
           if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]]; then
-            python OLD_setup.py install
+            python legacy_setup.py install
           elif [[ "$PYTHON_VERSION" != "3.7" ]] && [[ "$PYTHON_VERSION" != "3.8" ]]; then
             python -c "import numpy as np; print('NUMPY BLAS INFOS'); print(np.show_config())"
             python -m pip install --verbose .
