@@ -111,13 +111,13 @@ jobs:
       - name: Install dependencies
         run: |
           if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]] || [[ "$PYTHON_VERSION" == "3.9" ]]; then
-            conda install scipy=1.5 numpy=1.19 pytest mkl openblas lapack cmake
+            conda install scipy=1.5 numpy=1.19 mkl openblas lapack
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-            conda install scipy=1.7 numpy=1.21 pytest mkl openblas lapack cmake
+            conda install openblas
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
-            conda install scipy=1.9.3 numpy=1.23.4 pytest mkl openblas lapack cmake
+            conda install openblas
           elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
-            conda install scipy numpy pytest mkl openblas lapack cmake
+            conda install openblas
           fi
       - name: Build
         run: |
@@ -139,6 +139,7 @@ jobs:
           python -m build -Csetup-args="-Dlink_blas_statically=True"
           python -m pip install delvewheel
           delvewheel repair dist/*whl
+          conda remove openblas # to check static linkage
           pip install wheelhouse/*whl --force-reinstall
           pytest
       - name: Upload artifacts to github
