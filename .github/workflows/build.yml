@@ -113,11 +113,11 @@ jobs:
           if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]] || [[ "$PYTHON_VERSION" == "3.9" ]]; then
             conda install scipy=1.5 numpy=1.19 mkl openblas lapack
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-            conda install openblas
+            conda install openblas numpy=1.21
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
-            conda install openblas
+            conda install openblas numpy=1.23.4
           elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
-            conda install openblas
+            conda install openblas numpy
           fi
       - name: Build
         run: |
