@@ -9,6 +9,8 @@ if host_machine.system() == 'darwin'
 else
   blas_deps = [cc.find_library('openblas', static: get_option('link_blas_statically'), required : false)]
 endif
+
+# try to find blas/cblas (e.g., Linux)
 if not blas_deps[0].found()
     blas_deps = [cc.find_library('blas', static: get_option('link_blas_statically'), required : false)]
     cblas_dep = cc.find_library('cblas', static: get_option('link_blas_statically'), required : false)
@@ -22,8 +24,12 @@ if host_machine.system() == 'windows' and not blas_deps[0].found()
     message(run_command(py,['-c','''import os; print('CONDA LIB FOLDER'); print(os.listdir('C:/Miniconda/envs/test\\Library\\lib'))''']).stdout())
     blas_deps = [cc.find_library('openblas',
         dirs: ['C:/Miniconda/envs/test\\Library\\lib'], # this is the location on github CI
-        static: get_option('link_blas_statically'))]
-else
+        static: get_option('link_blas_statically'),
+        required : false))]
+endif
+
+# Since nothing above was required, we stop here if failed
+if not blas_deps[0].found()
     error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms except Windows, and was not found.')
 endif
 
