@@ -18,11 +18,13 @@ if not blas_deps[0].found()
 endif
 
 # We find anaconda blas on windows for github CI
-if not blas_deps[0].found()
+if host_machine.system() == 'windows' and not blas_deps[0].found()
     message(run_command(py,['-c','''import os; print('CONDA LIB FOLDER'); print(os.listdir('C:/Miniconda/envs/test\\Library\\lib'))''']).stdout())
     blas_deps = [cc.find_library('openblas',
         dirs: ['C:/Miniconda/envs/test\\Library\\lib'], # this is the location on github CI
         static: get_option('link_blas_statically'))]
+else
+    error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms except Windows, and was not found.')
 endif
 
 fs = import('fs')
@@ -30,7 +32,6 @@ if not fs.exists('scs_source/README.md')
   error('Missing the `scs_source` submodule! Run `git submodule update --init` to fix this.')
 endif
 
-# This uses the path as is, and avoids running the interpreter.
 incdir_numpy = run_command(py,['-c',
 '''import os
 import numpy as np
@@ -44,8 +45,6 @@ print(incdir)
 # rw.c emits a lot of -Wunused-result warnings, silence them for now:
 c_args = cc.get_supported_arguments('-Wno-unused-result')
 
-# meson doesn't support wildcards 
-# https://mesonbuild.com/FAQ.html#why-cant-i-specify-target-files-with-a-wildcard
 
 py.extension_module(
     '_scs_direct',
