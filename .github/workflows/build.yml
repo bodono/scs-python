@@ -200,7 +200,7 @@ jobs:
           python -m build -Csetup-args="-Dlink_blas_statically=True" --outdir=wheelhouse
 
       - name: Upload artifacts to github
-        if: ${{env.DEPLOY == 'True'}}
+        if: ${{env.DEPLOY == 'True' && env.SINGLE_ACTION_CONFIG == 'True'}}
         uses: actions/upload-artifact@v1
         with:
           name: wheels
