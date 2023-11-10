@@ -13,6 +13,10 @@ endif
 # try to find blas/cblas (e.g., Linux)
 if not blas_deps[0].found()
     blas_deps = [cc.find_library('blas', static: get_option('link_blas_statically'), required : false)]
+    lapack_dep = cc.find_library('lapack', static: get_option('link_blas_statically'), required : false)
+    if lapack_dep.found()
+        blas_deps += lapack_dep
+    endif
     cblas_dep = cc.find_library('cblas', static: get_option('link_blas_statically'), required : false)
     if cblas_dep.found()
         blas_deps += cblas_dep
