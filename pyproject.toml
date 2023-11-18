@@ -1,6 +1,6 @@
 [build-system]
 build-backend = 'mesonpy'
-requires = ['meson-python', 'numpy']
+requires = ['meson-python', 'oldest-supported-numpy']
 
 [project]
 name = 'scs'
