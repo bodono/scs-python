@@ -4,7 +4,7 @@ requires = ['meson-python', 'oldest-supported-numpy']
 
 [project]
 name = 'scs'
-version = "3.2.4"
+version = "3.2.4.post1"
 description = 'Splitting conic solver'
 readme = 'README.md'
 requires-python = '>=3.7'
