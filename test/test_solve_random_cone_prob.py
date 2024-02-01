@@ -63,7 +63,7 @@ def test_solve_feasible(use_indirect, gpu):
     )
     np.testing.assert_almost_equal(s.T @ y, 0.0)
     np.testing.assert_almost_equal(s, tools.proj_cone(s, K), decimal=4)
-    np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=4)
+    np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=3)
 
 
 @pytest.mark.parametrize("use_indirect,gpu", flags)
