@@ -39,6 +39,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          miniforge-version: latest
           channels: conda-forge,anaconda
       - name: Install dependencies
         run: |
@@ -77,6 +78,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          miniforge-version: latest
           channels: conda-forge,anaconda
       - name: Install dependencies
         run: |
