@@ -3,3 +3,5 @@
 # installation
 option('link_blas_statically', type: 'boolean', 
        value: false, description: 'copy BLAS compiled object into SCS module(s)')
+option('link_mkl', type: 'boolean',
+       value: false, description: 'link to mkl-rt library')
