@@ -107,11 +107,6 @@ jobs:
           elif [[ "$PYTHON_VERSION" != "3.7" ]] && [[ "$PYTHON_VERSION" != "3.8" ]]; then
             python -c "import numpy as np; print('NUMPY BLAS INFOS'); print(np.show_config())"
             if [[ "$LINK_MKL" == "true" ]]; then
-              if [[ "$RUNNER_OS" == "Windows" ]]; then
-                export LDFLAGS="-L${CONDA_PREFIX}/Library/lib"
-              else
-                export LDFLAGS="-L${CONDA_PREFIX}/lib -Wl,-rpath,${CONDA_PREFIX}/lib"
-              fi
               python -m pip install --verbose -Csetup-args=-Dlink_mkl=true .
             else
               python -m pip install --verbose .

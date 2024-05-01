@@ -6,33 +6,36 @@ cc = meson.get_compiler('c')
 blas_deps = []
 
 if get_option('link_mkl')
-    blas_deps = [cc.find_library('mkl_rt', required : true)]
+    blas_deps = [cc.find_library('mkl_rt', required : false)]
+    if not blas_deps[0].found()
+        blas_deps = [dependency('mkl-sdl', required : false)]
+    endif
 else
     if host_machine.system() == 'darwin'
-      blas_deps = [dependency('Accelerate')]
+        blas_deps = [dependency('Accelerate')]
     else
-      blas_deps = [cc.find_library('openblas', static: get_option('link_blas_statically'), required : false)]
-      if not blas_deps[0].found()
-        blas_deps = [dependency(['openblas', 'OpenBLAS'], static: get_option('link_blas_statically'), required : false)]
-      endif
+        blas_deps = [cc.find_library('openblas', static: get_option('link_blas_statically'), required : false)]
+        if not blas_deps[0].found()
+            blas_deps = [dependency(['openblas', 'OpenBLAS'], static: get_option('link_blas_statically'), required : false)]
+        endif
     endif
 
     # try to find blas/cblas (e.g., Linux)
     if not blas_deps[0].found()
         blas_deps = [cc.find_library('blas', static: get_option('link_blas_statically'), required : false)]
         if not blas_deps[0].found()
-          blas_deps = [dependency('blas', static: get_option('link_blas_statically'), required : false)]
+            blas_deps = [dependency('blas', static: get_option('link_blas_statically'), required : false)]
         endif
         lapack_dep = cc.find_library('lapack', static: get_option('link_blas_statically'), required : false)
         if not lapack_dep.found()
-          lapack_dep = dependency('lapack', static: get_option('link_blas_statically'), required : false)
+            lapack_dep = dependency('lapack', static: get_option('link_blas_statically'), required : false)
         endif
         if lapack_dep.found()
             blas_deps += lapack_dep
         endif
         cblas_dep = cc.find_library('cblas', static: get_option('link_blas_statically'), required : false)
         if not cblas_dep.found()
-          cblas_dep = dependency('cblas', static: get_option('link_blas_statically'), required : false)
+            cblas_dep = dependency('cblas', static: get_option('link_blas_statically'), required : false)
         endif
         if cblas_dep.found()
             blas_deps += cblas_dep
