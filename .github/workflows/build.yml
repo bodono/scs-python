@@ -17,38 +17,6 @@ jobs:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
     if: "!startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/master'"
 
-  build_mkl:
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, macos-latest ] # windows-latest not finding MKL
-        python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11" ]
-
-    env:
-      PYTHON_VERSION: ${{ matrix.python-version }}
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
-          channels: conda-forge,anaconda
-      - name: Install dependencies
-        run: |
-          conda install mkl scipy numpy pytest
-      - name: Test
-        run: |
-          python legacy_setup.py install --scs --mkl
-          pytest
-          rm -rf build/
-
   build_openmp:
     runs-on: ${{ matrix.os }}
     defaults:
@@ -71,6 +39,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          miniforge-version: latest
           channels: conda-forge,anaconda
       - name: Install dependencies
         run: |
@@ -89,11 +58,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        # macos-13 runners have intel chips. macos-14 and above
+        # runners have Apple silicon chips.
+        os: [ ubuntu-latest, macos-13, windows-latest ]
         python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
+        link_mkl: [true, false]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
+      LINK_MKL: ${{ matrix.link_mkl }}
 
     steps:
       - uses: actions/checkout@v3
@@ -107,32 +80,46 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          miniforge-version: latest
           channels: conda-forge,anaconda
       - name: Install dependencies
         run: |
+          if [[ "$LINK_MKL" == "true" ]]; then
+            BLAS_PKGS="blas-devel=*=*mkl"
+          else
+            BLAS_PKGS="blas-devel=*=*openblas"
+          fi
           if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]] || [[ "$PYTHON_VERSION" == "3.9" ]]; then
-            conda install scipy=1.5 numpy=1.19 pytest mkl openblas lapack
+            conda install scipy=1.5 numpy=1.19 pytest $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-            conda install scipy=1.7 numpy=1.21 pytest mkl openblas lapack
+            conda install scipy=1.7 numpy=1.21 pytest $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
-            conda install scipy=1.9.3 numpy=1.23.4 pytest mkl openblas lapack
+            conda install scipy=1.9.3 numpy=1.23.4 pytest $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
-            conda install scipy numpy pytest mkl openblas lapack
+            conda install scipy numpy pytest $BLAS_PKGS pkg-config
           fi
       - name: Build
         run: |
           if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]]; then
-            python legacy_setup.py install
+            if [[ "$LINK_MKL" == "true" ]]; then
+              python legacy_setup.py install --scs --mkl
+            else
+              python legacy_setup.py install
+            fi
           elif [[ "$PYTHON_VERSION" != "3.7" ]] && [[ "$PYTHON_VERSION" != "3.8" ]]; then
             python -c "import numpy as np; print('NUMPY BLAS INFOS'); print(np.show_config())"
-            python -m pip install --verbose .
+            if [[ "$LINK_MKL" == "true" ]]; then
+              python -m pip install --verbose -Csetup-args=-Dlink_mkl=true .
+            else
+              python -m pip install --verbose .
+            fi
           fi
       - name: Test
         run: |
           pytest
           rm -rf build/
       - name: Build and test windows wheels
-        if: ${{startsWith(matrix.os, 'windows')}}
+        if: ${{startsWith(matrix.os, 'windows') && !matrix.link_mkl}}
         run: |
           python -m pip install build
           python -m build -Csetup-args="-Dlink_blas_statically=True"
@@ -156,7 +143,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-13 ]
         python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
 
     env:

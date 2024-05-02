@@ -4,44 +4,43 @@ py = import('python').find_installation(pure: false)
 
 cc = meson.get_compiler('c')
 blas_deps = []
-if host_machine.system() == 'darwin'
-  blas_deps = [dependency('Accelerate')]
-else
-  blas_deps = [cc.find_library('openblas', static: get_option('link_blas_statically'), required : false)]
-  if not blas_deps[0].found()
-    blas_deps = [dependency(['openblas', 'OpenBLAS'], static: get_option('link_blas_statically'), required : false)]
-  endif
-endif
 
-# try to find blas/cblas (e.g., Linux)
-if not blas_deps[0].found()
-    blas_deps = [cc.find_library('blas', static: get_option('link_blas_statically'), required : false)]
+if get_option('link_mkl')
+    blas_deps = [cc.find_library('mkl_rt', required : false)]
     if not blas_deps[0].found()
-      blas_deps = [dependency('blas', static: get_option('link_blas_statically'), required : false)]
+        blas_deps = [dependency('mkl-sdl', required : false)]
     endif
-    lapack_dep = cc.find_library('lapack', static: get_option('link_blas_statically'), required : false)
-    if not lapack_dep.found()
-      lapack_dep = dependency('lapack', static: get_option('link_blas_statically'), required : false)
+else
+    if host_machine.system() == 'darwin'
+        blas_deps = [dependency('Accelerate')]
+    else
+        blas_deps = [cc.find_library('openblas', static: get_option('link_blas_statically'), required : false)]
+        if not blas_deps[0].found()
+            blas_deps = [dependency(['openblas', 'OpenBLAS'], static: get_option('link_blas_statically'), required : false)]
+        endif
     endif
-    if lapack_dep.found()
-        blas_deps += lapack_dep
-    endif
-    cblas_dep = cc.find_library('cblas', static: get_option('link_blas_statically'), required : false)
-    if not cblas_dep.found()
-      cblas_dep = dependency('cblas', static: get_option('link_blas_statically'), required : false)
-    endif
-    if cblas_dep.found()
-        blas_deps += cblas_dep
-    endif
-endif
 
-# We find anaconda blas on windows for github CI
-if host_machine.system() == 'windows' and not blas_deps[0].found()
-    message(run_command(py,['-c','''import os; print('CONDA LIB FOLDER'); print(os.listdir('C:/Miniconda/envs/test\\Library\\lib'))''']).stdout())
-    blas_deps = [cc.find_library('openblas',
-        dirs: ['C:/Miniconda/envs/test\\Library\\lib'], # this is the location on github CI
-        static: get_option('link_blas_statically'),
-        required : false)]
+    # try to find blas/cblas (e.g., Linux)
+    if not blas_deps[0].found()
+        blas_deps = [cc.find_library('blas', static: get_option('link_blas_statically'), required : false)]
+        if not blas_deps[0].found()
+            blas_deps = [dependency('blas', static: get_option('link_blas_statically'), required : false)]
+        endif
+        lapack_dep = cc.find_library('lapack', static: get_option('link_blas_statically'), required : false)
+        if not lapack_dep.found()
+            lapack_dep = dependency('lapack', static: get_option('link_blas_statically'), required : false)
+        endif
+        if lapack_dep.found()
+            blas_deps += lapack_dep
+        endif
+        cblas_dep = cc.find_library('cblas', static: get_option('link_blas_statically'), required : false)
+        if not cblas_dep.found()
+            cblas_dep = dependency('cblas', static: get_option('link_blas_statically'), required : false)
+        endif
+        if cblas_dep.found()
+            blas_deps += cblas_dep
+        endif
+    endif
 endif
 
 # Since nothing above was required, we stop here if failed
@@ -155,5 +154,41 @@ py.extension_module(
          '-DUSE_LAPACK=1', '-DDLONG=1'],
     dependencies: blas_deps,
 )
+
+if get_option('link_mkl')
+    py.extension_module(
+        '_scs_mkl',
+
+        'scs/scspy.c',
+        'scs_source/linsys/mkl/direct/private.c',
+
+        # scs_source/src:
+        'scs_source/src/aa.c',
+        'scs_source/src/cones.c',
+        'scs_source/src/ctrlc.c',
+        'scs_source/src/exp_cone.c',
+        'scs_source/src/linalg.c',
+        'scs_source/src/normalize.c',
+        'scs_source/src/rw.c',
+        'scs_source/src/scs_version.c',
+        'scs_source/src/scs.c',
+        'scs_source/src/util.c',
+
+        # scs_source/linsys:
+        'scs_source/linsys/scs_matrix.c',
+        'scs_source/linsys/csparse.c',
+
+        include_directories : [
+            'scs',
+            'scs_source/include',
+            'scs_source/linsys',
+            'scs_source/linsys/mkl/direct',
+            incdir_numpy],
+        install: true,
+        c_args: c_args + ['-DPYTHON', '-DCTRLC=1', '-DPY_MKL',
+             '-DUSE_LAPACK=1', '-DDLONG=1'],
+        dependencies: blas_deps,
+    )
+endif
 
 py.install_sources('scs/__init__.py', subdir: 'scs')
