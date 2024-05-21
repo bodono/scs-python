@@ -130,7 +130,7 @@ jobs:
           pytest
       - name: Upload artifacts to github
         if: ${{env.DEPLOY == 'True' && startsWith(matrix.os, 'windows')}}
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: ./wheelhouse
@@ -185,7 +185,7 @@ jobs:
 
       - name: Upload artifacts to github
         if: ${{env.DEPLOY == 'True'}}
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: ./wheelhouse
