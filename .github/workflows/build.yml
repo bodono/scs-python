@@ -132,9 +132,9 @@ jobs:
         if: ${{ startsWith(matrix.os, 'windows') }}
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
+          name: wheels
           path: ./wheelhouse
-
+          merge-multiple: true
 
   build_wheels:
     needs: build
@@ -186,8 +186,9 @@ jobs:
       - name: Upload artifacts to github
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
+          name: wheels
           path: ./wheelhouse
+          merge-multiple: true
 
   upload_wheels:
     needs: build_wheels
@@ -210,6 +211,7 @@ jobs:
       - uses: actions/download-artifact@v4
         if: ${{env.DEPLOY == 'True'}}
         with:
+          name: wheels
           path: ./wheelhouse
 
       - name: Release to pypi
