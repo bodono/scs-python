@@ -224,6 +224,7 @@ jobs:
       - uses: actions/download-artifact@v4
         if: ${{env.DEPLOY == 'True'}}
         with:
+          name: wheels
           path: ./wheelhouse
 
       - name: Release to pypi
