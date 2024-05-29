@@ -129,7 +129,7 @@ jobs:
           pip install wheelhouse/*whl --force-reinstall
           pytest
       - name: Upload artifacts to github
-        if: ${{env.DEPLOY == 'True' && startsWith(matrix.os, 'windows')}}
+        if: ${{ startsWith(matrix.os, 'windows') }}
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
@@ -184,7 +184,6 @@ jobs:
           python -m build -Csetup-args="-Dlink_blas_statically=True" --outdir=wheelhouse
 
       - name: Upload artifacts to github
-        if: ${{env.DEPLOY == 'True'}}
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
