@@ -1,6 +1,10 @@
 [build-system]
 build-backend = 'mesonpy'
-requires = ['meson-python', 'oldest-supported-numpy']
+requires = [
+  "numpy >= 2.0.0; python_version > '3.8'",
+  "oldest-supported-numpy; python_version <= '3.8'",
+  "meson-python"
+]
 
 [project]
 name = 'scs'
