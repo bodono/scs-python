@@ -288,7 +288,7 @@ def install_scs(**kwargs):
 
     setup(
         name="scs",
-        version="3.2.4",
+        version="3.2.4.post3",
         author="Brendan O'Donoghue",
         author_email="bodonoghue85@gmail.com",
         url="http://github.com/cvxgrp/scs",
