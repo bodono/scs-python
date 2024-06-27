@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 import scs
 import numpy as np
-from scipy import sparse, randn
 import gen_random_cone_prob as tools
 
 #############################################
@@ -28,7 +27,7 @@ def main():
 def solve_feasible(use_indirect, gpu):
     # cone:
     K = {
-        "f": 10,
+        "z": 10,
         "l": 15,
         "q": [5, 10, 0, 1],
         "s": [3, 4, 0, 0, 1],
@@ -50,7 +49,7 @@ def solve_feasible(use_indirect, gpu):
 
 def solve_infeasible(use_indirect, gpu):
     K = {
-        "f": 10,
+        "z": 10,
         "l": 15,
         "q": [5, 10, 0, 1],
         "s": [3, 4, 0, 0, 1],
@@ -66,7 +65,7 @@ def solve_infeasible(use_indirect, gpu):
 
 def solve_unbounded(use_indirect, gpu):
     K = {
-        "f": 10,
+        "z": 10,
         "l": 15,
         "q": [5, 10, 0, 1],
         "s": [3, 4, 0, 0, 1],
