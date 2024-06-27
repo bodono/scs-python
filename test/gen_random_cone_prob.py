@@ -60,7 +60,7 @@ def pos(x):
 
 
 def get_scs_cone_dims(K):
-    l = K["z"] + K["l"]
+    l = K.get("z", 0) + K.get("l", 0)
     for i in range(0, len(K["q"])):
         l = l + K["q"][i]
 
