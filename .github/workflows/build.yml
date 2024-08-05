@@ -177,7 +177,7 @@ jobs:
           CIBW_BUILD_VERBOSITY: 3
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}
-        uses: joerick/cibuildwheel@v2.19.2
+        uses: joerick/cibuildwheel@v2.20.0
 
       - name: Build source
         if: ${{env.SINGLE_ACTION_CONFIG == 'True'}}
