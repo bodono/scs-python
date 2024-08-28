@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from warnings import warn
 from scipy import sparse
+import numpy as np
 import _scs_direct
 
 __version__ = _scs_direct.version()
@@ -70,9 +71,9 @@ class SCS(object):
         if "A" not in data:
             raise ValueError("Missing A from data dictionary")
 
-        A = data["A"]
-        b = data["b"]
-        c = data["c"]
+        A = data["A"].copy()
+        b = data["b"].copy()
+        c = data["c"].copy()
 
         if A is None or b is None or c is None:
             raise ValueError("Incomplete data specification")
@@ -103,7 +104,7 @@ class SCS(object):
 
         Pdata, Pindices, Pcolptr = None, None, None
         if "P" in data:
-            P = data["P"]
+            P = data["P"].copy()
             if P is not None:
                 if not sparse.issparse(P):
                     raise TypeError("P is required to be a sparse matrix")
@@ -121,6 +122,29 @@ class SCS(object):
                 if not P.has_sorted_indices:
                     P.sort_indices()
                 Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
+
+        if ("bu" in cone and "upper" in cone) or ("bl" in cone and "lower" in cone):
+            raise ValueError(
+                "Cannot specify both bu,bl and upper,lower it must be one or the other"
+            )
+
+        self.injected_box_cone_index = None
+        if "upper" in cone or "lower" in cone:
+            idx = cone["z"] if "z" in cone else 0
+            idx += cone["l"] if "l" in cone else 0
+            # Add row of zeros for box cone:
+            Aindices[Aindices >= idx] += 1
+            # Add 1 to b for box cone.
+            b = np.hstack([b[:idx], 1, b[idx:]])
+            m = len(b)
+
+            if "upper" in cone:
+                cone["bu"] = cone["upper"]
+            if "lower" in cone:
+                cone["bl"] = cone["lower"]
+            del cone["upper"], cone["lower"]
+
+            self.injected_box_cone_index = idx
 
         # Which scs are we using (scs_direct, scs_indirect, ...)
         _scs = _select_scs_module(self._settings)
@@ -157,7 +181,13 @@ class SCS(object):
              'y' - dual solution
              'info' - information dictionary (see docs)
         """
-        return self._solver.solve(warm_start, x, y, s)
+        sol = self._solver.solve(warm_start, x, y, s)
+        if self.injected_box_cone_index is None:
+            return sol
+
+        sol["s"] = np.delete(sol["s"], self.injected_box_cone_index)
+        sol["y"] = np.delete(sol["y"], self.injected_box_cone_index)
+        return sol
 
     def update(self, b=None, c=None):
         """Update the `b` vector, `c` vector, or both, before another solve.
@@ -169,6 +199,10 @@ class SCS(object):
         @param  c	New `c` vector.
 
         """
+        if self.injected_box_cone_index is not None:
+            # Add 1 to b for box cone.
+            idx = self.injected_box_cone_index
+            b = np.hstack([b[:idx], 1, b[idx:]])
         self._solver.update(b, c)
 
 
