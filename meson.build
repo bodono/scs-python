@@ -14,6 +14,15 @@ if get_option('link_mkl')
         blas_deps = [dependency('mkl', required : false)]
     endif
     if not blas_deps[0].found()
+        blas_deps = [dependency('mkl-devel', required : false)]
+    endif
+    if not blas_deps[0].found()
+        blas_deps = [dependency('mkl-static', required : false)]
+    endif
+    if not blas_deps[0].found()
+        blas_deps = [dependency('mkl-dynamic', required : false)]
+    endif
+    if not blas_deps[0].found()
 	error('MKL usage was requested but no MKL installation was found')
     endif
 else
