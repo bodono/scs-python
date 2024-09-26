@@ -44,7 +44,7 @@ else
 endif
 
 # Since nothing above was required, we stop here if failed
-if not blas_deps[0].found() and not sys.OS() is 'Windows':
+if not blas_deps[0].found() and not build_machine.system() == 'windows':
     error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms except Windows, and was not found.')
 endif
 
