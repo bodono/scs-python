@@ -298,7 +298,7 @@ def install_scs(**kwargs):
         ext_modules=ext_modules,
         cmdclass={"build_ext": build_ext_scs},
         setup_requires=["numpy >= 1.7", "setuptools < 60.0"],
-        install_requires=["numpy >= 1.7", "scipy >= 0.13.2"],
+        install_requires=["numpy >= 1.7", "scipy >= 0.13.2", "setuptools < 60.0"],
         license="MIT",
         zip_safe=False,
         # TODO: update this:
