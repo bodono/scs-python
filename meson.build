@@ -10,6 +10,21 @@ if get_option('link_mkl')
     if not blas_deps[0].found()
         blas_deps = [dependency('mkl-sdl', required : false)]
     endif
+    if not blas_deps[0].found()
+        blas_deps = [dependency('mkl', required : false)]
+    endif
+    if not blas_deps[0].found()
+        blas_deps = [dependency('mkl-devel', required : false)]
+    endif
+    if not blas_deps[0].found()
+        blas_deps = [dependency('mkl-static', required : false)]
+    endif
+    if not blas_deps[0].found()
+        blas_deps = [dependency('mkl-dynamic', required : false)]
+    endif
+    if not blas_deps[0].found()
+	error('MKL usage was requested but no MKL installation was found')
+    endif
 else
     if host_machine.system() == 'darwin'
         blas_deps = [dependency('Accelerate')]
@@ -45,7 +60,7 @@ endif
 
 # Since nothing above was required, we stop here if failed
 if not blas_deps[0].found()
-    error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms except Windows, and was not found.')
+    error('BLAS intallation is required on all platforms, and was not found.')
 endif
 
 fs = import('fs')
