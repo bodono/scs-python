@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        python-version: [ 3.8, 3.9, "3.10", "3.11" ]
+        python-version: [ 3.9, "3.10", "3.11", "3.11" ]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
@@ -61,7 +61,7 @@ jobs:
         # macos-13 runners have intel chips. macos-14 and above
         # runners have Apple silicon chips.
         os: [ ubuntu-latest, macos-13, windows-latest ]
-        python-version: [ 3.8, 3.9, "3.10", "3.11", "3.12"]
+        python-version: [ 3.9, "3.10", "3.11", "3.12", "3.13"]
         link_mkl: [true, false]
 
     env:
@@ -91,32 +91,22 @@ jobs:
           else
             BLAS_PKGS="blas-devel=*=*openblas"
           fi
-          if [[ "$PYTHON_VERSION" == "3.8" ]]; then
-            conda install scipy=1.5 numpy=1.19 pytest $BLAS_PKGS pkg-config 'setuptools<=60'
-          elif [[ "$PYTHON_VERSION" == "3.9" ]]; then
+          if [[ "$PYTHON_VERSION" == "3.9" ]]; then
             conda install scipy=1.5 numpy=1.19 pytest $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
             conda install scipy=1.7 numpy=1.21 pytest $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
             conda install scipy=1.9.3 numpy=1.23.4 pytest $BLAS_PKGS pkg-config
-          elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
+          elif [[ "$PYTHON_VERSION" == "3.12" || "$PYTHON_VERSION" == "3.13" ]]; then
             conda install scipy numpy pytest $BLAS_PKGS pkg-config
           fi
       - name: Build
         run: |
-          if [[ "$PYTHON_VERSION" == "3.8" ]]; then
-            if [[ "$LINK_MKL" == "true" ]]; then
-              python legacy_setup.py install --scs --mkl
-            else
-              python legacy_setup.py install
-            fi
-          elif [[ "$PYTHON_VERSION" != "3.8" ]]; then
-            python -c "import numpy as np; print('NUMPY BLAS INFOS'); print(np.show_config())"
-            if [[ "$LINK_MKL" == "true" ]]; then
-              python -m pip install --verbose -Csetup-args=-Dlink_mkl=true .
-            else
-              python -m pip install --verbose .
-            fi
+          python -c "import numpy as np; print('NUMPY BLAS INFOS'); print(np.show_config())"
+          if [[ "$LINK_MKL" == "true" ]]; then
+            python -m pip install --verbose -Csetup-args=-Dlink_mkl=true .
+          else
+            python -m pip install --verbose .
           fi
       - name: Test
         run: |
@@ -148,7 +138,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-13, macos-latest ]
-        python-version: [ 3.8, 3.9, "3.10", "3.11", "3.12"]
+        python-version: [ 3.9, "3.10", "3.11", "3.12", "3.13"]
 
     env:
       RUNNER_OS: ${{ matrix.os }}
@@ -166,7 +156,7 @@ jobs:
         shell: bash
         run: |
           echo "PYTHON_SUBVERSION=$(echo $PYTHON_VERSION | cut -c 3-)" >> $GITHUB_ENV
-          echo "SINGLE_ACTION_CONFIG=$( [[ $PYTHON_VERSION == 3.8 && $RUNNER_OS == 'macOS' ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV
+          echo "SINGLE_ACTION_CONFIG=False" >> $GITHUB_ENV
           echo "DEPLOY=$( [[ $GITHUB_EVENT_NAME == 'push' && $GITHUB_REF == 'refs/tags'* ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV
 
       - name: Build wheels
@@ -218,7 +208,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.9
       - name: Set Additional Envs
         shell: bash
         run: |
