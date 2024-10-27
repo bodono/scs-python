@@ -25,13 +25,17 @@ dependencies = [
 before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
-  "*-manylinux_i686", # Can't get BLAS to work there
-  # temporary, to speed up testing:
+  "*-manylinux_x86_64", # works
+  "*-musllinux_x86_64", # works
+  "*-manylinux_i686", # can't get BLAS to work there :(
+  "*-musllinux_i686", # seems to work
+  # to speed up testing:
   "cp37*",
   "cp38*",
   "cp39*",
   "cp310*",
   "cp311*",
+  "cp312*",
 ]
 # Test
 test-requires = "pytest"
@@ -48,6 +52,7 @@ inherit.before-all = "append"
 before-all = [
   "yum check-update",
   "yum search blas", # look at what's available
+  # on exotic archs there seems to be a blas-devel but no openblas-devel
   "yum install -y openblas-devel"]
 
 # # Compiles, recognizes BLAS, but doesn't link
