@@ -29,6 +29,8 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
+          miniforge-version: latest
+          channels: conda-forge,anaconda
 
       - name: Install openblas from conda on Windows
         if: runner.os == 'Windows'
