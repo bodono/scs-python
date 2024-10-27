@@ -79,7 +79,7 @@ select = "*-manylinux_aarch64"
 inherit.before-all = "append"
 before-all = [
   # "dnf update",
-  "dnf search blas", "dnf install -y openblas blas.devel"]
+  "dnf search blas", "dnf install -y openblas blas-devel"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
