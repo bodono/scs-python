@@ -76,8 +76,8 @@ before-all = [
 select = "*-win*"
 inherit.before-all = "append"
 before-all = [
-  "choco search blas", # look at what's available
-  "choco install openblas pkgconfig"]
+  # "choco search blas", # look at what's available
+  "choco install pkgconfiglite"]
 
 # Gives libc compatibility error on conda initialization on aarch64
 # # Install from conda otherwise
