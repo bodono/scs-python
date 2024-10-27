@@ -19,3 +19,7 @@ dependencies = [
    'numpy',
    'scipy',
 ]
+
+[tool.cibuildwheel]
+# load SCS source submodule
+before-all = "git submodule update --init"
