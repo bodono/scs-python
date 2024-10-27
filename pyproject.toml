@@ -34,6 +34,6 @@ test-command = [
 
 [tool.cibuildwheel.linux]
 # Install openblas
-# FIX: not working need to figure out which packages repo it's using
-before-build = ["yum search blas"]
-#before-build = "yum install -y libopenblas-devel"
+before-build = [
+  "yum search blas", # look at what's available
+  "yum install -y openblas-devel.x86_64"]
