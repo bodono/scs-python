@@ -9,25 +9,23 @@ jobs:
     strategy:
       matrix:
         # macos-13 is an intel runner, macos-14 is apple silicon
-        os: [
-           # macos-13, # works 100%
-           # macos-14, # works 100%
-           ubuntu-latest, # figuring out how to install openblas
-           # windows-latest, # figuring out how to install openblas
-           ]
+        os: [ubuntu-latest]#, windows-latest, macos-13, macos-14]
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.21.3
-        # env:
-        #   CIBW_SOME_OPTION: value
-        #    ...
-        # with:
-        #   package-dir: .
-        #   output-dir: wheelhouse
-        #   config-file: "{package}/pyproject.toml"
+        env:
+          # configure cibuildwheel to build native archs ('auto'), and some
+          # emulated ones
+          CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
 
       - uses: actions/upload-artifact@v4
         with:
