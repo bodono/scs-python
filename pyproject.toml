@@ -31,8 +31,8 @@ skip = [
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
   # for the following Scipy wheels are not available; probably BLAS issues
   "cp37*musllinux*",
-  "cp38*musllinux*",
-  "cp39*musllinux*",
+  #"cp38*musllinux*",
+  #"cp39*musllinux*",
   # no Scipy wheels for this
   "musllinux*aarch64"
 ]
@@ -79,7 +79,7 @@ select = "*-manylinux_aarch64"
 inherit.before-all = "append"
 before-all = [
   # "dnf update",
-  "dnf search blas", "dnf install -y openblas"]
+  "dnf search blas", "dnf install -y openblas blas.devel"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
