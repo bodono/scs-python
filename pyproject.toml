@@ -69,7 +69,7 @@ repair-wheel-command = [
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "yum check-update",
+  # "yum check-update",
   "yum search blas", # look at what's available
   # netlib blas/lapack fallback compiles and tests (on aarch64) but is super slow
   "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))"]
@@ -77,13 +77,15 @@ before-all = [
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
 inherit.before-all = "append"
-before-all = ["dnf update", "dnf search blas", "dnf install -y openblas"]
+before-all = [
+  # "dnf update",
+  "dnf search blas", "dnf install -y openblas"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
 inherit.before-all = "append"
 before-all = [
-  "apk update",
+  #"apk update",
   "apk search -v '*blas*'", # look at what's available
   "apk add openblas-dev"]
 
