@@ -25,9 +25,10 @@ dependencies = [
 before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
-  "*manylinux*", # openblas not available, netlib blas+lapack compiles but super slow
+  # "*manylinux_aarch64*", # openblas not available, netlib blas+lapack compiles but super slow
+  # "*musllinux_i686",
   # work, to speed up testing:
-  "*-win32",
+  "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
   "cp37*",
   "cp38*",
   "cp39*",
@@ -44,14 +45,19 @@ test-command = [
 
 [tool.cibuildwheel.linux]
 archs = [
-  # these 3 are supported by conda
-  # "x86_64",
+  "x86_64",
   "aarch64",
-  #"s390x", # haven't tried it
-  # "i686", # fails on SCS tests, both on many and musl linux
+  "i686",
+  # "s390x", # haven't tried it
   # "ppc64le", # haven't tried it
   # "armv7l", # haven't tried it
   ]
+
+[tool.cibuildwheel.windows]
+repair-wheel-command = [
+  "pip install delvewheel",
+  "delvewheel repair {dest_dir}/*whl"
+]
 
 # Install from distribution repos
 [[tool.cibuildwheel.overrides]]
