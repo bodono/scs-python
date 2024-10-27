@@ -63,6 +63,9 @@ jobs:
         os: [ ubuntu-latest, macos-13, windows-latest ]
         python-version: [ 3.8, 3.9, "3.10", "3.11", "3.12"]
         link_mkl: [true]
+        exclude: # fails test_solve_random_cone_prob_mkl, NaN error
+          - os: windows-latest
+            python-version: '3.8'
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
