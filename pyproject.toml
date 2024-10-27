@@ -45,7 +45,7 @@ test-command = [
 
 [tool.cibuildwheel.linux]
 archs = [
-  "x86_64",
+  # "x86_64",
   "aarch64",
   # "i686", # various issues, may work with some more testing
   # "s390x", # haven't tried it
@@ -61,7 +61,7 @@ repair-wheel-command = [
 
 # Install from distribution repos
 [[tool.cibuildwheel.overrides]]
-select = "*-manylinux2014*"
+select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
   "yum check-update",
