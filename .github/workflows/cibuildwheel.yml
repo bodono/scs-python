@@ -61,10 +61,10 @@ jobs:
 
   upload_all:
     name: Upload to PyPI if commit is a tag
-    on:
-      push:
-        tags:
-          - '*'
+    # on:
+    #   push:
+    #     tags:
+    #       - '*'
     needs: [build_wheels, make_sdist]
     environment: pypi
     permissions:
@@ -78,4 +78,5 @@ jobs:
         merge-multiple: true
 
     - uses: pypa/gh-action-pypi-publish@release/v1
-      repository-url: https://test.pypi.org/legacy/
+      with:
+        repository-url: https://test.pypi.org/legacy/
