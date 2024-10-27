@@ -56,7 +56,7 @@ archs = [
 [tool.cibuildwheel.windows]
 repair-wheel-command = [
   "pip install delvewheel",
-  "delvewheel repair {dest_dir}\{wheel}"
+  "delvewheel repair {dest_dir}\\{wheel}"
 ]
 
 # Install from distribution repos
