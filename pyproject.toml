@@ -25,13 +25,10 @@ dependencies = [
 before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
-  # "*manylinux_aarch64*", # openblas not available, netlib blas+lapack compiles but super slow
-  # "*musllinux_i686",
-  # work, to speed up testing:
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
   # for the following Scipy wheels are not available; probably BLAS issues
   "cp37*musllinux*",
-  #"cp38*musllinux*",
+  "cp38*musllinux*",
   #"cp39*musllinux*",
   # no Scipy wheels for this
   "*musllinux*aarch64*"
