@@ -56,12 +56,15 @@ archs = [
   ]
 
 [tool.cibuildwheel.windows]
+# This will probably become default in newer cibuildwheels versions
 repair-wheel-command = [
   "pip install delvewheel",
   "delvewheel repair -w {dest_dir} {wheel}"
 ]
 
-# Install from distribution repos
+
+# Openblas installation for 3 different linux images
+
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
@@ -71,17 +74,12 @@ before-all = [
   # netlib blas/lapack fallback compiles and tests (on aarch64) but is super slow
   "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))"]
 
-# Install from distribution repos
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
 inherit.before-all = "append"
 before-all = [
-  "yum check-update",
-  "yum search blas", # look at what's available
-  # netlib blas/lapack fallback compiles and tests (on aarch64) but is super slow
-  "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))"]
+  "yum search blas"]
 
-# Install from distribution repos
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
 inherit.before-all = "append"
