@@ -25,14 +25,14 @@ dependencies = [
 before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
-  "*-manylinux_i686", # fails on test
-  "*-musllinux_i686", # fails on test
+
   # work, to speed up testing:
   "cp37*",
   "cp38*",
   "cp39*",
   "cp310*",
   "cp311*",
+  "cp312*", 
 ]
 # Test
 test-requires = "pytest"
@@ -40,6 +40,12 @@ test-command = [
   "echo wheel installed successfully",
   "pytest {package}/test",
 ]
+
+[tool.cibuildwheel.linux]
+archs = [
+  "x86_64",
+  # "i686", # fails on test, both on many and musl linux
+  "aarch64"]
 
 # Works
 [[tool.cibuildwheel.overrides]]
