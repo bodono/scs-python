@@ -64,6 +64,6 @@ before-all = [
 select = "*-musllinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "apt update"
+  "apt update",
   "apt-cache search blas", # look at what's available
   "apt install -y libopenblas-dev"]
