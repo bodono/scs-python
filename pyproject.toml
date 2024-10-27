@@ -25,6 +25,12 @@ dependencies = [
 before-all = "git submodule update --init"
 # Disable building PyPy wheels on all platforms
 skip = "pp*"
+# Test
+test-requires = "pytest"
+test-command = [
+  "echo wheel installed successfully",
+  "pytest {package}/test",
+]
 
 [tool.cibuildwheel.linux]
 # install openblas
