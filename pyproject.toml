@@ -73,7 +73,7 @@ before-all = [
 
 # Install from choco repos
 [[tool.cibuildwheel.overrides]]
-select = ["*win32*", "*win64"]
+select = "*-win*"
 inherit.before-all = "append"
 before-all = [
   "choco search blas", # look at what's available
