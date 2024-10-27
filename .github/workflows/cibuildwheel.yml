@@ -15,8 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      with:
-        submodules: true
+        with:
+          submodules: true
 
       - name: Set up QEMU for aarch64 compilation on Linux
         if: runner.os == 'Linux'
