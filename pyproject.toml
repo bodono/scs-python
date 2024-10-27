@@ -26,6 +26,13 @@ before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
   "*-manylinux_i686", # Can't get BLAS to work there
+  # temporary, to speed up testing:
+  "cp37*",
+  "cp38*",
+  "cp39*",
+  "cp310*",
+  "cp311*",
+  "cp312*",
 ]
 # Test
 test-requires = "pytest"
@@ -34,15 +41,29 @@ test-command = [
   "pytest {package}/test",
 ]
 
-[tool.cibuildwheel.linux]
-before-build = [
+
+# Works
+[[tool.cibuildwheel.overrides]]
+select = "*-manylinux_x86_64"
+inherit.before-all = "append"
+before-all = [
+  "yum check-update",
   "yum search blas", # look at what's available
   "yum install -y openblas-devel.x86_64"]
 
 # Compiles, recognizes BLAS, but doesn't link
 [[tool.cibuildwheel.overrides]]
-select = "*i686"
+select = "*-manylinux_i686"
 inherit.before-all = "append"
 before-all = [
+  "yum check-update",
   "yum search blas", # look at what's available
   "yum install -y blas-devel.i686"]
+
+[[tool.cibuildwheel.overrides]]
+select = "*-musllinux_x86_64"
+inherit.before-all = "append"
+before-all = [
+  "apt update"
+  "apt-cache search blas", # look at what's available
+  "apt install -y libopenblas-dev"]
