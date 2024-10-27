@@ -45,8 +45,8 @@ test-command = [
 # Works
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
-inherit.before-all = "append"
-before-all = [
+#inherit.before-build = "append"
+before-build = [
   "yum check-update",
   "yum search blas", # look at what's available
   "yum install -y openblas-devel.x86_64"]
@@ -54,16 +54,16 @@ before-all = [
 # Compiles, recognizes BLAS, but doesn't link
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_i686"
-inherit.before-all = "append"
-before-all = [
+#inherit.before-build = "append"
+before-build = [
   "yum check-update",
   "yum search blas", # look at what's available
   "yum install -y blas-devel.i686"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux_x86_64"
-inherit.before-all = "append"
-before-all = [
-  "apt update",
-  "apt-cache search blas", # look at what's available
-  "apt install -y libopenblas-dev"]
+#inherit.before-build = "append"
+before-build = [
+  "apk update",
+  "apk search -v '*blas*'", # look at what's available
+  "apk add -y libopenblas-dev"]
