@@ -27,6 +27,7 @@ skip = [
   "pp*", # Disable building PyPy wheels on all platforms
   "*manylinux*", # openblas not available, netlib blas+lapack compiles but super slow
   # work, to speed up testing:
+  "*-win32",
   "cp37*",
   "cp38*",
   "cp39*",
@@ -79,33 +80,33 @@ before-all = [
 #   # "choco search blas", # look at what's available
 #   "choco install pkgconfiglite"]
 
-[[tool.cibuildwheel.overrides]]
-select = "cp37*-win*"
-before-build = "conda install -y python=3.7"
+# [[tool.cibuildwheel.overrides]]
+# select = "cp37*-win*"
+# before-build = "conda install -y python=3.7"
 
-[[tool.cibuildwheel.overrides]]
-select = "cp38*-win*"
-before-build = "conda install -y python=3.8"
+# [[tool.cibuildwheel.overrides]]
+# select = "cp38*-win*"
+# before-build = "conda install -y python=3.8"
 
-[[tool.cibuildwheel.overrides]]
-select = "cp39*-win*"
-before-build = "conda install -y python=3.9"
+# [[tool.cibuildwheel.overrides]]
+# select = "cp39*-win*"
+# before-build = "conda install -y python=3.9"
 
-[[tool.cibuildwheel.overrides]]
-select = "cp310*-win*"
-before-build = "conda install -y python=3.10"
+# [[tool.cibuildwheel.overrides]]
+# select = "cp310*-win*"
+# before-build = "conda install -y python=3.10"
 
-[[tool.cibuildwheel.overrides]]
-select = "cp311*-win*"
-before-build = "conda install -y python=3.11"
+# [[tool.cibuildwheel.overrides]]
+# select = "cp311*-win*"
+# before-build = "conda install -y python=3.11"
 
-[[tool.cibuildwheel.overrides]]
-select = "cp312*-win*"
-before-build = "conda install -y python=3.12"
+# [[tool.cibuildwheel.overrides]]
+# select = "cp312*-win*"
+# before-build = "conda install -y python=3.12"
 
-[[tool.cibuildwheel.overrides]]
-select = "cp313*-win*"
-before-build = "conda install -y python=3.13"
+# [[tool.cibuildwheel.overrides]]
+# select = "cp313*-win*"
+# before-build = "conda install -y python=3.13"
 
 # Gives libc compatibility error on conda initialization on aarch64
 # # Install from conda otherwise
