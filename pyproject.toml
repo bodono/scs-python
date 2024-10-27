@@ -52,36 +52,37 @@ archs = [
   # "armv7l", # haven't tried it
   ]
 
-# Install from distribution repos only for x86_64
+# Install from distribution repos
 [[tool.cibuildwheel.overrides]]
-select = "*-manylinux_x86_64"
+select = "*-manylinux*"
 inherit.before-all = "append"
 before-all = [
   "yum check-update",
   "yum search blas", # look at what's available
   "yum install -y openblas-devel"]
 
-# Install from distribution repos only for x86_64
+# Install from distribution repos
 [[tool.cibuildwheel.overrides]]
-select = "*-musllinux_x86_64"
+select = "*-musllinux*"
 inherit.before-all = "append"
 before-all = [
   "apk update",
   "apk search -v '*blas*'", # look at what's available
   "apk add openblas-dev"]
 
-# Install from conda otherwise
-[[tool.cibuildwheel.overrides]]
-select = [
-  "*linux_aarch64",
-  # "*linux_s390x"
-  ]
-inherit.before-all = "append"
-before-all = [
-  "mkdir -p ~/miniconda3",
-  "((yum install -y wget) || (apk add wget))",
-  "wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda3/miniconda.sh",
-  "bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3",
-  "source ~/miniconda3/bin/activate",
-  "conda install -y openblas pkgconfig"
-  ]
+# Gives libc compatibility error on conda initialization
+# # Install from conda otherwise
+# [[tool.cibuildwheel.overrides]]
+# select = [
+#   "*linux_aarch64",
+#   # "*linux_s390x"
+#   ]
+# inherit.before-all = "append"
+# before-all = [
+#   "mkdir -p ~/miniconda3",
+#   "((yum install -y wget) || (apk add wget))",
+#   "wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda3/miniconda.sh",
+#   "bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3",
+#   "source ~/miniconda3/bin/activate",
+#   "conda install -y openblas pkgconfig"
+#   ]
