@@ -25,13 +25,14 @@ dependencies = [
 before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
+  # "*musllinux_i686", # Observed some issues
   # work, to speed up testing:
   "cp37*",
   "cp38*",
   "cp39*",
   "cp310*",
   "cp311*",
-  "cp312*", 
+  # "cp312*", 
 ]
 # Test
 test-requires = "pytest"
@@ -42,23 +43,32 @@ test-command = [
 
 [tool.cibuildwheel.linux]
 archs = [
-  # "x86_64",
-  "aarch64",
+  # these 3 are supported by conda
+  "x86_64",
+  #"aarch64",
+  #"s390x", # haven't tried it
   # "i686", # fails on SCS tests, both on many and musl linux
   # "ppc64le", # haven't tried it
-  # "s390x", # haven't tried it
   # "armv7l", # haven't tried it
   ]
 
 # Works
 [[tool.cibuildwheel.overrides]]
-select = "*-manylinux*"
+select = "*linux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "yum check-update",
-  "yum search blas", # look at what's available
-  # on exotic archs there seems to be a blas-devel but no openblas-devel
-  "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))"]
+  "mkdir -p ~/miniconda3",
+  "wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh",
+  "bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3",
+  # "rm ~/miniconda3/miniconda.sh",
+  "source ~/miniconda3/bin/activate",
+  "conda install openblas pkgconfig"
+  # "bash "
+  # "yum check-update",
+  # "yum search blas", # look at what's available
+  # # prefer openblas-devel on platforms where's available, like x86_64
+  # "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))"
+  ]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
