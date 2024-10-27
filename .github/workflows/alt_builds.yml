@@ -1,4 +1,4 @@
-name: build
+name: alt_builds
 
 on:
   pull_request:
