@@ -77,7 +77,7 @@ before-all = [
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
 inherit.before-all = "append"
-before-all = ["rpm -i openblas.rpm"]
+before-all = ["dnf update", "dnf search blas", "dnf install -y openblas"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
