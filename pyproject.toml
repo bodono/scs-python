@@ -23,3 +23,7 @@ dependencies = [
 [tool.cibuildwheel]
 # load SCS source submodule
 before-all = "git submodule update --init"
+
+[tool.cibuildwheel.linux]
+# install openblas
+before-build = "yum install -y libopenblas-devel"
