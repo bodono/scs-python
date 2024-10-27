@@ -60,12 +60,16 @@ jobs:
         path: dist/*.tar.gz
 
   upload_all:
+    name: Upload to PyPI if commit is a tag
+    on:
+      push:
+        tags:
+          - '*'
     needs: [build_wheels, make_sdist]
     environment: pypi
     permissions:
       id-token: write
     runs-on: ubuntu-latest
-    # if: ((github.event_name == 'tag') || github.event_name == 'release' && github.event.action == 'published')
     steps:
     - uses: actions/download-artifact@v4
       with:
