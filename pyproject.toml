@@ -25,7 +25,7 @@ dependencies = [
 before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
-  # "*musllinux_i686", # Observed some issues
+  "*manylinux*", # openblas not available, netlib blas+lapack compiles but super slow
   # work, to speed up testing:
   "cp37*",
   "cp38*",
