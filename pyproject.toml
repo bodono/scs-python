@@ -33,13 +33,17 @@ test-command = [
 ]
 
 [tool.cibuildwheel.linux]
-# Install openblas
+archs = [
+  #"x86_64", 
+  "aarch64"]
 before-build = [
   "yum search blas", # look at what's available
   "yum install -y openblas-devel.x86_64"]
 
-[[tool.cibuildwheel.overrides]]
-select = "*i686"
-before-build = [
-  "yum search blas", # look at what's available
-  "yum install -y blas-devel.i686"]
+# Compiles, recognizes BLAS, but doesn't link
+# [[tool.cibuildwheel.overrides]]
+# select = "*i686"
+# inherit.before-all = "append"
+# before-all = [
+#   "yum search blas", # look at what's available
+#   "yum install -y blas-devel.i686"]
