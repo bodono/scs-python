@@ -73,6 +73,16 @@ before-all = [
 
 # Install from distribution repos
 [[tool.cibuildwheel.overrides]]
+select = "*-manylinux_aarch64"
+inherit.before-all = "append"
+before-all = [
+  "yum check-update",
+  "yum search blas", # look at what's available
+  # netlib blas/lapack fallback compiles and tests (on aarch64) but is super slow
+  "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))"]
+
+# Install from distribution repos
+[[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
 inherit.before-all = "append"
 before-all = [
