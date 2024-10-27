@@ -23,6 +23,8 @@ dependencies = [
 [tool.cibuildwheel]
 # load SCS source submodule
 before-all = "git submodule update --init"
+# Disable building PyPy wheels on all platforms
+skip = "pp*"
 
 [tool.cibuildwheel.linux]
 # install openblas
