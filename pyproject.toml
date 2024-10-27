@@ -25,7 +25,7 @@ dependencies = [
 before-all = "git submodule update --init"
 skip = [
   "pp*", # Disable building PyPy wheels on all platforms
-
+  "*-manylinux_aarch64", # docker error with image, need to try different one
   # work, to speed up testing:
   "cp37*",
   "cp38*",
@@ -43,9 +43,16 @@ test-command = [
 
 [tool.cibuildwheel.linux]
 archs = [
-  "x86_64",
-  # "i686", # fails on test, both on many and musl linux
-  "aarch64"]
+  # "x86_64",
+  "aarch64",
+  # "i686", # fails on SCS tests, both on many and musl linux
+  # "ppc64le", # haven't tried it
+  # "s390x", # haven't tried it
+  # "armv7l", # haven't tried it
+  ]
+# the one for manylinux gives error on aarch64 qemu with docker
+# manylinux-aarch64-image = "manylinux2014"
+# musllinux-aarch64-image = "musllinux_1_2"
 
 # Works
 [[tool.cibuildwheel.overrides]]
