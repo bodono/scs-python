@@ -22,10 +22,6 @@ jobs:
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.21.3
-        env:
-          # configure cibuildwheel to build native archs ('auto'), and some
-          # emulated ones
-          CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
 
       - uses: actions/upload-artifact@v4
         with:
