@@ -77,8 +77,7 @@ before-all = [
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
 inherit.before-all = "append"
-before-all = [
-  "yum search blas"]
+before-all = ["rpm -i openblas.rpm"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
