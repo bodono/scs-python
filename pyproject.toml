@@ -29,11 +29,11 @@ skip = [
   # "*musllinux_i686",
   # work, to speed up testing:
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
-  "cp37*",
-  "cp38*",
-  "cp39*",
-  "cp310*",
-  "cp311*",
+  # "cp37*",
+  # "cp38*",
+  # "cp39*",
+  # "cp310*",
+  # "cp311*",
   # "cp312*", 
 ]
 # Test
@@ -46,8 +46,8 @@ test-command = [
 [tool.cibuildwheel.linux]
 archs = [
   "x86_64",
-  "aarch64",
-  "i686",
+  # "aarch64",
+  # "i686",
   # "s390x", # haven't tried it
   # "ppc64le", # haven't tried it
   # "armv7l", # haven't tried it
