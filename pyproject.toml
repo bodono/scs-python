@@ -44,37 +44,44 @@ test-command = [
 [tool.cibuildwheel.linux]
 archs = [
   # these 3 are supported by conda
-  "x86_64",
-  #"aarch64",
+  # "x86_64",
+  "aarch64",
   #"s390x", # haven't tried it
   # "i686", # fails on SCS tests, both on many and musl linux
   # "ppc64le", # haven't tried it
   # "armv7l", # haven't tried it
   ]
 
-# Works
+# Install from distribution repos only for x86_64
 [[tool.cibuildwheel.overrides]]
-select = "*linux_x86_64"
+select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "mkdir -p ~/miniconda3",
-  "((yum install -y wget) || (apk add wget))",
-  "wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh",
-  "bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3",
-  # "rm ~/miniconda3/miniconda.sh",
-  "source ~/miniconda3/bin/activate",
-  "conda install openblas pkgconfig"
-  # "bash "
-  # "yum check-update",
-  # "yum search blas", # look at what's available
-  # # prefer openblas-devel on platforms where's available, like x86_64
-  # "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))"
-  ]
+  "yum check-update",
+  "yum search blas", # look at what's available
+  "yum install -y openblas-devel"]
 
+# Install from distribution repos only for x86_64
 [[tool.cibuildwheel.overrides]]
-select = "*-musllinux*"
+select = "*-musllinux_x86_64"
 inherit.before-all = "append"
 before-all = [
   "apk update",
   "apk search -v '*blas*'", # look at what's available
   "apk add openblas-dev"]
+
+# Install from conda otherwise
+[[tool.cibuildwheel.overrides]]
+select = [
+  "*linux_aarch64",
+  # "*linux_s390x"
+  ]
+inherit.before-all = "append"
+before-all = [
+  "mkdir -p ~/miniconda3",
+  "((yum install -y wget) || (apk add wget))",
+  "wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda3/miniconda.sh",
+  "bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3",
+  "source ~/miniconda3/bin/activate",
+  "conda install -y openblas pkgconfig"
+  ]
