@@ -37,3 +37,9 @@ test-command = [
 before-build = [
   "yum search blas", # look at what's available
   "yum install -y openblas-devel.x86_64"]
+
+[[tool.cibuildwheel.overrides]]
+select = "*i686"
+before-build = [
+  "yum search blas", # look at what's available
+  "yum install -y blas-devel.i686"]
