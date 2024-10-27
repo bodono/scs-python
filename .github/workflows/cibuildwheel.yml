@@ -9,7 +9,12 @@ jobs:
     strategy:
       matrix:
         # macos-13 is an intel runner, macos-14 is apple silicon
-        os: [macos-13, macos-14] #, ubuntu-latest, windows-latest]
+        os: [
+           macos-13, # works 100%
+           macos-14, # works 100%
+           ubuntu-latest, # figuring out how to install openblas
+           # windows-latest, # figuring out how to install openblas
+           ]
 
     steps:
       - uses: actions/checkout@v4

@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [tool.cibuildwheel]
-# load SCS source submodule
+# Load SCS source submodule
 before-all = "git submodule update --init"
 # Disable building PyPy wheels on all platforms
 skip = "pp*"
@@ -33,5 +33,7 @@ test-command = [
 ]
 
 [tool.cibuildwheel.linux]
-# install openblas
-before-build = "yum install -y libopenblas-devel"
+# Install openblas
+# FIX: not working need to figure out which packages repo it's using
+before-build = ["yum search blas"]
+#before-build = "yum install -y libopenblas-devel"
