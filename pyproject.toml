@@ -71,6 +71,14 @@ before-all = [
   "apk search -v '*blas*'", # look at what's available
   "apk add openblas-dev"]
 
+# Install from choco repos
+[[tool.cibuildwheel.overrides]]
+select = ["*win32*", "*win64"]
+inherit.before-all = "append"
+before-all = [
+  "choco search blas", # look at what's available
+  "choco install openblas pkgconfig"]
+
 # Gives libc compatibility error on conda initialization on aarch64
 # # Install from conda otherwise
 # [[tool.cibuildwheel.overrides]]
