@@ -56,15 +56,13 @@ repair-wheel-command = [
   "delvewheel repair -w {dest_dir} {wheel}"
 ]
 
-
 # Openblas installation for 3 different linux images
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  # "yum check-update",
-  "yum search blas", # look at what's available
+  # "yum check-update", "yum search blas",
   # netlib blas/lapack fallback compiles and tests (on aarch64) but is super slow
   # "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))",
   "yum install -y openblas-devel"]
@@ -73,34 +71,12 @@ before-all = [
 select = "*-manylinux_aarch64"
 inherit.before-all = "append"
 before-all = [
-  # "dnf update",
-  "dnf search blas",
+  # "dnf update", "dnf search blas",
   "dnf install -y openblas-devel"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
 inherit.before-all = "append"
 before-all = [
-  #"apk update",
-  "apk search -v '*blas*'", # look at what's available
+  # "apk update", "apk search -v '*blas*'",
   "apk add openblas-dev"]
-
-
-# Gives libc compatibility error on conda initialization on aarch64,
-# may work with more testing
-
-# # Install from conda otherwise
-# [[tool.cibuildwheel.overrides]]
-# select = [
-#   "*linux_aarch64",
-#   # "*linux_s390x"
-#   ]
-# inherit.before-all = "append"
-# before-all = [
-#   "mkdir -p ~/miniconda3",
-#   "((yum install -y wget) || (apk add wget))",
-#   "wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda3/miniconda.sh",
-#   "bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3",
-#   "source ~/miniconda3/bin/activate",
-#   "conda install -y openblas pkgconfig"
-#   ]

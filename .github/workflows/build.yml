@@ -189,9 +189,11 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
-    if: github.event_name == 'release' && github.event.action == 'published'
-    # or, alternatively, upload to PyPI on every tag starting with 'v' (remove on: release above to use this)
-    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # We can also upload always, with skip-existing: true, below
+    # We upload on every push event (only master, above) that is a new tag
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    # Only run this step on GH release
+    # if: github.event_name == 'release' && github.event.action == 'published'
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -201,6 +203,8 @@ jobs:
           merge-multiple: true
 
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
         # To test:
         # with:
         #  repository-url: https://test.pypi.org/legacy/
