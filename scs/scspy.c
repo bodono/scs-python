@@ -5,7 +5,7 @@
 #define PY_SSIZE_T_CLEAN
 
 /*Use ABI3 limited API for CPython forward compatibility, 3.7+*/
-#define Py_LIMITED_API 0x03080000
+#define Py_LIMITED_API 0x03090000
 
 /* IMPORTANT: This code now uses numpy array types. It is a private C module
  * in the sense that end users only see the front-facing Python code in
