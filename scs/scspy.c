@@ -1,6 +1,12 @@
 /* Use not deprecated Numpy API (numpy > 1.7) */
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
+/*Standard macro for CPython API back-compatibility*/
+#define PY_SSIZE_T_CLEAN
+
+/*Use ABI3 limited API for CPython forward compatibility, 3.6+*/
+#define Py_LIMITED_API 0x03060000
+
 /* IMPORTANT: This code now uses numpy array types. It is a private C module
  * in the sense that end users only see the front-facing Python code in
  * "scs.py"; hence, we can get away with the inputs being numpy arrays of
