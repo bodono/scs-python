@@ -19,3 +19,64 @@ dependencies = [
    'numpy',
    'scipy',
 ]
+
+[tool.cibuildwheel]
+# Load SCS source submodule, already done in CI/CD
+before-all = "git submodule update --init"
+skip = [
+  "pp*", # Disable building PyPy wheels on all platforms
+  "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
+  "cp37*musllinux*", # doesn't install, Scipy seems to be broken
+  "cp38*musllinux*", # doesn't install, Scipy seems to be broken
+  "*musllinux*aarch64*" # no Scipy wheels for this
+]
+# Test
+test-requires = "pytest"
+test-command = [
+  "echo wheel installed successfully",
+  "pytest {package}/test",
+]
+# we use the newer image for aarch64, for this there are openblas dev libraries
+manylinux-aarch64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.linux]
+archs = [
+  "x86_64",
+  "aarch64",
+  # "i686", # various issues, may work with some more testing
+  # "s390x", # haven't tried it
+  # "ppc64le", # haven't tried it
+  # "armv7l", # haven't tried it
+  ]
+
+[tool.cibuildwheel.windows]
+# This will probably become default in newer cibuildwheels versions
+repair-wheel-command = [
+  "pip install delvewheel",
+  "delvewheel repair -w {dest_dir} {wheel}"
+]
+
+# Openblas installation for 3 different linux images
+
+[[tool.cibuildwheel.overrides]]
+select = "*-manylinux_x86_64"
+inherit.before-all = "append"
+before-all = [
+  # "yum check-update", "yum search blas",
+  # netlib blas/lapack fallback compiles and tests (on aarch64) but is super slow
+  # "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))",
+  "yum install -y openblas-devel"]
+
+[[tool.cibuildwheel.overrides]]
+select = "*-manylinux_aarch64"
+inherit.before-all = "append"
+before-all = [
+  # "dnf update", "dnf search blas",
+  "dnf install -y openblas-devel"]
+
+[[tool.cibuildwheel.overrides]]
+select = "*-musllinux*"
+inherit.before-all = "append"
+before-all = [
+  # "apk update", "apk search -v '*blas*'",
+  "apk add openblas-dev"]
