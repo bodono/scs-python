@@ -91,13 +91,22 @@ print(args)
 if SCS_ARG_MARK in sys.argv:
     sys.argv = sys.argv[0 : sys.argv.index(SCS_ARG_MARK)]
 
+import subprocess
+
+# From: https://stackoverflow.com/questions/60174152/how-do-i-add-pkg-config-the-setup-py-of-a-cython-wrapper
+def pkgconfig(package, kw):
+    flag_map = {'-I': 'include_dirs', '-L': 'library_dirs', '-l': 'libraries'}
+    retcode, output = subprocess.getstatusoutput(
+        'pkg-config --cflags --libs {}'.format(package))
+    if retcode != 0:
+        raise Exception(
+            f'Invocation of pkg-config for package {package} failed!', output)
+    for token in output.strip().split():
+        kw.setdefault(flag_map.get(token[:2]), []).append(token[2:])
+    return kw
 
 def get_infos():
-    import numpy
-    from numpy.distutils.system_info import get_info
 
-    # Print out full BLAS / LAPACK linkage info.
-    numpy.show_config()
     if env_lib_dirs or env_libs:
         print("using environment variables for blas/lapack libraries")
         env_vars = {}
@@ -106,6 +115,18 @@ def get_infos():
         if env_libs:
             env_vars["libraries"] = env_libs.split(":")
         return env_vars, {}
+
+    try:
+        import numpy
+        from numpy.distutils.system_info import get_info
+
+    except ImportError: # Py >= 3.12
+        blas_info = pkgconfig('blas', {})
+        lapack_info = pkgconfig('lapack', {})
+        return blas_info, lapack_info
+
+    # Print out full BLAS / LAPACK info
+    numpy.show_config()
 
     # environment variables not set, using defaults instead
     blas_info = get_info("blas_opt")
