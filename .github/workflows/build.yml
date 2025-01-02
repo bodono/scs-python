@@ -155,7 +155,7 @@ jobs:
           submodules: true
 
       - name: Build sdist
-        run: pipx run build --sdist --config-setting=env.MESON_ARGS=-Dsdist_mode=true
+        run: pipx run build --sdist -Csetup-args=-Dsdist_mode=true
 
       - uses: actions/upload-artifact@v4
         with:
