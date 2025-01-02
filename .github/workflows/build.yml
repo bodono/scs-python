@@ -164,7 +164,7 @@ jobs:
           path: dist/*.tar.gz
 
   test_upload_pypi:
-    needs: [build_wheels]
+    needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
