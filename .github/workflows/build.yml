@@ -147,7 +147,6 @@ jobs:
           path: ./wheelhouse/*.whl
 
   build_sdist:
-    if: False
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
