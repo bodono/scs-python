@@ -165,7 +165,9 @@ jobs:
   test_upload_pypi:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
-    environment: pypi
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/test_scs
     permissions:
       id-token: write
     steps:
