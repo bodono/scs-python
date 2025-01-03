@@ -43,9 +43,10 @@ else
     endif
 endif
 
-# Since nothing above was required, we stop here if failed
-if not blas_deps[0].found()
-    error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms except Windows, and was not found.')
+# Since nothing above was required, we stop here if failed.
+# When creating an sdist we are not compiling / linking, so don't need to fail.
+if not blas_deps[0].found() and not get_option('sdist_mode')
+    error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms, and was not found.')
 endif
 
 fs = import('fs')
