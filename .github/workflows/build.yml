@@ -183,7 +183,7 @@ jobs:
 
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          skip-existing: true
+          skip-existing: false # Fail loudly for duplicates.
         # To test:
         # with:
         #  repository-url: https://test.pypi.org/legacy/
