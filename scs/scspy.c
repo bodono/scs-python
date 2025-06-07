@@ -17,6 +17,7 @@
 #include "numpy/arrayobject.h" /* Numpy C API */
 #include "scs.h"               /* SCS API */
 #include "scs_types.h"         /* SCS primitive types */
+#include "pythoncapi-compat/pythoncapi_compat.h"
 
 /* The PyInt variable is a PyLong in Python3.x. */
 #if PY_MAJOR_VERSION >= 3
