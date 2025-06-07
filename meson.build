@@ -26,6 +26,8 @@ if get_option('link_mkl')
     blas_deps = [cc.find_library('mkl_rt', required : false)]
     if not blas_deps[0].found()
         blas_deps = [dependency('mkl-sdl', required : false)]
+    else
+      blas_deps = [ dependency('mkl-dynamic-ilp64-iomp', required: false) ]
     endif
 else
     if host_machine.system() == 'darwin'
