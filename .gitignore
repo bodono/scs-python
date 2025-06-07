@@ -48,3 +48,7 @@ out
 *.jar
 *.egg-info
 *.ipynb_checkpoints/
+
+# pixi environments
+.pixi
+*.egg-info
