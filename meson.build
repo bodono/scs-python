@@ -220,7 +220,7 @@ if get_option('link_mkl')
     scs_core_sources,
     c_args: common_c_args + ['-DPY_MKL'],
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
-  dependencies: _deps,
+    dependencies: _deps,
     install_dir: scs_dir,
     install: true,
   )

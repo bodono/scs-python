@@ -84,13 +84,13 @@ jobs:
             BLAS_PKGS="blas-devel=*=*openblas"
           fi
           if [[ "$PYTHON_VERSION" == "3.9" ]]; then
-            conda install scipy=1.5 numpy=1.19 pytest $BLAS_PKGS pkg-config
+            conda install scipy=1.5 numpy=1.19 pytest mkl mkl-devel $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-            conda install scipy=1.7 numpy=1.21 pytest $BLAS_PKGS pkg-config
+            conda install scipy=1.7 numpy=1.21 pytest mkl mkl-devel $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
-            conda install scipy=1.9.3 numpy=1.23.4 pytest $BLAS_PKGS pkg-config
+            conda install scipy=1.9.3 numpy=1.23.4 pytest mkl mkl-devel $BLAS_PKGS pkg-config
           elif [[ "$PYTHON_VERSION" == "3.12" || "$PYTHON_VERSION" == "3.13" ]]; then
-            conda install scipy numpy pytest $BLAS_PKGS pkg-config
+            conda install scipy numpy pytest mkl mkl-devel $BLAS_PKGS pkg-config
           fi
       - name: Build
         run: |
