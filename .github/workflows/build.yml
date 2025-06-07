@@ -40,7 +40,7 @@ jobs:
       - name: Test
         run: |
           pixi r python -m pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true
-          pixi r pytest test
+          pixi r pytest
           rm -rf build/
 
   build_mkl:
@@ -96,7 +96,7 @@ jobs:
           fi
       - name: Test
         run: |
-          pixi r pytest test
+          pixi r pytest
           rm -rf build/
 
   # from here to end it's a copy-paste, with few changes, of

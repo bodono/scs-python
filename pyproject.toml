@@ -79,3 +79,8 @@ inherit.before-all = "append"
 before-all = [
   # "apk update", "apk search -v '*blas*'",
   "apk add openblas-dev"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "test",
+]
