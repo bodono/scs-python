@@ -119,8 +119,8 @@ if is_gpu_build and not cuda_dep.found()
 endif
 
 if is_gpu_build
-  gpu_c_args = c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
-  deps +=
+  gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
+  deps += cuda_dep
   if get_option('gpu_atrans')
     gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
   endif
@@ -133,11 +133,12 @@ if is_gpu_build
     fs.glob('scs_source/linsys/gpu/*.c'),
     fs.glob('scs_source/linsys/gpu/indirect/*.c'),
     c_args: gpu_c_args,
-    dependencies: [blas_dep, cuda_dep],
+    dependencies: deps,
     include_directories: [
       common_includes, 'scs_source/linsys/gpu/', 'scs_source/linsys/gpu/indirect'
     ],
     install: true,
+    install_dir: scs_dir,
   )
 endif
 
