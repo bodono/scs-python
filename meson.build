@@ -90,10 +90,6 @@ if get_option('use_lapack')
   common_c_args += '-DUSE_LAPACK=1'
 endif
 
-if get_option('use_long')
-  common_c_args += '-DDLONG=1'
-endif
-
 if get_option('use_singleprec')
   common_c_args += '-DSFLOAT=1'
 endif
@@ -105,6 +101,46 @@ endif
 if get_option('use_extraverbose')
   common_c_args += '-DVERBOSITY=999'
 endif
+
+is_gpu_build = get_option('use_gpu')
+use_32bit_ints = get_option('int32')
+
+if is_gpu_build and not use_32bit_ints
+  error('GPU builds require 32-bit integers. Please re-run Meson with -Dint32=true')
+endif
+
+if not use_32bit_ints
+  common_c_args += '-DDLONG=1'
+endif
+
+cuda_dep = dependency('cuda', required: is_gpu_build)
+if is_gpu_build and not cuda_dep.found()
+  error('GPU build requested but CUDA toolkit was not found.')
+endif
+
+if is_gpu_build
+  gpu_c_args = c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
+  deps +=
+  if get_option('gpu_atrans')
+    gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
+  endif
+  ext_modules += py.extension_module(
+    '_scs_gpu',
+    common_sources,
+    # In Meson, sources with a `.cu` extension are compiled with nvcc by default.
+    # To compile `.c` files with nvcc, they must be explicitly targeted.
+    # It is strongly recommended to rename CUDA-C files to `.cu`.
+    fs.glob('scs_source/linsys/gpu/*.c'),
+    fs.glob('scs_source/linsys/gpu/indirect/*.c'),
+    c_args: gpu_c_args,
+    dependencies: [blas_dep, cuda_dep],
+    include_directories: [
+      common_includes, 'scs_source/linsys/gpu/', 'scs_source/linsys/gpu/indirect'
+    ],
+    install: true,
+  )
+endif
+
 # Sources
 scs_core_sources = files(
   'scs_source/src/aa.c',

@@ -13,7 +13,13 @@ option('use_lapack', type: 'boolean',
        value: true, description: 'use LAPACK')
 option('use_singleprec', type: 'boolean',
        value: false, description: 'use single precision floating point')
-option('use_long', type: 'boolean',
-       value: true, description: 'use long over int')
 option('use_extraverbose', type: 'boolean',
        value: false, description: 'Enable extra verbose SCS (for debugging).')
+option('use_gpu', type: 'boolean',
+       value: false, description: 'setup the GPU variant')
+option('int32', type: 'boolean',
+       value: false, description: 'Use 32-bit integers (required for GPU).')
+option('gpu_atrans', type: 'boolean',
+       value: false, description: 'transpose matrices for the GPU')
+option('use_blas64', type: 'boolean',
+       value: false, description: 'Use 64-bit convention for BLAS')
