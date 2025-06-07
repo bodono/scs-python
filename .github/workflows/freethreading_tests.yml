@@ -10,11 +10,15 @@ jobs:
       - name: Install uv and set the python version
         uses: astral-sh/setup-uv@v6
         with:
-          version: "latest"
           python-version: 3.13t
+          activate-environment: true
           enable-cache: false
       - name: Set up Python
         run: uv python install
+      - name: Install OpenBLAS
+        run: |
+          sudo apt update
+          sudo apt install -y libopenblas-dev
       - name: Install Dependencies
         run: |
           uv pip install numpy scipy pytest-timeout pytest-durations pytest-run-parallel
@@ -24,4 +28,4 @@ jobs:
       - name: Run Tests
         run: |
           set -xe
-          uv run --no-project python -m pytest --parallel-threads=2 --iterations=2 -v -s --timeout=600 --durations=10 -m "not thread_unsafe"
+          uv run --no-project python -m pytest --parallel-threads=4 --iterations=2 -v -s --timeout=600 --durations=10 -m "not thread_unsafe"
