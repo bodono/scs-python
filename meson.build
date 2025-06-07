@@ -166,4 +166,4 @@ if get_option('link_mkl')
   )
 endif
 
-py.install_sources('scs/__init__.py', subdir: 'scs')
+py.install_sources('scs/py/__init__.py', subdir: 'scs')
