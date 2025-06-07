@@ -77,6 +77,9 @@ common_includes = [
   incdir_numpy
 ]
 _deps = [blas_deps]
+if get_option('use_openmp')
+  _deps += dependency('openmp')
+endif
 
 # Sources
 scs_core_sources = files(
