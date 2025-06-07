@@ -9,3 +9,11 @@ option('use_openmp', type: 'boolean',
        value: false, description: 'Compile SCS with OpenMP parallelization enabled. This can make SCS faster, but requires a compiler with openMP support, the user must control how many threads OpenMP uses')
 option('sdist_mode', type: 'boolean', value: false,
        description: 'Set to true if building an sdist')
+option('use_lapack', type: 'boolean',
+       value: true, description: 'use LAPACK')
+option('use_singleprec', type: 'boolean',
+       value: false, description: 'use single precision floating point')
+option('use_long', type: 'boolean',
+       value: true, description: 'use long over int')
+option('use_extraverbose', type: 'boolean',
+       value: false, description: 'Enable extra verbose SCS (for debugging).')

@@ -68,7 +68,7 @@ endif
 
 # Common
 common_c_args = cc.get_supported_arguments('-Wno-unused-result') + [
-  '-DPYTHON', '-DCTRLC=1', '-DUSE_LAPACK=1', '-DDLONG=1'
+  '-DPYTHON', '-DCTRLC=1'
 ]
 common_includes = [
   'scs',
@@ -86,6 +86,25 @@ if is_linux
   _deps += cc.find_library('rt', required : true)
 endif
 
+if get_option('use_lapack')
+  common_c_args += '-DUSE_LAPACK=1'
+endif
+
+if get_option('use_long')
+  common_c_args += '-DDLONG=1'
+endif
+
+if get_option('use_singleprec')
+  common_c_args += '-DSFLOAT=1'
+endif
+
+if get_option('use_blas64')
+  common_c_args += '-DBLAS64=1'
+endif
+
+if get_option('use_extraverbose')
+  common_c_args += '-DVERBOSITY=999'
+endif
 # Sources
 scs_core_sources = files(
   'scs_source/src/aa.c',
