@@ -81,6 +81,11 @@ if get_option('use_openmp')
   _deps += dependency('openmp')
 endif
 
+is_linux = host_machine.system() == 'linux'
+if is_linux
+  _deps += cc.find_library('rt', required : true)
+endif
+
 # Sources
 scs_core_sources = files(
   'scs_source/src/aa.c',
