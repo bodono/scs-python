@@ -117,6 +117,8 @@ amd_sources = files(
   'scs_source/linsys/external/amd/SuiteSparse_config.c'
 )
 
+# Build modules
+scs_dir = py.get_install_dir() / 'scs'
 py.extension_module(
   '_scs_direct',
   'scs/scspy.c',
@@ -132,6 +134,7 @@ py.extension_module(
     'scs_source/linsys/external/amd'
   ],
   dependencies: _deps,
+  install_dir: scs_dir,
   install: true,
 )
 
@@ -144,6 +147,7 @@ py.extension_module(
   c_args: common_c_args + ['-DPY_INDIRECT', '-DINDIRECT=1'],
   include_directories: common_includes + ['scs_source/linsys/cpu/indirect'],
   dependencies: _deps,
+  install_dir: scs_dir,
   install: true,
 )
 
@@ -157,6 +161,7 @@ if get_option('link_mkl')
     c_args: common_c_args + ['-DPY_MKL'],
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
   dependencies: _deps,
+    install_dir: scs_dir,
     install: true,
   )
 endif
