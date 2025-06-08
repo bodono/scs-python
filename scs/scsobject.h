@@ -9,6 +9,10 @@ typedef struct {
   scs_int m, n;
 } SCS;
 
+#ifdef Py_GIL_DISABLED
+static PyMutex global_lock = {0};
+#endif
+
 /* Just a helper struct to store the PyArrayObjects that need Py_DECREF */
 struct ScsPyData {
   PyArrayObject *Ax;
@@ -564,10 +568,16 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   self->sol->s = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
 
   /* release the GIL */
+#ifdef Py_GIL_DISABLED
+  PyMutex_Lock(&global_lock);
+#endif
   Py_BEGIN_ALLOW_THREADS;
   self->work = scs_init(d, k, stgs);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
+#ifdef Py_GIL_DISABLED
+  PyMutex_Unlock(&global_lock);
+#endif
 
   /* no longer need pointers to arrays that held primitives */
   free_py_scs_data(d, k, stgs, &ps);
@@ -638,13 +648,17 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   PyObject *x, *y, *s, *return_dict, *info_dict;
   scs_float *_x, *_y, *_s;
   /* release the GIL */
-  Py_BEGIN_CRITICAL_SECTION(self);
+#ifdef Py_GIL_DISABLED
+  PyMutex_Lock(&global_lock);
+#endif
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
   scs_solve(self->work, sol, &info, _warm_start);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
-  Py_END_CRITICAL_SECTION();
+#ifdef Py_GIL_DISABLED
+  PyMutex_Unlock(&global_lock);
+#endif
 
   veclen[0] = self->n;
   _x = scs_malloc(self->n * sizeof(scs_float));
@@ -765,10 +779,16 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   }
 
   /* release the GIL */
+#ifdef Py_GIL_DISABLED
+  PyMutex_Lock(&global_lock);
+#endif
   Py_BEGIN_ALLOW_THREADS;
   scs_update(self->work, b, c);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
+#ifdef Py_GIL_DISABLED
+  PyMutex_Unlock(&global_lock);
+#endif
 
   Py_DECREF(b_new);
   Py_DECREF(c_new);
@@ -779,7 +799,9 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
 /* Deallocate SCS object */
 static scs_int SCS_finish(SCS *self) {
   if (self->work) {
+    Py_BEGIN_CRITICAL_SECTION(self);
     scs_finish(self->work);
+    Py_END_CRITICAL_SECTION();
   }
   if (self->sol) {
     scs_free(self->sol->x);
