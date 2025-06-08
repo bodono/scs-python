@@ -7,11 +7,10 @@ typedef struct {
   PyObject_HEAD ScsWork *work; /* Workspace */
   ScsSolution *sol;            /* Solution, keep around for warm-starts */
   scs_int m, n;
-} SCS;
-
 #ifdef Py_GIL_DISABLED
-static PyMutex global_lock = {0};
+  PyMutex lock;
 #endif
+} SCS;
 
 /* Just a helper struct to store the PyArrayObjects that need Py_DECREF */
 struct ScsPyData {
@@ -569,14 +568,14 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
 
   /* release the GIL */
 #ifdef Py_GIL_DISABLED
-  PyMutex_Lock(&global_lock);
+  PyMutex_Lock(&self->lock);
 #endif
   Py_BEGIN_ALLOW_THREADS;
   self->work = scs_init(d, k, stgs);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 #ifdef Py_GIL_DISABLED
-  PyMutex_Unlock(&global_lock);
+  PyMutex_Unlock(&self->lock);
 #endif
 
   /* no longer need pointers to arrays that held primitives */
@@ -649,7 +648,7 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   scs_float *_x, *_y, *_s;
   /* release the GIL */
 #ifdef Py_GIL_DISABLED
-  PyMutex_Lock(&global_lock);
+  PyMutex_Lock(&self->lock);
 #endif
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
@@ -657,7 +656,7 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 #ifdef Py_GIL_DISABLED
-  PyMutex_Unlock(&global_lock);
+  PyMutex_Unlock(&self->lock);
 #endif
 
   veclen[0] = self->n;
@@ -780,14 +779,14 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
 
   /* release the GIL */
 #ifdef Py_GIL_DISABLED
-  PyMutex_Lock(&global_lock);
+  PyMutex_Lock(&self->lock);
 #endif
   Py_BEGIN_ALLOW_THREADS;
   scs_update(self->work, b, c);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 #ifdef Py_GIL_DISABLED
-  PyMutex_Unlock(&global_lock);
+  PyMutex_Unlock(&self->lock);
 #endif
 
   Py_DECREF(b_new);
