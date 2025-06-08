@@ -2,10 +2,15 @@
 #define PY_SCSOBJECT_H
 
 /* SCS Object type */
+#include "pythoncapi-compat/pythoncapi_compat.h"
 typedef struct {
-  PyObject_HEAD ScsWork *work; /* Workspace */
+  PyObject_HEAD
+  ScsWork *work; /* Workspace */
   ScsSolution *sol;            /* Solution, keep around for warm-starts */
   scs_int m, n;
+#ifdef Py_GIL_DISABLED
+  PyMutex lock;
+#endif
 } SCS;
 
 /* Just a helper struct to store the PyArrayObjects that need Py_DECREF */
@@ -563,10 +568,16 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   self->sol->s = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
 
   /* release the GIL */
+#ifdef Py_GIL_DISABLED
+  PyMutex_Lock(&self->lock);
+#endif
   Py_BEGIN_ALLOW_THREADS;
   self->work = scs_init(d, k, stgs);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
+#ifdef Py_GIL_DISABLED
+  PyMutex_Unlock(&self->lock);
+#endif
 
   /* no longer need pointers to arrays that held primitives */
   free_py_scs_data(d, k, stgs, &ps);
@@ -582,6 +593,7 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   ScsSolution *sol = self->sol;
   npy_intp veclen[1];
   int scs_float_type = scs_get_float_type();
+  int errind = -1;
 
   if (!self->work) {
     return none_with_error("Workspace not initialized!");
@@ -606,17 +618,26 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   if (_warm_start) {
     /* If any of these of missing, we use the values in sol */
     if ((void *)warm_x != Py_None) {
-      if (get_warm_start(self->sol->x, self->n, warm_x) < 0) {
+      Py_BEGIN_CRITICAL_SECTION(self);
+      errind = get_warm_start(self->sol->x, self->n, warm_x);
+      Py_END_CRITICAL_SECTION();
+      if (errind < 0) {
         return none_with_error("Unable to parse x warm-start");
       }
     }
     if ((void *)warm_y != Py_None) {
-      if (get_warm_start(self->sol->y, self->m, warm_y) < 0) {
+      Py_BEGIN_CRITICAL_SECTION(self);
+      errind = get_warm_start(self->sol->y, self->m, warm_y);
+      Py_END_CRITICAL_SECTION();
+      if (errind < 0) {
         return none_with_error("Unable to parse y warm-start");
       }
     }
     if ((void *)warm_s != Py_None) {
-      if (get_warm_start(self->sol->s, self->m, warm_s) < 0) {
+      Py_BEGIN_CRITICAL_SECTION(self);
+      errind = get_warm_start(self->sol->s, self->m, warm_s);
+      Py_END_CRITICAL_SECTION();
+      if (errind < 0) {
         return none_with_error("Unable to parse s warm-start");
       }
     }
@@ -627,11 +648,17 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   PyObject *x, *y, *s, *return_dict, *info_dict;
   scs_float *_x, *_y, *_s;
   /* release the GIL */
+#ifdef Py_GIL_DISABLED
+  PyMutex_Lock(&self->lock);
+#endif
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
   scs_solve(self->work, sol, &info, _warm_start);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
+#ifdef Py_GIL_DISABLED
+  PyMutex_Unlock(&self->lock);
+#endif
 
   veclen[0] = self->n;
   _x = scs_malloc(self->n * sizeof(scs_float));
@@ -752,10 +779,16 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   }
 
   /* release the GIL */
+#ifdef Py_GIL_DISABLED
+  PyMutex_Lock(&self->lock);
+#endif
   Py_BEGIN_ALLOW_THREADS;
   scs_update(self->work, b, c);
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
+#ifdef Py_GIL_DISABLED
+  PyMutex_Unlock(&self->lock);
+#endif
 
   Py_DECREF(b_new);
   Py_DECREF(c_new);
@@ -766,7 +799,9 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
 /* Deallocate SCS object */
 static scs_int SCS_finish(SCS *self) {
   if (self->work) {
+    Py_BEGIN_CRITICAL_SECTION(self);
     scs_finish(self->work);
+    Py_END_CRITICAL_SECTION();
   }
   if (self->sol) {
     scs_free(self->sol->x);

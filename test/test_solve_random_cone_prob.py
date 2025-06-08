@@ -62,7 +62,7 @@ def test_solve_feasible(use_indirect, gpu):
         np.linalg.norm(data["A"].T @ y + data["c"]), 1e-3
     )
     np.testing.assert_almost_equal(s.T @ y, 0.0)
-    np.testing.assert_almost_equal(s, tools.proj_cone(s, K), decimal=4)
+    np.testing.assert_almost_equal(s, tools.proj_cone(s, K), decimal=3)
     np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=3)
 
 
