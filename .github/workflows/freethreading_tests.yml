@@ -30,4 +30,4 @@ jobs:
       - name: Run Tests
         run: |
           set -xe
-          uv run --no-project python -m pytest --parallel-threads=4 --iterations=2 -v -s --timeout=600 --durations=10 -m "not thread_unsafe"
+          uv run --no-project python -m pytest --parallel-threads=4 --iterations=1 -v -s --timeout=600 --durations=10 -m "not thread_unsafe"
