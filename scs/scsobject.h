@@ -4,7 +4,8 @@
 /* SCS Object type */
 #include "pythoncapi-compat/pythoncapi_compat.h"
 typedef struct {
-  PyObject_HEAD ScsWork *work; /* Workspace */
+  PyObject_HEAD
+  ScsWork *work; /* Workspace */
   ScsSolution *sol;            /* Solution, keep around for warm-starts */
   scs_int m, n;
 #ifdef Py_GIL_DISABLED
