@@ -1,0 +1,12 @@
+[workspace]
+channels = ["conda-forge"]
+name = "scs-python"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+pkg-config = ">=0.29.2,<0.30"
+meson = ">=1.8.1,<2"
+meson-python = ">=0.18.0,<0.19"

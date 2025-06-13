@@ -5,5 +5,21 @@ option('link_blas_statically', type: 'boolean',
        value: false, description: 'copy BLAS compiled object into SCS module(s)')
 option('link_mkl', type: 'boolean',
        value: false, description: 'link to mkl-rt library')
+option('use_openmp', type: 'boolean',
+       value: false, description: 'Compile SCS with OpenMP parallelization enabled. This can make SCS faster, but requires a compiler with openMP support, the user must control how many threads OpenMP uses')
 option('sdist_mode', type: 'boolean', value: false,
        description: 'Set to true if building an sdist')
+option('use_lapack', type: 'boolean',
+       value: true, description: 'use LAPACK')
+option('use_singleprec', type: 'boolean',
+       value: false, description: 'use single precision floating point')
+option('use_extraverbose', type: 'boolean',
+       value: false, description: 'Enable extra verbose SCS (for debugging).')
+option('use_gpu', type: 'boolean',
+       value: false, description: 'setup the GPU variant')
+option('int32', type: 'boolean',
+       value: false, description: 'Use 32-bit integers (required for GPU).')
+option('gpu_atrans', type: 'boolean',
+       value: false, description: 'transpose matrices for the GPU')
+option('use_blas64', type: 'boolean',
+       value: false, description: 'Use 64-bit convention for BLAS')
