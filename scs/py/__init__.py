@@ -44,6 +44,16 @@ def _select_scs_module(stgs):
 
         return _scs_mkl
 
+    if stgs.pop("cudss", False):  # False by default
+        if stgs.pop("use_indirect", False):
+            raise NotImplementedError(
+                "cuDSS indirect solver not yet available, pass `use_indirect=False`."
+            )
+        from scs import _scs_cudss
+
+        return _scs_cudss
+
+
     if stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
         from scs import _scs_indirect
 
