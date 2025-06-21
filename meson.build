@@ -105,7 +105,7 @@ if get_option('use_extraverbose')
   common_c_args += '-DVERBOSITY=999'
 endif
 
-is_gpu_build = get_option('use_gpu')
+is_gpu_build = get_option('use_gpu') or get_option('link_cudss')
 use_32bit_ints = get_option('int32')
 
 if is_gpu_build and not use_32bit_ints
@@ -121,9 +121,9 @@ if is_gpu_build and not cuda_dep.found()
   error('GPU build requested but CUDA toolkit was not found.')
 endif
 
-if is_gpu_build
+if is_gpu_build and get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
-  deps += cuda_dep
+  _deps += cuda_dep
   if get_option('gpu_atrans')
     gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
   endif
@@ -136,7 +136,7 @@ if is_gpu_build
     fs.glob('scs_source/linsys/gpu/*.c'),
     fs.glob('scs_source/linsys/gpu/indirect/*.c'),
     c_args: gpu_c_args,
-    dependencies: deps,
+    dependencies: _deps,
     include_directories: [
       common_includes, 'scs_source/linsys/gpu/', 'scs_source/linsys/gpu/indirect'
     ],
@@ -229,5 +229,23 @@ if get_option('link_mkl')
     install: true,
   )
 endif
+
+if get_option('link_cudss')
+  _deps += cuda_dep
+  py.extension_module(
+    '_scs_cudss',
+    'scs/scspy.c',
+    'scs_source/linsys/cudss/direct/private.c',
+    common_linsys_sources,
+    scs_core_sources,
+    c_args: common_c_args + ['-DPY_CUDSS'],
+    include_directories: common_includes + ['scs_source/linsys/cudss/direct'],
+    dependencies: _deps,
+    install_dir: scs_dir,
+    install: true,
+  )
+endif
+
+
 
 py.install_sources('scs/py/__init__.py', subdir: 'scs')

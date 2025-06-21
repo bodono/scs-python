@@ -34,6 +34,13 @@ parser.add_argument(
     "install the MKL version by default if MKL is available.",
 )
 parser.add_argument(
+    "--cudss",
+    dest="cudss",
+    action="store_true",
+    default=False,
+    help="Also compile the cuDSS version of SCS",
+)
+parser.add_argument(
     "--openmp",
     dest="openmp",
     action="store_true",
@@ -285,6 +292,21 @@ def install_scs(**kwargs):
             extra_link_args=list(extra_link_args),
         )
         ext_modules += [_scs_mkl]
+
+    if args.cudss:
+        # MKL should be included in the libraries already:
+        _scs_cudss = Extension(
+            name="_scs_cudss",
+            sources=sources + glob("scs_source/linsys/cudss/direct/*.c"),
+            depends=glob("scs/*.h"),
+            define_macros=list(define_macros) + [("PY_CUDSS", None)],
+            include_dirs=include_dirs + ["scs_source/linsys/cudss/direct/"],
+            libraries=list(libraries),
+            extra_compile_args=list(extra_compile_args),
+            extra_link_args=list(extra_link_args),
+        )
+        ext_modules += [_scs_cudss]
+
 
     setup(
         name="scs",

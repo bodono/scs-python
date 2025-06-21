@@ -5,6 +5,8 @@ option('link_blas_statically', type: 'boolean',
        value: false, description: 'copy BLAS compiled object into SCS module(s)')
 option('link_mkl', type: 'boolean',
        value: false, description: 'link to mkl-rt library')
+option('link_cudss', type: 'boolean',
+       value: false, description: 'link to cuDSS library')
 option('use_openmp', type: 'boolean',
        value: false, description: 'Compile SCS with OpenMP parallelization enabled. This can make SCS faster, but requires a compiler with openMP support, the user must control how many threads OpenMP uses')
 option('sdist_mode', type: 'boolean', value: false,
