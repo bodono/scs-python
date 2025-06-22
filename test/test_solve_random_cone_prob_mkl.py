@@ -38,7 +38,7 @@ params = {"verbose": True, "eps_abs": 1e-5, "eps_rel": 1e-5, "eps_infeas": 1e-5}
 
 
 try:
-    import _scs_mkl
+    from scs import _scs_mkl
 
     def test_solve_feasible():
         data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
