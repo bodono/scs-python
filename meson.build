@@ -232,6 +232,8 @@ endif
 
 if get_option('link_cudss')
   _deps += cuda_dep
+  cudss_dep = dependency('cudss', required: true)
+  _deps += cudss_dep
   py.extension_module(
     '_scs_cudss',
     'scs/scspy.c',
