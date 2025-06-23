@@ -121,7 +121,7 @@ if is_gpu_build and not cuda_dep.found()
   error('GPU build requested but CUDA toolkit was not found.')
 endif
 
-if is_gpu_build and get_option('use_gpu')
+if get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
   _deps += cuda_dep
   if get_option('gpu_atrans')
