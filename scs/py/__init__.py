@@ -3,7 +3,6 @@ from warnings import warn
 from scipy import sparse
 from scs import _scs_direct
 
-PARTHS_VERSION = 1
 __version__ = _scs_direct.version()
 __sizeof_int__ = _scs_direct.sizeof_int()
 __sizeof_float__ = _scs_direct.sizeof_float()
