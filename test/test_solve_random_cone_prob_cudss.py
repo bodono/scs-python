@@ -38,11 +38,11 @@ params = {"verbose": True, "eps_abs": 1e-5, "eps_rel": 1e-5, "eps_infeas": 1e-5}
 
 
 try:
-    from scs import _scs_mkl
+    from scs import _scs_cudss
 
     def test_solve_feasible():
         data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-        solver = scs.SCS(data, K, mkl=True, **params)
+        solver = scs.SCS(data, K, cudss=True, **params)
         sol = solver.solve()
         x = sol["x"]
         y = sol["y"]
@@ -61,7 +61,7 @@ try:
 
     def test_solve_infeasible():
         data = tools.gen_infeasible(K, n=m // 2)
-        solver = scs.SCS(data, K, mkl=True, **params)
+        solver = scs.SCS(data, K, cudss=True, **params)
         sol = solver.solve()
         y = sol["y"]
         np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
@@ -70,7 +70,7 @@ try:
 
     def test_solve_unbounded():
         data = tools.gen_unbounded(K, n=m // 2)
-        solver = scs.SCS(data, K, mkl=True, **params)
+        solver = scs.SCS(data, K, cudss=True, **params)
         sol = solver.solve()
         x = sol["x"]
         s = sol["s"]
@@ -79,4 +79,4 @@ try:
         np.testing.assert_almost_equal(s, tools.proj_cone(s, K), decimal=4)
 
 except ImportError:
-    import_error("Skipping MKL tests as SCS MKL is not installed.")
+    import_error("Skipping cuDSS tests as SCS cuDSS is not installed.")
