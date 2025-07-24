@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from warnings import warn
 from scipy import sparse
-import _scs_direct
+from scs import _scs_direct
 
 __version__ = _scs_direct.version()
 __sizeof_int__ = _scs_direct.sizeof_int()
@@ -26,13 +26,13 @@ SOLVED_INACCURATE = 2  # SCS best guess solved
 
 # Choose which SCS to import based on settings.
 def _select_scs_module(stgs):
+
     if stgs.pop("gpu", False):  # False by default
         if not stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
             raise NotImplementedError(
-                "GPU direct solver not yet available, pass `use_indirect=True`."
-            )
-        import _scs_gpu
-
+                "For the GPU direct solver, pass `use_indirect=False cudss=True`.")
+        from scs import _scs_gpu
+        
         return _scs_gpu
 
     if stgs.pop("mkl", False):  # False by default
@@ -40,12 +40,21 @@ def _select_scs_module(stgs):
             raise NotImplementedError(
                 "MKL indirect solver not yet available, pass `use_indirect=False`."
             )
-        import _scs_mkl
+        from scs import _scs_mkl
 
         return _scs_mkl
 
+    if stgs.pop("cudss", False):  # False by default
+        if stgs.pop("use_indirect", False):
+            raise NotImplementedError(
+                "cuDSS is a direct solver, pass `use_indirect=False`."
+            )
+        from scs import _scs_cudss
+
+        return _scs_cudss
+
     if stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
-        import _scs_indirect
+        from scs import _scs_indirect
 
         return _scs_indirect
 

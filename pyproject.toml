@@ -1,8 +1,7 @@
 [build-system]
 build-backend = 'mesonpy'
 requires = [
-  "numpy >= 2.0.0; python_version > '3.8'",
-  "oldest-supported-numpy; python_version <= '3.8'",
+  "numpy >= 2.0.0",
   "meson-python"
 ]
 
@@ -11,7 +10,22 @@ name = 'scs'
 version = "3.2.7"
 description = 'Splitting conic solver'
 readme = 'README.md'
-requires-python = '>=3.7'
+requires-python = '>=3.9'
+classifiers = [
+    'License :: OSI Approved :: MIT License',
+    'Programming Language :: C',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3 :: Only',
+    'Programming Language :: Python :: Implementation :: CPython',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+]
 license = {file = 'LICENSE'}
 authors = [
   {name = "Brendan O'Donoghue", email = "bodonoghue85@gmail.com"}]
@@ -80,3 +94,8 @@ inherit.before-all = "append"
 before-all = [
   # "apk update", "apk search -v '*blas*'",
   "apk add openblas-dev"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "test",
+]
