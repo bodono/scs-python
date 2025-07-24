@@ -88,7 +88,7 @@ class SCS(object):
 
         if not sparse.issparse(A):
             raise TypeError("A is required to be a sparse matrix")
-        if not sparse.isspmatrix_csc(A):
+        if not A.format == "csc":
             warn(
                 "Converting A to a CSC (compressed sparse column) matrix;"
                 " may take a while."
@@ -118,7 +118,7 @@ class SCS(object):
                     raise TypeError("P is required to be a sparse matrix")
                 if P.shape != (n, n):
                     raise ValueError("P shape not compatible with A,b,c")
-                if not sparse.isspmatrix_csc(P):
+                if not P.format == "csc":
                     warn(
                         "Converting P to a CSC (compressed sparse column) "
                         "matrix; may take a while."
