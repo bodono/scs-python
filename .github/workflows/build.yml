@@ -133,7 +133,7 @@ jobs:
         run: conda install -y openblas pkgconfig
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.1.4
+        uses: pypa/cibuildwheel@v3.2.0
 
       - uses: actions/upload-artifact@v4
         with:
