@@ -27,6 +27,9 @@ SOLVED_INACCURATE = 2  # SCS best guess solved
 # Choose which SCS to import based on settings.
 def _select_scs_module(stgs):
 
+  if stgs.pop("cudss", False):
+    raise ValueError("To use cuDSS set gpu=True and use_indirect=False.")
+
   if stgs.pop("gpu", False):  # False by default
     if stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
       from scs import _scs_gpu  # pylint: disable=g-import-not-at-top
