@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-from warnings import warn
 from scipy import sparse
 from scs import _scs_direct
+import warnings
 
 __version__ = _scs_direct.version()
 __sizeof_int__ = _scs_direct.sizeof_int()
@@ -28,34 +28,26 @@ SOLVED_INACCURATE = 2  # SCS best guess solved
 def _select_scs_module(stgs):
 
   if stgs.pop("gpu", False):  # False by default
-    if not stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
-      raise NotImplementedError(
-          "For the GPU direct solver, pass `use_indirect=False cudss=True`."
-      )
-    from scs import _scs_gpu
+    if stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
+      from scs import _scs_gpu  # pylint: disable=g-import-not-at-top
 
-    return _scs_gpu
+      return _scs_gpu
+    else:
+      from scs import _scs_cudss  # pylint: disable=g-import-not-at-top
+
+      return _scs_cudss
 
   if stgs.pop("mkl", False):  # False by default
     if stgs.pop("use_indirect", False):
       raise NotImplementedError(
           "MKL indirect solver not yet available, pass `use_indirect=False`."
       )
-    from scs import _scs_mkl
+    from scs import _scs_mkl  # pylint: disable=g-import-not-at-top
 
     return _scs_mkl
 
-  if stgs.pop("cudss", False):  # False by default
-    if stgs.pop("use_indirect", False):
-      raise NotImplementedError(
-          "cuDSS is a direct solver, pass `use_indirect=False`."
-      )
-    from scs import _scs_cudss
-
-    return _scs_cudss
-
   if stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
-    from scs import _scs_indirect
+    from scs import _scs_indirect  # pylint: disable=g-import-not-at-top
 
     return _scs_indirect
 
@@ -90,7 +82,7 @@ class SCS(object):
     if not sparse.issparse(A):
       raise TypeError("A is required to be a sparse matrix")
     if not A.format == "csc":
-      warn(
+      warnings.warn(
           "Converting A to a CSC (compressed sparse column) matrix;"
           " may take a while."
       )
@@ -120,7 +112,7 @@ class SCS(object):
         if P.shape != (n, n):
           raise ValueError("P shape not compatible with A,b,c")
         if not P.format == "csc":
-          warn(
+          warnings.warn(
               "Converting P to a CSC (compressed sparse column) "
               "matrix; may take a while."
           )
@@ -155,7 +147,7 @@ class SCS(object):
 
     @param warm_start   Whether to warm-start. By default the solution of
                         the previous problem is used as the warm-start. The
-                        warm-start can be overriden to another value by
+                        warm-start can be overridden to another value by
                         passing `x`, `y`, `s` args.
     @param x            Primal warm-start override.
     @param y            Dual warm-start override.
