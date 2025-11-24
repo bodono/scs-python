@@ -105,7 +105,7 @@ jobs:
       matrix:
         include:
           # Standard x86 builds
-          - os: ubuntu-latest-large
+          - os: ubuntu-latest
             arch: x86_64
           # NATIVE ARM builds (No QEMU needed!)
           # Note: Uses ubuntu-24.04-arm specifically
