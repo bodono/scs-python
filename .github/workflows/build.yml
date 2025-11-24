@@ -97,26 +97,29 @@ jobs:
           pixi r pytest
           rm -rf build/
 
-  # from here to end it's a copy-paste, with few changes, of
-  # https://github.com/pypa/cibuildwheel/blob/main/examples/github-deploy.yml
-
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          # Standard x86 builds
+          - os: ubuntu-latest-large
+            arch: x86_64
+          # NATIVE ARM builds (No QEMU needed!)
+          # Note: Uses ubuntu-24.04-arm specifically
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+          - os: macos-latest
+            arch: auto
+          - os: windows-latest
+            arch: auto
 
     steps:
       - uses: actions/checkout@v5
         with:
           submodules: true
-
-      - name: Set up QEMU for aarch64 compilation on Linux
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
 
       - name: Install conda on Windows
         if: runner.os == 'Windows'
@@ -131,6 +134,9 @@ jobs:
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.2.1
+        env:
+          # Explicitly set the architecture based on the matrix
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v5
         with:
