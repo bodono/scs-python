@@ -138,7 +138,7 @@ jobs:
           # Explicitly set the architecture based on the matrix
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
@@ -154,7 +154,7 @@ jobs:
       - name: Build sdist
         run: pipx run build --sdist -Csetup-args=-Dsdist_mode=true
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
