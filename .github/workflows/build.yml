@@ -171,7 +171,7 @@ jobs:
     # Only run this step on GH release
     # if: github.event_name == 'release' && github.event.action == 'published'
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           # unpacks all CIBW artifacts into dist/
           pattern: cibw-*
