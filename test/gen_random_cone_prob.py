@@ -250,14 +250,14 @@ def project_exp_bisection(v):
 
     x = np.copy(v)
     ub, lb = get_rho_ub(v)
-    for iter in range(0, 100):
+    for iter in range(0, 200):
         rho = (ub + lb) / 2
         g, x = calc_grad(v, rho, x)
         if g > 0:
             lb = rho
         else:
             ub = rho
-        if ub - lb < 1e-6:
+        if ub - lb < 1e-9:
             break
     return x
 
