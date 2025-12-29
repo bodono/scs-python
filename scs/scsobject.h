@@ -400,7 +400,8 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   d->A = A;
 
   /* set P if passed in */
-  if ((void *)!Py_IsNone(Px) && (void *)!Py_IsNone(Pi) && (void *)!Py_IsNone(Pp)) {
+  if (!Py_IsNone((PyObject *)Px) && !Py_IsNone((PyObject *)Pi) &&
+      !Py_IsNone((PyObject *)Pp)) {
     if (!PyArray_ISFLOAT(Px) || PyArray_NDIM(Px) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
       return finish_with_error("Px must be a numpy array of floats");
@@ -607,17 +608,17 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
 
   if (_warm_start) {
     /* If any of these of missing, we use the values in sol */
-    if ((void *)!Py_IsNone(warm_x)) {
+    if (!Py_IsNone((PyObject *)warm_x)) {
       if (get_warm_start(self->sol->x, self->n, warm_x) < 0) {
         return none_with_error("Unable to parse x warm-start");
       }
     }
-    if ((void *)!Py_IsNone(warm_y)) {
+    if (!Py_IsNone((PyObject *)warm_y)) {
       if (get_warm_start(self->sol->y, self->m, warm_y) < 0) {
         return none_with_error("Unable to parse y warm-start");
       }
     }
-    if ((void *)!Py_IsNone(warm_s)) {
+    if (!Py_IsNone((PyObject *)warm_s)) {
       if (get_warm_start(self->sol->s, self->m, warm_s) < 0) {
         return none_with_error("Unable to parse s warm-start");
       }
@@ -729,7 +730,7 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
     return none_with_error("Error parsing inputs");
   }
   /* set c */
-  if ((void *)!Py_IsNone(c_new)) {
+  if (!Py_IsNone((PyObject *)c_new)) {
     if (!PyArray_ISFLOAT(c_new) || PyArray_NDIM(c_new) != 1) {
       return none_with_error(
           "c_new must be a dense numpy array with one dimension");
@@ -741,7 +742,7 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
     c = (scs_float *)PyArray_DATA(c_new);
   }
   /* set b */
-  if ((void *)!Py_IsNone(b_new)) {
+  if (!Py_IsNone((PyObject *)b_new)) {
     if (!PyArray_ISFLOAT(b_new) || PyArray_NDIM(b_new) != 1) {
       return none_with_error(
           "b must be a dense numpy array with one dimension");
