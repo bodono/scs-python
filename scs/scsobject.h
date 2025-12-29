@@ -501,7 +501,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("Failed to parse cone field s");
   }
-  if (get_cone_arr_dim("cs", &(k->cs), &(k->csize), cone) < 0) {
+  if (get_cone_arr_dim("cs", &(k->cs), &(k->cssize), cone) < 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("Failed to parse cone field cs");
   }
