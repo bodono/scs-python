@@ -235,6 +235,9 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, ScsSettings *stgs,
     if (k->s) {
       scs_free(k->s);
     }
+    if (k->cs) {
+      scs_free(k->cs);
+    }
     if (k->p) {
       scs_free(k->p);
     }
@@ -400,7 +403,8 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   d->A = A;
 
   /* set P if passed in */
-  if ((void *)!Py_IsNone(Px) && (void *)!Py_IsNone(Pi) && (void *)!Py_IsNone(Pp)) {
+  if ((void *)!Py_IsNone(Px) && (void *)!Py_IsNone(Pi) &&
+      (void *)!Py_IsNone(Pp)) {
     if (!PyArray_ISFLOAT(Px) || PyArray_NDIM(Px) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
       return finish_with_error("Px must be a numpy array of floats");
@@ -496,6 +500,10 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   if (get_cone_arr_dim("s", &(k->s), &(k->ssize), cone) < 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("Failed to parse cone field s");
+  }
+  if (get_cone_arr_dim("cs", &(k->cs), &(k->csize), cone) < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("Failed to parse cone field cs");
   }
   if (get_cone_float_arr("p", &(k->p), &(k->psize), cone) < 0) {
     free_py_scs_data(d, k, stgs, &ps);
