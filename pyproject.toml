@@ -16,9 +16,12 @@ classifiers = [
     'Programming Language :: C',
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
     'Programming Language :: Python :: 3 :: Only',
     'Programming Language :: Python :: Implementation :: CPython',
     'Operating System :: Microsoft :: Windows',
@@ -35,21 +38,13 @@ dependencies = [
 ]
 
 [tool.cibuildwheel]
-# Load SCS source submodule, already done in CI/CD
-before-all = "git submodule update --init"
 skip = [
-  "pp*", # Disable building PyPy wheels on all platforms
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
-  "cp37*musllinux*", # doesn't install, Scipy seems to be broken
-  "cp38*musllinux*", # doesn't install, Scipy seems to be broken
   "*musllinux*aarch64*" # no Scipy wheels for this
 ]
 # Test
 test-requires = "pytest"
-test-command = [
-  "echo wheel installed successfully",
-  "pytest {package}/test",
-]
+test-command = "pytest {package}/test"
 # we use the newer image for aarch64, for this there are openblas dev libraries
 manylinux-aarch64-image = "manylinux_2_28"
 
@@ -64,11 +59,9 @@ archs = [
   ]
 
 [tool.cibuildwheel.windows]
+before-build = "pip install delvewheel"
 # This will probably become default in newer cibuildwheels versions
-repair-wheel-command = [
-  "pip install delvewheel",
-  "delvewheel repair -w {dest_dir} {wheel}"
-]
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 # Openblas installation for 3 different linux images
 
