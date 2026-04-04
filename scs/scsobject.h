@@ -329,7 +329,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
 
   /* Check that the workspace is not already initialized */
   if (self->work) {
-    finish_with_error("Workspace already setup!");
+    return finish_with_error("Workspace already setup!");
   }
 
   /* set defaults */
@@ -362,15 +362,18 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
           &(stgs->acceleration_interval),
           &(stgs->write_data_filename),
           &(stgs->log_csv_filename))) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("Error parsing inputs\n");
   }
   /* clang-format on */
 
   if (d->m < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("m must be a positive integer");
   }
 
   if (d->n < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("n must be a positive integer");
   }
 
@@ -546,6 +549,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error("time_limit_secs must be nonnegative");
   }
   if (stgs->eps_abs < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("eps_abs must be positive");
   }
   if (stgs->eps_rel < 0) {
@@ -767,8 +771,13 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
-  Py_DECREF(b_new);
-  Py_DECREF(c_new);
+  /* Only DECREF the contiguous copies we created; skip borrowed Py_None refs */
+  if (b) {
+    Py_DECREF(b_new);
+  }
+  if (c) {
+    Py_DECREF(c_new);
+  }
 
   Py_RETURN_NONE;
 }
