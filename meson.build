@@ -1,4 +1,4 @@
-project('scs', 'c')
+project('scs', 'c', default_options: ['b_lto=true'])
 
 py = import('python').find_installation(pure: false)
 
