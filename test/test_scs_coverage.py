@@ -2139,3 +2139,475 @@ def test_alpha_boundary_values(alpha):
     sol = solver.solve()
     assert sol["info"]["status"] in ("solved", "solved_inaccurate")
     assert_almost_equal(sol["x"][0], 1.0, decimal=2)
+
+
+# ===========================================================================
+# 61. Negative parameter validation (tests error paths in C extension)
+# ===========================================================================
+
+
+def test_negative_eps_abs_raises():
+    with pytest.raises(ValueError, match="eps_abs"):
+        scs.SCS(_make_data(), _CONE, eps_abs=-1e-5, verbose=False)
+
+
+def test_negative_eps_rel_raises():
+    with pytest.raises(ValueError, match="eps_rel"):
+        scs.SCS(_make_data(), _CONE, eps_rel=-1e-5, verbose=False)
+
+
+def test_negative_eps_infeas_raises():
+    with pytest.raises(ValueError, match="eps_infeas"):
+        scs.SCS(_make_data(), _CONE, eps_infeas=-1e-5, verbose=False)
+
+
+def test_negative_alpha_raises():
+    with pytest.raises(ValueError, match="alpha"):
+        scs.SCS(_make_data(), _CONE, alpha=-0.5, verbose=False)
+
+
+def test_negative_rho_x_raises():
+    with pytest.raises(ValueError, match="rho_x"):
+        scs.SCS(_make_data(), _CONE, rho_x=-0.1, verbose=False)
+
+
+def test_negative_time_limit_secs_raises():
+    with pytest.raises(ValueError, match="time_limit_secs"):
+        scs.SCS(_make_data(), _CONE, time_limit_secs=-1.0, verbose=False)
+
+
+def test_negative_scale_raises():
+    with pytest.raises(ValueError, match="scale"):
+        scs.SCS(_make_data(), _CONE, scale=-1.0, verbose=False)
+
+
+def test_negative_acceleration_interval_raises():
+    with pytest.raises(ValueError, match="acceleration_interval"):
+        scs.SCS(_make_data(), _CONE, acceleration_interval=-1, verbose=False)
+
+
+def test_negative_max_iters_raises():
+    with pytest.raises(ValueError, match="max_iters"):
+        scs.SCS(_make_data(), _CONE, max_iters=-10, verbose=False)
+
+
+# ===========================================================================
+# 62. Module selection edge cases (pop-all-flags-first fix)
+# ===========================================================================
+
+
+def test_cudss_true_gpu_true_indirect_true_raises():
+    """cudss=True, gpu=True, use_indirect=True should raise ValueError."""
+    with pytest.raises(ValueError, match="gpu=True"):
+        scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
+                use_indirect=True, verbose=False)
+
+
+def test_cudss_true_gpu_true_indirect_false_tries_import():
+    """cudss=True, gpu=True, use_indirect=False should attempt to import
+    _scs_cudss (ImportError expected if not built)."""
+    try:
+        scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
+                use_indirect=False, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_cudss not built
+
+
+def test_gpu_true_mkl_true_no_leak():
+    """gpu=True, mkl=True should NOT leak 'mkl' kwarg into the C extension.
+    The mkl flag must be popped before passing settings to C."""
+    try:
+        scs.SCS(_make_data(), _CONE, gpu=True, mkl=True, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_gpu/_scs_cudss not built
+    # If mkl leaked through, the C extension would raise TypeError
+    # about unexpected kwarg. The ImportError (not TypeError) proves it
+    # was properly popped.
+
+
+def test_gpu_indirect_tries_import():
+    """gpu=True, use_indirect=True should attempt to import _scs_gpu."""
+    try:
+        scs.SCS(_make_data(), _CONE, gpu=True, use_indirect=True,
+                verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_gpu not built
+
+
+def test_mkl_direct_tries_import():
+    """mkl=True, use_indirect=False should attempt to import _scs_mkl."""
+    try:
+        scs.SCS(_make_data(), _CONE, mkl=True, use_indirect=False,
+                verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_mkl not built
+
+
+def test_select_module_pops_all_flags():
+    """Verify that _select_scs_module pops all four selection flags."""
+    stgs = {"use_indirect": False, "gpu": False, "mkl": False,
+            "cudss": False, "verbose": False}
+    scs.SCS(_make_data(), _CONE, **stgs)
+    # If any flag wasn't popped, the C extension would raise TypeError
+
+
+# ===========================================================================
+# 63. Deprecated 'f' cone field (maps to 'z')
+# ===========================================================================
+
+
+def test_deprecated_f_cone_field():
+    """The deprecated 'f' field should be treated as zero cone."""
+    # min c'x s.t. Ax = b  (equality via zero cone)
+    A = sp.csc_matrix(np.array([[1.0], [-1.0]]))
+    b = np.array([1.0, 0.0])
+    c = np.array([-1.0])
+    data = {"A": A, "b": b, "c": c}
+    # f=1 is the old name for z=1; remaining 1 row is nonneg
+    sol = scs.solve(data, {"f": 1, "l": 1}, verbose=False)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+def test_f_and_z_both_set_sum():
+    """If both 'f' and 'z' are set, they should be summed."""
+    A = sp.csc_matrix(np.array([[1.0], [-1.0]]))
+    b = np.array([1.0, 0.0])
+    c = np.array([-1.0])
+    data = {"A": A, "b": b, "c": c}
+    # f=1 + z=0 should give z=1 total; 1 remaining row is nonneg
+    sol = scs.solve(data, {"f": 1, "z": 0, "l": 1}, verbose=False)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+# ===========================================================================
+# 64. Cone fields specified as numpy arrays
+# ===========================================================================
+
+
+def test_cone_q_as_numpy_array():
+    """SOC cone dimensions can be given as a numpy int array."""
+    n = 3
+    A = sp.csc_matrix(np.eye(n))
+    b = np.array([0.0, 1.0, 1.0])
+    c = np.array([-1.0, 0.0, 0.0])
+    data = {"A": A, "b": b, "c": c}
+    cone = {"q": np.array([3], dtype=np.int64)}
+    sol = scs.solve(data, cone, verbose=False)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+def test_cone_s_as_numpy_array():
+    """SDP cone dimensions can be given as a numpy int array."""
+    # 2x2 SDP, vectorised dim = 3
+    n = 3
+    A = sp.csc_matrix(np.eye(n))
+    b = np.array([1.0, 0.0, 1.0])
+    c = np.array([-1.0, 0.0, -1.0])
+    data = {"A": A, "b": b, "c": c}
+    cone = {"s": np.array([2], dtype=np.int64)}
+    sol = scs.solve(data, cone, verbose=False)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+def test_cone_q_as_single_int():
+    """A single SOC cone dimension can be given as a bare int (not list)."""
+    n = 3
+    A = sp.csc_matrix(np.eye(n))
+    b = np.array([0.0, 1.0, 1.0])
+    c = np.array([-1.0, 0.0, 0.0])
+    data = {"A": A, "b": b, "c": c}
+    cone = {"q": 3}  # bare int instead of [3]
+    sol = scs.solve(data, cone, verbose=False)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+# ===========================================================================
+# 65. Warm-start with wrong-dimension vectors
+# ===========================================================================
+
+
+def test_warm_start_x_wrong_dim_raises():
+    """Warm-starting with x of wrong size should raise ValueError."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.solve()
+    with pytest.raises(ValueError):
+        solver.solve(warm_start=True, x=np.array([1.0, 2.0, 3.0]))
+
+
+def test_warm_start_y_wrong_dim_raises():
+    """Warm-starting with y of wrong size should raise ValueError."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.solve()
+    with pytest.raises(ValueError):
+        solver.solve(warm_start=True, y=np.array([1.0, 2.0, 3.0]))
+
+
+def test_warm_start_s_wrong_dim_raises():
+    """Warm-starting with s of wrong size should raise ValueError."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.solve()
+    with pytest.raises(ValueError):
+        solver.solve(warm_start=True, s=np.array([1.0, 2.0, 3.0]))
+
+
+# ===========================================================================
+# 66. Update with non-float arrays
+# ===========================================================================
+
+
+def test_update_b_integer_array_raises():
+    """update() with an integer b array should raise ValueError."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.solve()
+    with pytest.raises(ValueError):
+        solver.update(b=np.array([1, 2], dtype=np.int64))
+
+
+def test_update_c_integer_array_raises():
+    """update() with an integer c array should raise ValueError."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.solve()
+    with pytest.raises(ValueError):
+        solver.update(c=np.array([1], dtype=np.int64))
+
+
+# ===========================================================================
+# 67. Large max_iters produces solved result
+# ===========================================================================
+
+
+def test_large_max_iters_solves():
+    """Very large max_iters should not cause issues."""
+    solver = scs.SCS(_make_data(), _CONE, max_iters=100000, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+# ===========================================================================
+# 68. Box cone with arrays for bu/bl
+# ===========================================================================
+
+
+def test_box_cone_numpy_bounds():
+    """bu/bl specified as numpy float arrays should work."""
+    n = 2
+    # box cone: dim = d + 1 = 3 (t, x1, x2)
+    # s = b - Ax, s in box cone => bl <= x <= bu
+    A = sp.csc_matrix(np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]))
+    b = np.array([1.0, 0.0, 0.0])  # t=1, zero offsets
+    c = np.array([-1.0, -1.0])
+    data = {"A": A, "b": b, "c": c}
+    cone = {
+        "bu": np.array([5.0, 5.0]),
+        "bl": np.array([-5.0, -5.0]),
+    }
+    sol = scs.solve(data, cone, verbose=False)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+def test_box_cone_bu_bl_mismatch_raises():
+    """bu and bl with different lengths should raise ValueError."""
+    n = 2
+    A = sp.csc_matrix(np.eye(3, n))
+    b = np.array([0.0, 0.0, 0.0])
+    c = np.array([-1.0, -1.0])
+    data = {"A": A, "b": b, "c": c}
+    cone = {
+        "bu": [10.0, 10.0],
+        "bl": [-10.0],  # wrong length
+    }
+    with pytest.raises(ValueError, match="bu different dimension"):
+        scs.SCS(data, cone, verbose=False)
+
+
+# ===========================================================================
+# 69. Zero-dimensional problems / edge cases
+# ===========================================================================
+
+
+def test_zero_element_P():
+    """P can be a zero-nnz sparse matrix (empty quadratic term)."""
+    P = sp.csc_matrix((1, 1))  # 1x1 zero matrix
+    data = {"P": P, "A": _A.copy(), "b": _b.copy(), "c": _c.copy()}
+    solver = scs.SCS(data, _CONE, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+    assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+# ===========================================================================
+# 70. Solve without calling solve first then update
+# ===========================================================================
+
+
+def test_update_then_solve():
+    """update() followed by solve() should work (update before first solve)."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.update(b=np.array([2.0, 0.0]))
+    sol = solver.solve()
+    # Now feasible region is [0, 2], optimal x* = 2
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+    assert_almost_equal(sol["x"][0], 2.0, decimal=3)
+
+
+# ===========================================================================
+# 71. Multiple solves with different warm starts
+# ===========================================================================
+
+
+def test_multiple_solves_warm_start_persistence():
+    """Solution from previous solve is used as warm start for next."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    sol1 = solver.solve()
+    # Second solve with warm_start=True should use sol1 as starting point
+    sol2 = solver.solve(warm_start=True)
+    assert sol2["info"]["status"] == "solved"
+    assert_almost_equal(sol1["x"], sol2["x"], decimal=5)
+
+
+def test_cold_start_after_warm():
+    """warm_start=False after a warm solve should still converge correctly."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.solve()  # first solve
+    sol = solver.solve(warm_start=False)  # cold start
+    assert sol["info"]["status"] == "solved"
+    assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+# ===========================================================================
+# 72. Acceleration lookback negative (type-I AA hack)
+# ===========================================================================
+
+
+def test_negative_acceleration_lookback():
+    """Negative acceleration_lookback triggers type-I AA (intentional hack)."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     acceleration_lookback=-10, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+# ===========================================================================
+# 73. Power cone with different exponents
+# ===========================================================================
+
+
+def test_power_cone_half_exponent():
+    """Power cone with p=0.5: (x1^0.5)(x2^0.5) >= |x3|."""
+    # Power cone: s1^p * s2^(1-p) >= |s3|, with p=0.5
+    # Fix s1=1, s2=1 via equalities, then maximize s3
+    # Rows: z=2 (equalities for s1,s2), then p cone (3 rows)
+    n = 3
+    m = 5  # 2 equalities + 3 power cone
+    rows = [0, 1, 2, 3, 4]
+    cols = [0, 1, 2, 2, 2]
+    vals = [1.0, 1.0, 0.0, 0.0, 1.0]
+    A = sp.csc_matrix((vals, (rows, cols)), shape=(m, n))
+    b = np.array([1.0, 1.0, 1.0, 1.0, 0.0])  # z rows fix s1=1,s2=1; power cone s
+    c = np.array([0.0, 0.0, -1.0])  # maximize x3
+    data = {"A": A, "b": b, "c": c}
+    cone = {"z": 2, "p": [0.5]}
+    sol = scs.solve(data, cone, verbose=False, eps_abs=1e-9, eps_rel=1e-9)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+    assert_almost_equal(sol["x"][2], 1.0, decimal=2)
+
+
+# ===========================================================================
+# 74. Complex SDP cone (cs) standalone
+# ===========================================================================
+
+
+def test_cs_cone_standalone():
+    """Complex SDP cone by itself should solve."""
+    # cs cone of order 2 has dimension 2^2 = 4
+    # Use P=εI to ensure bounded objective
+    n, m = 4, 4
+    P = 0.1 * sp.eye(n, format="csc")
+    A = sp.eye(m, n, format="csc")
+    b = np.array([1.0, 0.0, 0.0, 1.0])
+    c = np.array([1.0, 0.0, 0.0, 1.0])
+    data = {"P": P, "A": A, "b": b, "c": c}
+    cone = {"cs": [2]}
+    sol = scs.solve(data, cone, verbose=False)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+# ===========================================================================
+# 75. Dual exponential cone (ed)
+# ===========================================================================
+
+
+def test_dual_exp_cone_standalone():
+    """Dual exponential cone ed=1 should solve."""
+    n, m = 3, 3
+    A = sp.csc_matrix(np.eye(m, n))
+    b = np.array([-1.0, -1.0, -1.0])
+    c = np.array([1.0, 1.0, 1.0])
+    data = {"A": A, "b": b, "c": c}
+    cone = {"ed": 1}
+    sol = scs.solve(data, cone, verbose=False)
+    assert sol["info"]["status_val"] != -4  # not FAILED
+
+
+# ===========================================================================
+# 76. Multiple sequential update+solve cycles
+# ===========================================================================
+
+
+def test_many_update_solve_cycles():
+    """Run several update-solve cycles to test workspace reuse."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    for i in range(1, 6):
+        ub = float(i)
+        solver.update(b=np.array([ub, 0.0]))
+        sol = solver.solve()
+        assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+        assert_almost_equal(sol["x"][0], ub, decimal=2)
+
+
+# ===========================================================================
+# 77. Info dict numerical fields have correct types
+# ===========================================================================
+
+
+def test_info_iter_is_int():
+    sol = scs.solve(_make_data(), _CONE, verbose=False)
+    assert isinstance(sol["info"]["iter"], int)
+
+
+def test_info_pobj_is_float():
+    sol = scs.solve(_make_data(), _CONE, verbose=False)
+    assert isinstance(sol["info"]["pobj"], float)
+
+
+def test_info_status_is_str():
+    sol = scs.solve(_make_data(), _CONE, verbose=False)
+    assert isinstance(sol["info"]["status"], str)
+
+
+# ===========================================================================
+# 78. Solve returns copies (not aliased internal buffers)
+# ===========================================================================
+
+
+def test_solution_arrays_are_copies():
+    """Modifying returned x/y/s should not affect next solve."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    sol1 = solver.solve()
+    x1_val = sol1["x"][0]
+    sol1["x"][0] = 999.0  # mutate returned array
+    sol2 = solver.solve(warm_start=False)
+    # Second solve should not see the mutation
+    assert_almost_equal(sol2["x"][0], x1_val, decimal=5)
+
+
+# ===========================================================================
+# 79. Verbose false produces no stdout
+# ===========================================================================
+
+
+def test_verbose_false_no_output(capsys):
+    """verbose=False should produce no stdout."""
+    scs.solve(_make_data(), _CONE, verbose=False)
+    captured = capsys.readouterr()
+    assert captured.out == ""
