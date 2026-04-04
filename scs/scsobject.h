@@ -5,7 +5,8 @@
 
 /* SCS Object type */
 typedef struct {
-  PyObject_HEAD ScsWork *work; /* Workspace */
+  PyObject_HEAD
+  ScsWork *work; /* Workspace */
   ScsSolution *sol;            /* Solution, keep around for warm-starts */
   scs_int m, n;
   PyThread_type_lock lock;     /* Per-instance lock protecting work/sol */

@@ -23,6 +23,7 @@ classifiers = [
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
     'Programming Language :: Python :: 3 :: Only',
+    'Programming Language :: Python :: Implementation :: Free Threading :: 1 - Unstable',
     'Programming Language :: Python :: Implementation :: CPython',
     'Operating System :: Microsoft :: Windows',
     'Operating System :: POSIX',
@@ -38,6 +39,9 @@ dependencies = [
 ]
 
 [tool.cibuildwheel]
+enable = [
+  "cpython-freethreading",  # Build free-threaded (3.13t+) wheels
+]
 skip = [
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
   "*musllinux*aarch64*" # no Scipy wheels for this
