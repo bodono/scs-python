@@ -121,30 +121,6 @@ if is_gpu_build and not cuda_dep.found()
   error('GPU build requested but CUDA toolkit was not found.')
 endif
 
-if get_option('use_gpu')
-  gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
-  _deps += cuda_dep
-  if get_option('gpu_atrans')
-    gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
-  endif
-  ext_modules += py.extension_module(
-    '_scs_gpu',
-    common_sources,
-    # In Meson, sources with a `.cu` extension are compiled with nvcc by default.
-    # To compile `.c` files with nvcc, they must be explicitly targeted.
-    # It is strongly recommended to rename CUDA-C files to `.cu`.
-    fs.glob('scs_source/linsys/gpu/*.c'),
-    fs.glob('scs_source/linsys/gpu/indirect/*.c'),
-    c_args: gpu_c_args,
-    dependencies: _deps,
-    include_directories: [
-      common_includes, 'scs_source/linsys/gpu/', 'scs_source/linsys/gpu/indirect'
-    ],
-    install: true,
-    install_dir: scs_dir,
-  )
-endif
-
 # Sources
 scs_core_sources = files(
   'scs_source/src/aa.c',
@@ -214,6 +190,32 @@ py.extension_module(
   install_dir: scs_dir,
   install: true,
 )
+
+if get_option('use_gpu')
+  gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
+  _deps += cuda_dep
+  if get_option('gpu_atrans')
+    gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
+  endif
+  py.extension_module(
+    '_scs_gpu',
+    'scs/scspy.c',
+    common_linsys_sources,
+    scs_core_sources,
+    # In Meson, sources with a `.cu` extension are compiled with nvcc by default.
+    # To compile `.c` files with nvcc, they must be explicitly targeted.
+    # It is strongly recommended to rename CUDA-C files to `.cu`.
+    fs.glob('scs_source/linsys/gpu/*.c'),
+    fs.glob('scs_source/linsys/gpu/indirect/*.c'),
+    c_args: gpu_c_args,
+    dependencies: _deps,
+    include_directories: [
+      common_includes, 'scs_source/linsys/gpu/', 'scs_source/linsys/gpu/indirect'
+    ],
+    install: true,
+    install_dir: scs_dir,
+  )
+endif
 
 if get_option('link_mkl')
   py.extension_module(
