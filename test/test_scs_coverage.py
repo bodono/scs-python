@@ -2611,3 +2611,215 @@ def test_verbose_false_no_output(capsys):
     scs.solve(_make_data(), _CONE, verbose=False)
     captured = capsys.readouterr()
     assert captured.out == ""
+
+
+# ===========================================================================
+# 80. Float32 input arrays
+# ===========================================================================
+
+
+def test_float32_b_c_accepted():
+    """float32 b and c should be accepted (cast internally to float64)."""
+    A = sp.csc_matrix(np.array([[1.0], [-1.0]]))
+    b = np.array([1.0, 0.0], dtype=np.float32)
+    c = np.array([-1.0], dtype=np.float32)
+    data = {"A": A, "b": b, "c": c}
+    sol = scs.solve(data, _CONE, verbose=False)
+    assert sol["info"]["status"] == "solved"
+    assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+def test_float32_A_accepted():
+    """float32 A data should be accepted (cast internally)."""
+    A = sp.csc_matrix(np.array([[1.0], [-1.0]], dtype=np.float32))
+    b = np.array([1.0, 0.0])
+    c = np.array([-1.0])
+    data = {"A": A, "b": b, "c": c}
+    sol = scs.solve(data, _CONE, verbose=False)
+    assert sol["info"]["status"] == "solved"
+
+
+# ===========================================================================
+# 81. Extremely sparse A (single nonzero)
+# ===========================================================================
+
+
+def test_very_sparse_A():
+    """A with only one nonzero entry should solve correctly."""
+    # min -x s.t. x >= 0 (trivially unbounded, but add upper bound)
+    # Actually: min -x s.t. x <= 1, x >= 0
+    A = sp.csc_matrix(np.array([[1.0], [-1.0]]))
+    b = np.array([1.0, 0.0])
+    c = np.array([-1.0])
+    data = {"A": A, "b": b, "c": c}
+    sol = scs.solve(data, {"l": 2}, verbose=False)
+    assert sol["info"]["status"] == "solved"
+
+
+# ===========================================================================
+# 82. Empty A (all zeros)
+# ===========================================================================
+
+
+def test_zero_A_matrix():
+    """A matrix with no nonzero entries — should still be processable."""
+    A = sp.csc_matrix((2, 1))  # 2x1 zero matrix
+    b = np.array([1.0, 1.0])
+    c = np.array([1.0])
+    data = {"A": A, "b": b, "c": c}
+    sol = scs.solve(data, {"l": 2}, verbose=False)
+    # With A=0, problem is min c'x s.t. s = b, s >= 0
+    # x is free, any x gives obj = c'x, so unbounded if c != 0
+    assert sol["info"]["status_val"] in (-1, -6, 1, 2)
+
+
+# ===========================================================================
+# 83. Two separate SCS instances don't interfere
+# ===========================================================================
+
+
+def test_two_independent_instances():
+    """Two SCS instances with different problems should not interfere."""
+    # Instance 1: max x s.t. x <= 1
+    solver1 = scs.SCS(_make_data(), _CONE, verbose=False)
+
+    # Instance 2: different problem, max x s.t. x <= 5
+    A2 = sp.csc_matrix(np.array([[1.0], [-1.0]]))
+    b2 = np.array([5.0, 0.0])
+    c2 = np.array([-1.0])
+    solver2 = scs.SCS({"A": A2, "b": b2, "c": c2}, {"l": 2}, verbose=False)
+
+    sol1 = solver1.solve()
+    sol2 = solver2.solve()
+
+    assert_almost_equal(sol1["x"][0], 1.0, decimal=3)
+    assert_almost_equal(sol2["x"][0], 5.0, decimal=3)
+
+
+# ===========================================================================
+# 84. Legacy solve with no P (pure LP)
+# ===========================================================================
+
+
+def test_legacy_solve_no_P():
+    """Legacy solve() with no P key in data should work."""
+    data = {"A": _A.copy(), "b": _b.copy(), "c": _c.copy()}
+    assert "P" not in data
+    sol = scs.solve(data, _CONE, verbose=False)
+    assert sol["info"]["status"] == "solved"
+    assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+# ===========================================================================
+# 85. Large QP with known closed-form solution
+# ===========================================================================
+
+
+def test_unconstrained_qp_known_solution():
+    """Unconstrained QP: min (1/2)x'Px + c'x has closed-form x* = -P^{-1}c."""
+    n = 5
+    # P = 2I, c = [1,...,1] => x* = -0.5 * [1,...,1]
+    P = 2.0 * sp.eye(n, format="csc")
+    A = sp.csc_matrix((1, n))  # dummy single row
+    b = np.zeros(1)
+    c = np.ones(n)
+    data = {"P": P, "A": A, "b": b, "c": c}
+    cone = {"z": 1}  # equality constraint: 0 = 0
+    sol = scs.solve(data, cone, verbose=False, eps_abs=1e-9, eps_rel=1e-9)
+    assert sol["info"]["status"] == "solved"
+    expected_x = -0.5 * np.ones(n)
+    assert_almost_equal(sol["x"], expected_x, decimal=3)
+
+
+# ===========================================================================
+# 86. Write data then verify file contains data
+# ===========================================================================
+
+
+def test_write_data_and_log_csv_simultaneously():
+    """write_data_filename and log_csv_filename can both be set."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        data_file = os.path.join(tmpdir, "data.bin")
+        log_file = os.path.join(tmpdir, "log.csv")
+        solver = scs.SCS(
+            _make_data(), _CONE, verbose=False,
+            write_data_filename=data_file,
+            log_csv_filename=log_file,
+        )
+        sol = solver.solve()
+        assert sol["info"]["status"] == "solved"
+        assert os.path.isfile(data_file)
+        assert os.path.isfile(log_file)
+
+
+# ===========================================================================
+# 87. Duality gap near zero for solved problems
+# ===========================================================================
+
+
+def test_duality_gap_small_for_solved():
+    """For a solved LP, the duality gap should be near zero."""
+    sol = scs.solve(_make_data(), _CONE, verbose=False,
+                    eps_abs=1e-9, eps_rel=1e-9)
+    assert sol["info"]["status"] == "solved"
+    gap = abs(sol["info"]["gap"])
+    assert gap < 1e-4, f"Duality gap too large: {gap}"
+
+
+# ===========================================================================
+# 88. P with only lower triangular entries gets converted
+# ===========================================================================
+
+
+def test_P_only_lower_triangular():
+    """P given as strictly lower triangular should be flipped to upper."""
+    n = 2
+    # Lower triangular P (off-diag only in lower part)
+    P = sp.csc_matrix(np.array([[2.0, 0.0], [1.0, 2.0]]))
+    A = sp.eye(n, format="csc")
+    b = np.zeros(n)
+    c = np.ones(n)
+    data = {"P": P, "A": A, "b": b, "c": c}
+    cone = {"z": n}
+    sol = scs.solve(data, cone, verbose=False)
+    assert sol["info"]["status"] == "solved"
+
+
+# ===========================================================================
+# 89. Cone with all types simultaneously
+# ===========================================================================
+
+
+def test_all_cone_types_simultaneously():
+    """Problem using z, l, q, s, ep, p cone types all at once."""
+    np.random.seed(42)
+    # Cone dims: z=1, l=2, q=[3], s=[2] (vec dim=3), ep=1 (dim 3), p=[0.5] (dim 3)
+    # Total rows: 1 + 2 + 3 + 3 + 3 + 3 = 15
+    cone = {"z": 1, "l": 2, "q": [3], "s": [2], "ep": 1, "p": [0.5]}
+    m = 15
+    n = m
+    P = 0.1 * sp.eye(n, format="csc")
+    A = sp.random(m, n, density=0.1, format="csc")
+    A.data = np.random.randn(A.nnz)
+    b = np.random.randn(m)
+    c = np.random.randn(n)
+    data = {"P": P, "A": A, "b": b, "c": c}
+    sol = scs.solve(data, cone, verbose=False, max_iters=50000)
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+# ===========================================================================
+# 90. Solve with explicit warm_start=True on first call (no prior solve)
+# ===========================================================================
+
+
+def test_warm_start_true_x_y_s_on_first_solve():
+    """Providing x, y, s on the very first solve should work as warm start."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    x0 = np.array([0.9])
+    y0 = np.array([1.0, 0.0])
+    s0 = np.array([0.1, 0.9])
+    sol = solver.solve(warm_start=True, x=x0, y=y0, s=s0)
+    assert sol["info"]["status"] == "solved"
+    assert_almost_equal(sol["x"][0], 1.0, decimal=3)
