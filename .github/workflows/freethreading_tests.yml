@@ -34,12 +34,12 @@ jobs:
         run: |
           uv venv --python ${{ matrix.python-version }} .venv
           source .venv/bin/activate
-          uv pip install numpy scipy pytest
+          uv pip install numpy scipy pytest meson meson-python
 
       - name: Build and install scs
         run: |
           source .venv/bin/activate
-          uv pip install -v . --no-build-isolation
+          pip install -v . --no-build-isolation
 
       - name: Verify GIL is disabled
         run: |
