@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import numpy as np
 from scipy import sparse
 from scs import _scs_direct
 import warnings
@@ -61,6 +62,16 @@ def _select_scs_module(stgs):
     return _scs_indirect
 
   return _scs_direct
+
+
+def _has_lower_tri(P):
+  """Fast check for strictly lower triangular entries in a sorted CSC matrix."""
+  nnz_per_col = np.diff(P.indptr)
+  nonempty = nnz_per_col > 0
+  if not nonempty.any():
+    return False
+  last_row = P.indices[P.indptr[1:][nonempty] - 1]
+  return bool(np.any(last_row > np.where(nonempty)[0]))
 
 
 class SCS(object):
@@ -126,11 +137,11 @@ class SCS(object):
               "matrix; may take a while."
           )
           P = P.tocsc()
-        # extract upper triangular component only
-        if sparse.tril(P, -1).data.size > 0:
-          P = sparse.triu(P, format="csc")
         if not P.has_sorted_indices:
           P.sort_indices()
+        # extract upper triangular component only
+        if _has_lower_tri(P):
+          P = sparse.triu(P, format="csc")
         Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
 
     # Which scs are we using (scs_direct, scs_indirect, ...)
