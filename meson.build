@@ -79,6 +79,15 @@ common_includes = [
   'scs_source/linsys',
   incdir_numpy
 ]
+if get_option('native_arch')
+  native_flag = cc.get_supported_arguments('-march=native')
+  if native_flag.length() > 0
+    common_c_args += native_flag
+  else
+    warning('native_arch requested but -march=native is not supported by this compiler')
+  endif
+endif
+
 _deps = [blas_deps]
 if get_option('use_openmp')
   _deps += dependency('openmp')
