@@ -313,11 +313,13 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                     NULL};
 
 /* parse the arguments and ensure they are the correct type */
+/* Use 'L' (long long) for DLONG so that scs_int fields are parsed correctly
+   on Windows where sizeof(long) < sizeof(long long) (LLP64 model). */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!lfffffffllzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LfffffffLLzz";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!ldddddddllzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LdddddddLLzz";
 #endif
 #else
 #ifdef SFLOAT
