@@ -30,17 +30,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libopenblas-dev
 
-      - name: Install dependencies
+      - name: Create venv and install dependencies
         run: |
-          uv pip install --python ${{ matrix.python-version }} numpy scipy pytest
+          uv venv --python ${{ matrix.python-version }} .venv
+          source .venv/bin/activate
+          uv pip install numpy scipy pytest
 
       - name: Build and install scs
         run: |
-          uv pip install --python ${{ matrix.python-version }} -v . --no-build-isolation
+          source .venv/bin/activate
+          uv pip install -v . --no-build-isolation
 
       - name: Verify GIL is disabled
         run: |
-          uv run --python ${{ matrix.python-version }} python -c "
+          source .venv/bin/activate
+          python -c "
           import sys
           import scs
           print(f'Python {sys.version}')
@@ -51,4 +55,5 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run --python ${{ matrix.python-version }} python -m pytest test/ -v --timeout=120
+          source .venv/bin/activate
+          python -m pytest test/ -v --timeout=120
