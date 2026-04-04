@@ -70,9 +70,11 @@ if not blas_deps[0].found() and not get_option('sdist_mode')
 endif
 
 # Common
-common_c_args = cc.get_supported_arguments('-Wno-unused-result') + [
-  '-DPYTHON', '-DCTRLC=1'
-]
+common_c_args = cc.get_supported_arguments(
+  '-Wno-unused-result',
+  '-fno-math-errno',   # math fns need not set errno; SCS never checks it
+  '-funroll-loops',    # matches scs.mk; benefits tight ADMM iteration loops
+) + ['-DPYTHON', '-DCTRLC=1']
 common_includes = [
   'scs',
   'scs_source/include',

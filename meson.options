@@ -27,3 +27,5 @@ option('use_blas64', type: 'boolean',
        value: false, description: 'Use 64-bit convention for BLAS')
 option('native_arch', type: 'boolean',
        value: false, description: 'Compile with -march=native for the current CPU. Improves performance but produces non-portable binaries. Enable when building from source for local use.')
+option('b_lto', type: 'boolean',
+       value: true, description: 'Enable link-time optimisation (LTO). Allows inlining of linalg helpers across translation units. Disable with -Db_lto=false if your toolchain does not support it.')
