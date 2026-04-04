@@ -34,7 +34,7 @@ jobs:
         run: |
           uv venv --python ${{ matrix.python-version }} .venv
           source .venv/bin/activate
-          uv pip install numpy scipy pytest
+          uv pip install numpy scipy pytest pytest-timeout
 
       - name: Build and install scs
         run: |
