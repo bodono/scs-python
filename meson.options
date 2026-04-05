@@ -25,3 +25,5 @@ option('gpu_atrans', type: 'boolean',
        value: false, description: 'transpose matrices for the GPU')
 option('use_blas64', type: 'boolean',
        value: false, description: 'Use 64-bit convention for BLAS')
+option('native_arch', type: 'boolean',
+       value: false, description: 'Compile with -march=native for the current CPU. Improves performance but produces non-portable binaries. Enable when building from source for local use.')

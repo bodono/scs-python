@@ -1,4 +1,4 @@
-project('scs', 'c')
+project('scs', 'c', default_options: ['b_lto=true'])
 
 py = import('python').find_installation(pure: false)
 
@@ -70,15 +70,26 @@ if not blas_deps[0].found() and not get_option('sdist_mode')
 endif
 
 # Common
-common_c_args = cc.get_supported_arguments('-Wno-unused-result') + [
-  '-DPYTHON', '-DCTRLC=1'
-]
+common_c_args = cc.get_supported_arguments(
+  '-Wno-unused-result',
+  '-fno-math-errno',   # math fns need not set errno; SCS never checks it
+  '-funroll-loops',    # matches scs.mk; benefits tight ADMM iteration loops
+) + ['-DPYTHON', '-DCTRLC=1']
 common_includes = [
   'scs',
   'scs_source/include',
   'scs_source/linsys',
   incdir_numpy
 ]
+if get_option('native_arch')
+  native_flag = cc.get_supported_arguments('-march=native')
+  if native_flag.length() > 0
+    common_c_args += native_flag
+  else
+    warning('native_arch requested but -march=native is not supported by this compiler')
+  endif
+endif
+
 _deps = [blas_deps]
 if get_option('use_openmp')
   _deps += dependency('openmp')
