@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import numpy as np
 from scipy import sparse
 from scs import _scs_direct
 import warnings
@@ -27,11 +28,17 @@ SOLVED_INACCURATE = 2  # SCS best guess solved
 # Choose which SCS to import based on settings.
 def _select_scs_module(stgs):
 
-  if stgs.pop("cudss", False):
-    raise ValueError("To use cuDSS set gpu=True and use_indirect=False.")
+  cudss = stgs.pop("cudss", False)
+  gpu = stgs.pop("gpu", False)
+  mkl = stgs.pop("mkl", False)
+  use_indirect = stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT)
 
-  if stgs.pop("gpu", False):  # False by default
-    if stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
+  if cudss:
+    if not gpu or use_indirect:
+      raise ValueError("To use cuDSS set gpu=True and use_indirect=False.")
+
+  if gpu:
+    if use_indirect:
       from scs import _scs_gpu  # pylint: disable=g-import-not-at-top
 
       return _scs_gpu
@@ -40,8 +47,8 @@ def _select_scs_module(stgs):
 
       return _scs_cudss
 
-  if stgs.pop("mkl", False):  # False by default
-    if stgs.pop("use_indirect", False):
+  if mkl:
+    if use_indirect:
       raise NotImplementedError(
           "MKL indirect solver not yet available, pass `use_indirect=False`."
       )
@@ -49,12 +56,22 @@ def _select_scs_module(stgs):
 
     return _scs_mkl
 
-  if stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT):
+  if use_indirect:
     from scs import _scs_indirect  # pylint: disable=g-import-not-at-top
 
     return _scs_indirect
 
   return _scs_direct
+
+
+def _has_lower_tri(P):
+  """Fast check for strictly lower triangular entries in a sorted CSC matrix."""
+  nnz_per_col = np.diff(P.indptr)
+  nonempty = nnz_per_col > 0
+  if not nonempty.any():
+    return False
+  last_row = P.indices[P.indptr[1:][nonempty] - 1]
+  return bool(np.any(last_row > np.where(nonempty)[0]))
 
 
 class SCS(object):
@@ -120,11 +137,11 @@ class SCS(object):
               "matrix; may take a while."
           )
           P = P.tocsc()
-        # extract upper triangular component only
-        if sparse.tril(P, -1).data.size > 0:
-          P = sparse.triu(P, format="csc")
         if not P.has_sorted_indices:
           P.sort_indices()
+        # extract upper triangular component only
+        if _has_lower_tri(P):
+          P = sparse.triu(P, format="csc")
         Pdata, Pindices, Pcolptr = P.data, P.indices, P.indptr
 
     # Which scs are we using (scs_direct, scs_indirect, ...)

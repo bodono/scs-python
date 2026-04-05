@@ -313,11 +313,13 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                     NULL};
 
 /* parse the arguments and ensure they are the correct type */
+/* Use 'L' (long long) for DLONG so that scs_int fields are parsed correctly
+   on Windows where sizeof(long) < sizeof(long long) (LLP64 model). */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!lfffffffllzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LfffffffLLzz";
 #else
-  char *argparse_string = "(ll)O!O!O!OOOO!O!O!|O!O!O!ldddddddllzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LdddddddLLzz";
 #endif
 #else
 #ifdef SFLOAT
@@ -329,7 +331,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
 
   /* Check that the workspace is not already initialized */
   if (self->work) {
-    finish_with_error("Workspace already setup!");
+    return finish_with_error("Workspace already setup!");
   }
 
   /* set defaults */
@@ -362,15 +364,18 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
           &(stgs->acceleration_interval),
           &(stgs->write_data_filename),
           &(stgs->log_csv_filename))) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("Error parsing inputs\n");
   }
   /* clang-format on */
 
   if (d->m < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("m must be a positive integer");
   }
 
   if (d->n < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("n must be a positive integer");
   }
 
@@ -546,6 +551,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error("time_limit_secs must be nonnegative");
   }
   if (stgs->eps_abs < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("eps_abs must be positive");
   }
   if (stgs->eps_rel < 0) {
@@ -767,8 +773,13 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
-  Py_DECREF(b_new);
-  Py_DECREF(c_new);
+  /* Only DECREF the contiguous copies we created; skip borrowed Py_None refs */
+  if (b) {
+    Py_DECREF(b_new);
+  }
+  if (c) {
+    Py_DECREF(c_new);
+  }
 
   Py_RETURN_NONE;
 }
