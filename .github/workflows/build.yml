@@ -165,7 +165,7 @@ jobs:
         run: conda install -y openblas pkgconfig
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.3.0
+        uses: pypa/cibuildwheel@v3.4.1
         env:
           # Explicitly set the architecture based on the matrix
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
