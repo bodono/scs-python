@@ -249,6 +249,21 @@ def test_mkl_with_indirect_raises():
         pytest.skip("_scs_mkl not built")
 
 
+def test_dense_with_indirect_raises():
+    """Passing dense=True and use_indirect=True should raise ValueError."""
+    with pytest.raises(ValueError, match="use_indirect=False"):
+        scs.SCS(_make_data(), _CONE, dense=True, use_indirect=True, verbose=False)
+
+
+def test_dense_direct_tries_import():
+    """dense=True, use_indirect=False should attempt to import _scs_dense."""
+    try:
+        scs.SCS(_make_data(), _CONE, dense=True, use_indirect=False,
+                verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_dense not built
+
+
 # ===========================================================================
 # 6. Status constants
 # ===========================================================================
@@ -2244,9 +2259,9 @@ def test_mkl_direct_tries_import():
 
 
 def test_select_module_pops_all_flags():
-    """Verify that _select_scs_module pops all four selection flags."""
+    """Verify that _select_scs_module pops all five selection flags."""
     stgs = {"use_indirect": False, "gpu": False, "mkl": False,
-            "cudss": False, "verbose": False}
+            "cudss": False, "dense": False, "verbose": False}
     scs.SCS(_make_data(), _CONE, **stgs)
     # If any flag wasn't popped, the C extension would raise TypeError
 
