@@ -20,6 +20,9 @@ pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true
 # Install with Intel MKL backend
 pip install -v . --no-build-isolation -Csetup-args=-Dlink_mkl=true
 
+# Install with spectral cone support (logdet, nuclear norm, ell1, sum-of-largest)
+pip install -v . --no-build-isolation -Csetup-args=-Duse_spectral_cones=true
+
 # Build source distribution
 pipx run build --sdist -Csetup-args=-Dsdist_mode=true
 ```
@@ -41,7 +44,7 @@ pytest test/test_scs_basic.py
 pytest test/test_scs_basic.py::test_name
 ```
 
-MKL, GPU, and dense tests (`test_solve_random_cone_prob_mkl.py`, `test_solve_random_cone_prob_cudss.py`, `test_solve_random_cone_prob_dense.py`) require the corresponding build variants.
+MKL, GPU, and dense tests (`test_solve_random_cone_prob_mkl.py`, `test_solve_random_cone_prob_cudss.py`, `test_solve_random_cone_prob_dense.py`) require the corresponding build variants. Spectral cone tests (`test_spectral_and_complex_cones.py`) require `-Duse_spectral_cones=true`.
 
 ## Architecture
 
@@ -64,7 +67,8 @@ Python API (scs/py/__init__.py)
 
 - `scs/py/__init__.py` — All Python-layer logic: input validation, sparse matrix conversion (enforces CSC format), module selection, warm-start handling, and result post-processing.
 - `scs/scspy.c` + `scs/include/scsmodule.h` + `scs/include/scsobject.h` — Thin C wrapper that bridges Python/NumPy to the SCS C API.
-- `meson.build` / `meson.options` — Build configuration and the 11 build options that control which extension modules are compiled.
+- `scs/scsobject.h` — C-level cone dict parsing and SCS workspace init/solve/dealloc.
+- `meson.build` / `meson.options` — Build configuration and build options that control which extension modules are compiled.
 - `scs_source/` — Git submodule containing the full SCS C library: `src/` (ADMM loop, cone projections, Anderson acceleration), `linsys/` (pluggable linear system solvers), `include/`, `external/` (AMD ordering, QDLDL).
 
 ### Data Flow

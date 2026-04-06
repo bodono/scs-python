@@ -241,6 +241,26 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, ScsSettings *stgs,
     if (k->p) {
       scs_free(k->p);
     }
+#ifdef USE_SPECTRAL_CONES
+    if (k->d) {
+      scs_free(k->d);
+    }
+    if (k->nuc_m) {
+      scs_free(k->nuc_m);
+    }
+    if (k->nuc_n) {
+      scs_free(k->nuc_n);
+    }
+    if (k->ell1) {
+      scs_free(k->ell1);
+    }
+    if (k->sl_n) {
+      scs_free(k->sl_n);
+    }
+    if (k->sl_k) {
+      scs_free(k->sl_k);
+    }
+#endif
     scs_free(k);
   }
   if (d) {
@@ -522,6 +542,51 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("Failed to parse cone field ed");
   }
+
+#ifdef USE_SPECTRAL_CONES
+  /* logdet cone */
+  if (get_cone_arr_dim("d", &(k->d), &(k->dsize), cone) < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("Failed to parse cone field d");
+  }
+  /* nuclear norm cone */
+  if (get_cone_arr_dim("nuc_m", &(k->nuc_m), &(k->nucsize), cone) < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("Failed to parse cone field nuc_m");
+  }
+  {
+    scs_int nuc_n_size = 0;
+    if (get_cone_arr_dim("nuc_n", &(k->nuc_n), &nuc_n_size, cone) < 0) {
+      free_py_scs_data(d, k, stgs, &ps);
+      return finish_with_error("Failed to parse cone field nuc_n");
+    }
+    if (nuc_n_size != k->nucsize) {
+      free_py_scs_data(d, k, stgs, &ps);
+      return finish_with_error("nuc_m and nuc_n must have the same length");
+    }
+  }
+  /* ell1 cone */
+  if (get_cone_arr_dim("ell1", &(k->ell1), &(k->ell1_size), cone) < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("Failed to parse cone field ell1");
+  }
+  /* sum of largest eigenvalues cone */
+  if (get_cone_arr_dim("sl_n", &(k->sl_n), &(k->sl_size), cone) < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("Failed to parse cone field sl_n");
+  }
+  {
+    scs_int sl_k_size = 0;
+    if (get_cone_arr_dim("sl_k", &(k->sl_k), &sl_k_size, cone) < 0) {
+      free_py_scs_data(d, k, stgs, &ps);
+      return finish_with_error("Failed to parse cone field sl_k");
+    }
+    if (sl_k_size != k->sl_size) {
+      free_py_scs_data(d, k, stgs, &ps);
+      return finish_with_error("sl_n and sl_k must have the same length");
+    }
+  }
+#endif
 
   stgs->verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
   stgs->normalize = normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
