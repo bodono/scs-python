@@ -8,3 +8,90 @@ scs-python
 
 Python interface for [SCS](https://github.com/cvxgrp/scs) 3.0.0 and higher.
 The full documentation is available [here](https://www.cvxgrp.org/scs/).
+
+## Installation
+
+```bash
+pip install scs
+```
+
+To install from source:
+```bash
+git clone --recursive https://github.com/bodono/scs-python.git
+cd scs-python
+pip install .
+```
+
+### Optional backends
+
+```bash
+# MKL Pardiso direct solver
+pip install . -Csetup-args=-Dlink_mkl=true
+
+# GPU direct solver (cuDSS)
+pip install . -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true
+
+# Dense direct solver (LAPACK)
+pip install . -Csetup-args=-Duse_lapack=true
+
+# Spectral cones (logdet, nuclear norm, ell-1, sum-of-largest)
+pip install . -Csetup-args=-Duse_spectral_cones=true
+```
+
+## Usage
+
+```python
+import numpy as np
+import scipy.sparse as sp
+import scs
+
+m, n = 4, 2
+A = sp.random(m, n, density=0.5, format="csc")
+b = np.random.randn(m)
+c = np.random.randn(n)
+P = sp.eye(n, format="csc")
+
+cone = {"l": m}  # non-negative cone
+data = {"P": P, "A": A, "b": b, "c": c}
+
+solver = scs.SCS(data, cone, verbose=False)
+sol = solver.solve()
+
+print(sol["info"]["status"])  # 'solved'
+print(sol["x"])               # primal solution
+```
+
+### Cone types
+
+The `cone` dict supports the following keys:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `z` | `int` | Zero cone |
+| `l` | `int` | Non-negative cone |
+| `bu`, `bl` | `array` | Box cone bounds |
+| `q` | `list[int]` | Second-order cone lengths |
+| `s` | `list[int]` | PSD cone matrix dimensions |
+| `cs` | `list[int]` | Complex PSD cone matrix dimensions |
+| `ep` | `int` | Primal exponential cone triples |
+| `ed` | `int` | Dual exponential cone triples |
+| `p` | `list[float]` | Power cone parameters |
+
+With `-Duse_spectral_cones=true`:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `d` | `list[int]` | Log-determinant cone matrix dimensions |
+| `nuc_m`, `nuc_n` | `list[int]` | Nuclear norm cone row/column dimensions |
+| `ell1` | `list[int]` | ell-1 norm cone dimensions |
+| `sl_n`, `sl_k` | `list[int]` | Sum-of-largest-eigenvalues dimensions and k values |
+
+See the [cone documentation](https://www.cvxgrp.org/scs/api/cones.html) for
+mathematical definitions and data layout details.
+
+## Testing
+
+```bash
+pip install pytest
+pytest test/
+```
