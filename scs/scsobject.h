@@ -8,6 +8,7 @@ typedef struct {
   PyObject_HEAD ScsWork *work; /* Workspace */
   ScsSolution *sol;            /* Solution, keep around for warm-starts */
   scs_int m, n;
+  PyThread_type_lock lock;     /* Per-instance lock protecting work/sol */
 } SCS;
 
 /* Just a helper struct to store the PyArrayObjects that need Py_DECREF */
@@ -643,6 +644,15 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   self->sol->y = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
   self->sol->s = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
 
+  /* Allocate per-instance lock to protect work/sol from concurrent access.
+   * Needed because Py_BEGIN_ALLOW_THREADS releases the GIL during scs_solve,
+   * allowing concurrent calls on the same instance to race. */
+  self->lock = PyThread_allocate_lock();
+  if (!self->lock) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("Unable to allocate instance lock");
+  }
+
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
   self->work = scs_init(d, k, stgs);
@@ -684,20 +694,30 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
 
   scs_int _warm_start = (scs_int)PyObject_IsTrue(warm_start);
 
+  /* Acquire per-instance lock. Release the GIL first to avoid deadlock:
+   * another thread may hold this lock inside scs_solve (with GIL released),
+   * so we must not hold the GIL while waiting for the lock. */
+  Py_BEGIN_ALLOW_THREADS;
+  PyThread_acquire_lock(self->lock, WAIT_LOCK);
+  Py_END_ALLOW_THREADS;
+
   if (_warm_start) {
     /* If any of these of missing, we use the values in sol */
     if (!Py_IsNone((PyObject *)warm_x)) {
       if (get_warm_start(self->sol->x, self->n, warm_x) < 0) {
+        PyThread_release_lock(self->lock);
         return none_with_error("Unable to parse x warm-start");
       }
     }
     if (!Py_IsNone((PyObject *)warm_y)) {
       if (get_warm_start(self->sol->y, self->m, warm_y) < 0) {
+        PyThread_release_lock(self->lock);
         return none_with_error("Unable to parse y warm-start");
       }
     }
     if (!Py_IsNone((PyObject *)warm_s)) {
       if (get_warm_start(self->sol->s, self->m, warm_s) < 0) {
+        PyThread_release_lock(self->lock);
         return none_with_error("Unable to parse s warm-start");
       }
     }
@@ -711,24 +731,34 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
   scs_solve(self->work, sol, &info, _warm_start);
-  /* reacquire the GIL */
   Py_END_ALLOW_THREADS;
 
+  /* Copy results out of sol while still holding the lock, because another
+   * thread's solve could overwrite sol as soon as we release. */
   veclen[0] = self->n;
   _x = scs_malloc(self->n * sizeof(scs_float));
   memcpy(_x, sol->x, self->n * sizeof(scs_float));
-  x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _x);
-  PyArray_ENABLEFLAGS((PyArrayObject *)x, NPY_ARRAY_OWNDATA);
 
   veclen[0] = self->m;
   _y = scs_malloc(self->m * sizeof(scs_float));
   memcpy(_y, sol->y, self->m * sizeof(scs_float));
+
+  _s = scs_malloc(self->m * sizeof(scs_float));
+  memcpy(_s, sol->s, self->m * sizeof(scs_float));
+
+  PyThread_release_lock(self->lock);
+
+  /* Build numpy arrays from the copied data (no longer under lock since
+   * these are thread-local copies) */
+  veclen[0] = self->n;
+  x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _x);
+  PyArray_ENABLEFLAGS((PyArrayObject *)x, NPY_ARRAY_OWNDATA);
+
+  veclen[0] = self->m;
   y = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _y);
   PyArray_ENABLEFLAGS((PyArrayObject *)y, NPY_ARRAY_OWNDATA);
 
   veclen[0] = self->m;
-  _s = scs_malloc(self->m * sizeof(scs_float));
-  memcpy(_s, sol->s, self->m * sizeof(scs_float));
   s = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _s);
   PyArray_ENABLEFLAGS((PyArrayObject *)s, NPY_ARRAY_OWNDATA);
 
@@ -832,10 +862,11 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
     b = (scs_float *)PyArray_DATA(b_new);
   }
 
-  /* release the GIL */
+  /* Acquire per-instance lock (release GIL first to avoid deadlock) */
   Py_BEGIN_ALLOW_THREADS;
+  PyThread_acquire_lock(self->lock, WAIT_LOCK);
   scs_update(self->work, b, c);
-  /* reacquire the GIL */
+  PyThread_release_lock(self->lock);
   Py_END_ALLOW_THREADS;
 
   /* Only DECREF the contiguous copies we created; skip borrowed Py_None refs */
@@ -852,7 +883,19 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
 /* Deallocate SCS object */
 static scs_int SCS_finish(SCS *self) {
   if (self->work) {
+    /* Acquire lock to ensure no concurrent solve/update is in progress. */
+    if (self->lock) {
+      PyThread_acquire_lock(self->lock, WAIT_LOCK);
+    }
     scs_finish(self->work);
+    self->work = NULL;
+    if (self->lock) {
+      PyThread_release_lock(self->lock);
+    }
+  }
+  if (self->lock) {
+    PyThread_free_lock(self->lock);
+    self->lock = NULL;
   }
   if (self->sol) {
     scs_free(self->sol->x);
