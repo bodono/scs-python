@@ -42,17 +42,35 @@ data = {"A": A, "b": b, "c": c}
 FAIL = "failure"  # scs code for failure
 
 
+_dense_available = False
+try:
+    from scs import _scs_dense
+    _dense_available = True
+except ImportError:
+    pass
+
+_test_configs = [
+    (False, False),
+    (True, False),
+]
+if _dense_available:
+    _test_configs.append((False, True))
+
+
 @pytest.mark.parametrize(
-    "cone,use_indirect,expected",
+    "cone,use_indirect,dense,expected",
     [
-        ({"q": [], "l": 2}, False, 1),
-        ({"q": [], "l": 2}, True, 1),
-        ({"q": [2], "l": 0}, False, 0.5),
-        ({"q": [2], "l": 0}, True, 0.5),
+        (c, ui, d, e)
+        for c, e in [
+            ({"q": [], "l": 2}, 1),
+            ({"q": [2], "l": 0}, 0.5),
+        ]
+        for ui, d in _test_configs
     ],
 )
-def test_problems(cone, use_indirect, expected):
-    solver = scs.SCS(data, cone=cone, use_indirect=use_indirect, verbose=False)
+def test_problems(cone, use_indirect, dense, expected):
+    solver = scs.SCS(data, cone=cone, use_indirect=use_indirect, dense=dense,
+                     verbose=False)
     sol = solver.solve()
     assert_almost_equal(sol["x"][0], expected, decimal=2)
 

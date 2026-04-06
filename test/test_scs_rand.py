@@ -74,30 +74,50 @@ K = {
 m = tools.get_scs_cone_dims(K)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_feasible(use_indirect):
+_dense_available = False
+try:
+    from scs import _scs_dense
+    _dense_available = True
+except ImportError:
+    pass
+
+_solver_configs = [
+    {"use_indirect": False},
+    {"use_indirect": True},
+]
+if _dense_available:
+    _solver_configs.append({"dense": True})
+
+
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_feasible(solver_opts):
     for i in range(num_feas):
         data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-        solver = scs.SCS(data, K, use_indirect=use_indirect, **opts)
+        solver = scs.SCS(data, K, **solver_opts, **opts)
         sol = solver.solve()
         assert_almost_equal(np.dot(data["c"], sol["x"]), p_star, decimal=2)
         assert_almost_equal(np.dot(-data["b"], sol["y"]), p_star, decimal=2)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_infeasible(use_indirect):
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_infeasible(solver_opts):
     for i in range(num_infeas):
         data = tools.gen_infeasible(K, n=m // 2)
-        solver = scs.SCS(data, K, use_indirect=use_indirect, **opts)
+        solver = scs.SCS(data, K, **solver_opts, **opts)
         sol = solver.solve()
         check_infeasible(sol)
 
 
 # TODO: indirect solver has trouble in this test, so disable for now
-@pytest.mark.parametrize("use_indirect", [False])
-def test_unbounded(use_indirect):
+_unbounded_configs = [{"use_indirect": False}]
+if _dense_available:
+    _unbounded_configs.append({"dense": True})
+
+
+@pytest.mark.parametrize("solver_opts", _unbounded_configs)
+def test_unbounded(solver_opts):
     for i in range(num_unb):
         data = tools.gen_unbounded(K, n=m // 2)
-        solver = scs.SCS(data, K, use_indirect=use_indirect, **opts)
+        solver = scs.SCS(data, K, **solver_opts, **opts)
         sol = solver.solve()
         check_unbounded(sol)

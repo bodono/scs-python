@@ -51,6 +51,8 @@ static PyObject *moduleinit(void) {
   m = Py_InitModule("_scs_mkl", scs_module_methods);
 #elif defined PY_CUDSS
   m = Py_InitModule("_scs_cudss", scs_module_methods);
+#elif defined PY_DENSE
+  m = Py_InitModule("_scs_dense", scs_module_methods);
 #else
   m = Py_InitModule("_scs_direct", scs_module_methods);
 #endif
@@ -83,6 +85,8 @@ PyInit__scs_gpu(void)
 PyInit__scs_mkl(void)
 #elif defined PY_CUDSS
 PyInit__scs_cudss(void)
+#elif defined PY_DENSE
+PyInit__scs_dense(void)
 #else
 PyInit__scs_direct(void)
 #endif
@@ -100,6 +104,8 @@ init_scs_gpu(void)
 init_scs_mkl(void)
 #elif defined PY_CUDSS
 init_scs_cudss(void)
+#elif defined PY_DENSE
+init_scs_dense(void)
 #else
 init_scs_direct(void)
 #endif

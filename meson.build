@@ -202,6 +202,21 @@ py.extension_module(
   install: true,
 )
 
+if get_option('use_lapack')
+  py.extension_module(
+    '_scs_dense',
+    'scs/scspy.c',
+    'scs_source/linsys/cpu/dense/private.c',
+    common_linsys_sources,
+    scs_core_sources,
+    c_args: common_c_args + ['-DPY_DENSE'],
+    include_directories: common_includes + ['scs_source/linsys/cpu/dense'],
+    dependencies: _deps,
+    install_dir: scs_dir,
+    install: true,
+  )
+endif
+
 if get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
   _deps += cuda_dep

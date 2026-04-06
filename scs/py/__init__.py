@@ -31,6 +31,7 @@ def _select_scs_module(stgs):
   cudss = stgs.pop("cudss", False)
   gpu = stgs.pop("gpu", False)
   mkl = stgs.pop("mkl", False)
+  dense = stgs.pop("dense", False)
   use_indirect = stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT)
 
   if cudss:
@@ -55,6 +56,15 @@ def _select_scs_module(stgs):
     from scs import _scs_mkl  # pylint: disable=g-import-not-at-top
 
     return _scs_mkl
+
+  if dense:
+    if use_indirect:
+      raise ValueError(
+          "Dense solver is a direct method, pass `use_indirect=False`."
+      )
+    from scs import _scs_dense  # pylint: disable=g-import-not-at-top
+
+    return _scs_dense
 
   if use_indirect:
     from scs import _scs_indirect  # pylint: disable=g-import-not-at-top
