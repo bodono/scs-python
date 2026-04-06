@@ -104,6 +104,14 @@ if get_option('use_lapack')
   common_c_args += '-DUSE_LAPACK=1'
 endif
 
+use_spectral_cones = get_option('use_spectral_cones')
+if use_spectral_cones
+  if not get_option('use_lapack')
+    error('Spectral cones require LAPACK. Please re-run Meson with -Duse_lapack=true')
+  endif
+  common_c_args += '-DUSE_SPECTRAL_CONES=1'
+endif
+
 if get_option('use_singleprec')
   common_c_args += '-DSFLOAT=1'
 endif
@@ -151,6 +159,21 @@ common_linsys_sources = files(
   'scs_source/linsys/csparse.c'
 )
 
+spectral_cone_sources = []
+if use_spectral_cones
+  spectral_cone_sources = files(
+    'scs_source/src/spectral_cones/logdeterminant/log_cone_Newton.c',
+    'scs_source/src/spectral_cones/logdeterminant/log_cone_IPM.c',
+    'scs_source/src/spectral_cones/logdeterminant/log_cone_wrapper.c',
+    'scs_source/src/spectral_cones/logdeterminant/logdet_cone.c',
+    'scs_source/src/spectral_cones/nuclear/ell1_cone.c',
+    'scs_source/src/spectral_cones/nuclear/nuclear_cone.c',
+    'scs_source/src/spectral_cones/sum-largest/sum_largest_cone.c',
+    'scs_source/src/spectral_cones/sum-largest/sum_largest_eval_cone.c',
+    'scs_source/src/spectral_cones/util_spectral_cones.c',
+  )
+endif
+
 amd_sources = files(
   'scs_source/linsys/external/amd/amd_1.c',
   'scs_source/linsys/external/amd/amd_2.c',
@@ -178,6 +201,7 @@ py.extension_module(
   common_linsys_sources,
   scs_core_sources,
   amd_sources,
+  spectral_cone_sources,
   c_args: common_c_args,
   include_directories: common_includes + [
     'scs_source/linsys/cpu/direct',
@@ -195,6 +219,7 @@ py.extension_module(
   'scs_source/linsys/cpu/indirect/private.c',
   common_linsys_sources,
   scs_core_sources,
+  spectral_cone_sources,
   c_args: common_c_args + ['-DPY_INDIRECT', '-DINDIRECT=1'],
   include_directories: common_includes + ['scs_source/linsys/cpu/indirect'],
   dependencies: _deps,
@@ -209,6 +234,7 @@ if get_option('use_lapack')
     'scs_source/linsys/cpu/dense/private.c',
     common_linsys_sources,
     scs_core_sources,
+    spectral_cone_sources,
     c_args: common_c_args + ['-DPY_DENSE'],
     include_directories: common_includes + ['scs_source/linsys/cpu/dense'],
     dependencies: _deps,
@@ -228,6 +254,7 @@ if get_option('use_gpu')
     'scs/scspy.c',
     common_linsys_sources,
     scs_core_sources,
+    spectral_cone_sources,
     # In Meson, sources with a `.cu` extension are compiled with nvcc by default.
     # To compile `.c` files with nvcc, they must be explicitly targeted.
     # It is strongly recommended to rename CUDA-C files to `.cu`.
@@ -250,6 +277,7 @@ if get_option('link_mkl')
     'scs_source/linsys/mkl/direct/private.c',
     common_linsys_sources,
     scs_core_sources,
+    spectral_cone_sources,
     c_args: common_c_args + ['-DPY_MKL'],
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
     dependencies: _deps,
@@ -268,6 +296,7 @@ if get_option('link_cudss')
     'scs_source/linsys/cudss/direct/private.c',
     common_linsys_sources,
     scs_core_sources,
+    spectral_cone_sources,
     c_args: common_c_args + ['-DPY_CUDSS'],
     include_directories: common_includes + ['scs_source/linsys/cudss/direct'],
     dependencies: _deps,
