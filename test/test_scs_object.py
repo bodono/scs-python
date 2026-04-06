@@ -41,19 +41,34 @@ data = {"A": A, "b": b, "c": c}
 cone = {"l": 2}
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_backwards_compatibility(use_indirect):
+_dense_available = False
+try:
+    from scs import _scs_dense
+    _dense_available = True
+except ImportError:
+    pass
+
+_solver_configs = [
+    {"use_indirect": False},
+    {"use_indirect": True},
+]
+if _dense_available:
+    _solver_configs.append({"dense": True})
+
+
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_backwards_compatibility(solver_opts):
     # max x
     # s.t 0 <= x <= 1
-    sol = scs.solve(data, cone, use_indirect=use_indirect, verbose=False)
+    sol = scs.solve(data, cone, verbose=False, **solver_opts)
     assert_almost_equal(sol["x"][0], 1.0, decimal=2)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_update(use_indirect):
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_update(solver_opts):
     # max x
     # s.t 0 <= x <= 1
-    solver = scs.SCS(data, cone, use_indirect=use_indirect, verbose=False)
+    solver = scs.SCS(data, cone, verbose=False, **solver_opts)
     sol = solver.solve()
     assert_almost_equal(sol["x"][0], 1.0, decimal=2)
 
@@ -72,11 +87,11 @@ def test_update(use_indirect):
     assert_almost_equal(sol["x"][0], -1.0, decimal=2)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_warm_start(use_indirect):
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_warm_start(solver_opts):
     # max x
     # s.t 0 <= x <= 1
-    solver = scs.SCS(data, cone, use_indirect=use_indirect, verbose=False)
+    solver = scs.SCS(data, cone, verbose=False, **solver_opts)
     sol = solver.solve()
     assert_almost_equal(sol["x"][0], 1.0, decimal=2)
 

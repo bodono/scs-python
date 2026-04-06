@@ -12,8 +12,23 @@ def gen_feasible(m, n, p_scale = 0.1):
     return (P, A, b, c)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_mix_sd_csd_cones(use_indirect):
+_dense_available = False
+try:
+    from scs import _scs_dense
+    _dense_available = True
+except ImportError:
+    pass
+
+_solver_configs = [
+    {"use_indirect": False},
+    {"use_indirect": True},
+]
+if _dense_available:
+    _solver_configs.append({"dense": True})
+
+
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_mix_sd_csd_cones(solver_opts):
     seed = 1234
     np.random.seed(seed)
     cone = dict(z=1, l=2, s=[3, 4], cs=[5, 4])
@@ -21,5 +36,5 @@ def test_mix_sd_csd_cones(use_indirect):
     n = m
     (P, A, b, c) = gen_feasible(m, n)
     probdata = dict(P=P, A=A, b=b, c=c)
-    sol = scs.solve(probdata, cone, use_indirect=use_indirect)
+    sol = scs.solve(probdata, cone, **solver_opts)
     np.testing.assert_equal(sol['info']['status'], 'solved')
