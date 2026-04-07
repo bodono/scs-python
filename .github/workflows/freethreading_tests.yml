@@ -99,14 +99,6 @@ jobs:
           source .san-venv/bin/activate
           pip install numpy scipy pytest meson-python meson ninja
 
-      - name: Build and install scs
-        run: |
-          source .san-venv/bin/activate
-          pip install -v . --no-build-isolation
-        env:
-          CC: clang
-          CFLAGS: ${{ matrix.cflags }}
-
       - name: Set sanitizer runtime options
         run: |
           if [ "${{ matrix.sanitizer }}" = "tsan" ]; then
@@ -115,6 +107,14 @@ jobs:
           elif [ "${{ matrix.sanitizer }}" = "asan" ]; then
             echo "ASAN_OPTIONS=halt_on_error=1 detect_leaks=0 allocator_may_return_null=1" >> $GITHUB_ENV
           fi
+
+      - name: Build and install scs
+        run: |
+          source .san-venv/bin/activate
+          pip install -v . --no-build-isolation
+        env:
+          CC: clang
+          CFLAGS: ${{ matrix.cflags }}
 
       - name: Run tests under ${{ matrix.sanitizer }}
         run: |
