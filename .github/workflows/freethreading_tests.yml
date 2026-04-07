@@ -102,6 +102,7 @@ jobs:
           python -m pytest test/ -v -s
         env:
           TSAN_OPTIONS: "halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/tsan-suppressions.txt"
+          OPENBLAS_NUM_THREADS: "1"
 
       - name: Run threading stress tests under TSan
         run: |
@@ -109,3 +110,4 @@ jobs:
           python -m pytest test/test_free_threading.py test/test_thread_safety.py -v -s
         env:
           TSAN_OPTIONS: "halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/tsan-suppressions.txt"
+          OPENBLAS_NUM_THREADS: "1"
