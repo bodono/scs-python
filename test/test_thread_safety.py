@@ -8,6 +8,7 @@ serializes access and produces correct results.
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
+import pytest
 import scipy.sparse as sp
 from numpy.testing import assert_almost_equal
 
@@ -27,6 +28,7 @@ def _make_simple_lp():
     return data, cone, 1.0  # expected x[0]
 
 
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
 class TestThreadSafety:
     """Multiple threads call solve() on the same SCS object.
 

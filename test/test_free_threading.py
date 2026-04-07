@@ -87,6 +87,7 @@ def _solve_and_check(solver, expected_x0, decimal=2):
 NUM_THREADS = 8
 
 
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
 class TestConcurrentIndependentInstances:
     """Each thread creates and solves its own SCS instance.
 
@@ -228,6 +229,7 @@ class TestConcurrentIndependentInstances:
 # Test: concurrent solves on a SHARED instance
 # ---------------------------------------------------------------------------
 
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
 class TestConcurrentSharedInstance:
     """Multiple threads call solve() on the same SCS object.
 
@@ -277,8 +279,59 @@ class TestConcurrentSharedInstance:
 # Test: concurrent solve + update sequences
 # ---------------------------------------------------------------------------
 
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
 class TestConcurrentSolveUpdate:
-    """Each thread does a solve-update-solve sequence on its own instance."""
+    """Concurrent solve and update operations."""
+
+    def test_shared_instance_concurrent_solve_and_update(self):
+        """Threads simultaneously call solve() and update() on the same instance.
+
+        The per-instance lock serializes access, so no data race should occur.
+        We can't predict which operation runs first, but none should crash or
+        corrupt state.
+        """
+        data, cone, _ = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+        barrier = threading.Barrier(NUM_THREADS)
+        errors = []
+        lock = threading.Lock()
+
+        def solve_worker():
+            try:
+                barrier.wait(timeout=10)
+                sol = solver.solve()
+                assert sol["info"]["status_val"] in (1, 2)
+            except Exception as e:
+                with lock:
+                    errors.append(f"solve: {e}")
+
+        def update_worker():
+            try:
+                barrier.wait(timeout=10)
+                # Update with slightly perturbed b
+                solver.update(b=np.array([1.0, 0.0]))
+            except Exception as e:
+                with lock:
+                    errors.append(f"update: {e}")
+
+        threads = []
+        for i in range(NUM_THREADS):
+            if i % 2 == 0:
+                t = threading.Thread(target=solve_worker)
+            else:
+                t = threading.Thread(target=update_worker)
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join(timeout=30)
+            assert not t.is_alive(), "Thread did not complete"
+
+        assert len(errors) == 0, f"Errors in threads: {errors}"
+
+        # Solver should still be usable after the concurrent barrage
+        sol = solver.solve()
+        assert sol["info"]["status_val"] in (1, 2)
 
     def test_concurrent_update_sequences(self):
         """Multiple threads each do solve -> update -> solve independently."""
@@ -351,6 +404,7 @@ class TestConcurrentSolveUpdate:
 # Test: legacy solve() function under concurrency
 # ---------------------------------------------------------------------------
 
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
 class TestConcurrentLegacySolve:
     """Test the legacy scs.solve() function from multiple threads."""
 
@@ -375,6 +429,7 @@ class TestConcurrentLegacySolve:
 # Test: thread creation and destruction stress test
 # ---------------------------------------------------------------------------
 
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
 class TestThreadStress:
     """Stress tests with many short-lived threads."""
 
@@ -431,6 +486,7 @@ class TestThreadStress:
 # Test: result isolation (no cross-thread data corruption)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
 class TestResultIsolation:
     """Verify that results from concurrent solves don't get mixed up."""
 
@@ -495,3 +551,498 @@ class TestResultIsolation:
                     assert_almost_equal(val, exp1, decimal=2)
                 else:
                     assert_almost_equal(val, exp2, decimal=2)
+
+
+# ---------------------------------------------------------------------------
+# Stress tests targeting specific thread-safety bugs
+# ---------------------------------------------------------------------------
+
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
+class TestBorrowedRefSafety:
+    """Tests exercising PyDict/PyList ref safety during concurrent init.
+
+    Before the fix, PyDict_GetItemString / PyList_GetItem returned borrowed
+    references that could be invalidated if another thread mutated the
+    container concurrently. These tests share mutable containers across
+    threads to exercise the strong-ref (PyDict_GetItemStringRef /
+    PyList_GetItemRef) code paths.
+    """
+
+    def test_shared_cone_dict_concurrent_init(self):
+        """Multiple threads construct SCS instances from the same cone dict.
+
+        The cone dict is read by the C extension during __init__. With
+        borrowed refs, a concurrent mutation to the dict could invalidate
+        a pointer mid-parse. Strong refs prevent this.
+        """
+        A = sp.csc_matrix([1.0, -1.0]).T.tocsc()
+        b = np.array([1.0, 0.0])
+        c = np.array([-1.0])
+        data = {"A": A, "b": b, "c": c}
+        cone = {"l": 2}  # shared across all threads
+
+        errors = []
+        lock = threading.Lock()
+
+        def worker():
+            try:
+                solver = scs.SCS(data, cone, verbose=False)
+                sol = solver.solve()
+                assert sol["info"]["status_val"] == 1
+                assert_almost_equal(sol["x"][0], 1.0, decimal=2)
+            except Exception as e:
+                with lock:
+                    errors.append(str(e))
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+            assert not t.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+    def test_shared_cone_with_list_values_concurrent_init(self):
+        """Cone dict with list values (SOC dimensions) shared across threads.
+
+        Exercises PyList_GetItemRef in get_cone_arr_dim — the list elements
+        are read one-by-one during parsing.
+        """
+        # Feasible SOCP: minimize c'x s.t. ||x|| <= t (one SOC of size 3)
+        # A = -I (3x2 + slack), b = 0, cone q=[3]
+        # With an extra nonneg cone to bound things
+        A = sp.vstack([
+            -sp.eye(3, n=2, format="csc"),  # SOC: (s0, s1, s2) = b - Ax
+            sp.eye(2, format="csc"),         # nonneg: x >= 0
+        ], format="csc")
+        b = np.array([1.0, 0.0, 0.0, 0.0, 0.0])
+        c = np.array([-1.0, 0.0])
+        data = {"A": A, "b": b, "c": c}
+        cone = {"q": [3], "l": 2}  # list value — exercises PyList_GetItemRef
+
+        errors = []
+        lock = threading.Lock()
+
+        def worker():
+            try:
+                solver = scs.SCS(data, cone, verbose=False)
+                sol = solver.solve()
+                assert sol["info"]["status_val"] in (1, 2)
+            except Exception as e:
+                with lock:
+                    errors.append(str(e))
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+            assert not t.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+    def test_shared_cone_with_float_list_values_concurrent_init(self):
+        """Cone dict with float list values (power cone exponents) shared
+        across threads.
+
+        Exercises PyList_GetItemRef in get_cone_float_arr — the float list
+        elements are read one-by-one during parsing.
+        """
+        # Power cone: (x1, x2, x3) s.t. |x3| <= x1^p * x2^(1-p), x1,x2 >= 0
+        # Each power cone triple is size 3, with exponent p
+        m = 3
+        n = 3
+        A = -sp.eye(m, n=n, format="csc")
+        b = np.array([1.0, 1.0, 0.0])
+        c = np.array([0.0, 0.0, -1.0])
+        data = {"A": A, "b": b, "c": c}
+        cone = {"p": [0.5]}  # float list — exercises PyList_GetItemRef in get_cone_float_arr
+
+        errors = []
+        lock = threading.Lock()
+
+        def worker():
+            try:
+                solver = scs.SCS(data, cone, verbose=False, max_iters=10000)
+                sol = solver.solve()
+                # Any valid status is fine — we're testing thread safety not convergence
+                assert sol["info"]["status_val"] in (1, 2, -1, -2, -7)
+            except Exception as e:
+                with lock:
+                    errors.append(str(e))
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+            assert not t.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
+class TestTOCTOURaceSafety:
+    """Tests exercising the TOCTOU fix on self->work.
+
+    Before the fix, SCS_solve and SCS_update checked self->work without
+    holding the lock. A concurrent dealloc (SCS_finish) could set
+    self->work = NULL between the check and the lock acquisition.
+    """
+
+    def test_rapid_create_solve_destroy(self):
+        """Rapidly create, solve, and let SCS instances be garbage collected.
+
+        Many short-lived instances stress the init/finish paths. On
+        free-threaded builds, the dealloc can race with in-progress solves
+        if the TOCTOU check isn't under the lock.
+        """
+        import gc
+        data, cone, expected = _make_simple_lp()
+        errors = []
+        lock = threading.Lock()
+
+        def worker():
+            try:
+                for _ in range(50):
+                    solver = scs.SCS(data, cone, verbose=False)
+                    sol = solver.solve()
+                    assert sol["info"]["status_val"] == 1
+                    assert_almost_equal(sol["x"][0], expected, decimal=2)
+                    del solver
+                gc.collect()
+            except Exception as e:
+                with lock:
+                    errors.append(str(e))
+
+        threads = [threading.Thread(target=worker) for _ in range(NUM_THREADS)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=60)
+            assert not t.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+    def test_solve_after_del_raises_or_succeeds(self):
+        """Verify solve doesn't crash if workspace is gone.
+
+        This is a single-threaded sanity check: calling solve on a
+        properly-constructed instance should work, and the object shouldn't
+        crash during cleanup.
+        """
+        data, cone, expected = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+        sol = solver.solve()
+        assert sol["info"]["status_val"] == 1
+        assert_almost_equal(sol["x"][0], expected, decimal=2)
+        # Second solve should also work (warm start)
+        sol2 = solver.solve()
+        assert sol2["info"]["status_val"] == 1
+
+
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
+class TestConcurrentSolveUpdateStress:
+    """Heavy stress tests for concurrent solve + update on shared instances."""
+
+    def test_solve_update_barrage_shared_instance(self):
+        """Many threads hammer solve() and update() on the same instance.
+
+        This is a more aggressive version of
+        test_shared_instance_concurrent_solve_and_update, with more threads
+        and repeated rounds.
+        """
+        data, cone, _ = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+        errors = []
+        lock = threading.Lock()
+
+        def solve_worker():
+            try:
+                for _ in range(10):
+                    sol = solver.solve()
+                    assert sol["info"]["status_val"] in (1, 2)
+            except Exception as e:
+                with lock:
+                    errors.append(f"solve: {e}")
+
+        def update_worker():
+            try:
+                for _ in range(10):
+                    solver.update(b=np.array([1.0, 0.0]))
+            except Exception as e:
+                with lock:
+                    errors.append(f"update: {e}")
+
+        threads = []
+        for i in range(16):
+            if i % 2 == 0:
+                threads.append(threading.Thread(target=solve_worker))
+            else:
+                threads.append(threading.Thread(target=update_worker))
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=60)
+            assert not t.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+        # Instance should still be usable
+        sol = solver.solve()
+        assert sol["info"]["status_val"] in (1, 2)
+
+    def test_concurrent_update_different_data(self):
+        """Threads update with different b/c vectors concurrently.
+
+        After the barrage, we verify the solver still produces valid results
+        (not corrupted state).
+        """
+        data, cone, _ = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+        errors = []
+        lock = threading.Lock()
+        rng = np.random.RandomState(42)
+
+        # Pre-generate update vectors (each thread gets its own)
+        b_updates = [np.array([rng.uniform(0.5, 2.0), 0.0]) for _ in range(NUM_THREADS)]
+        c_updates = [np.array([rng.uniform(-2.0, -0.5)]) for _ in range(NUM_THREADS)]
+
+        barrier = threading.Barrier(NUM_THREADS)
+
+        def worker(tid):
+            try:
+                barrier.wait(timeout=10)
+                for _ in range(5):
+                    solver.update(b=b_updates[tid], c=c_updates[tid])
+                    sol = solver.solve()
+                    # Just check it didn't crash or return garbage status
+                    assert sol["info"]["status_val"] in (1, 2, -2, -7)
+            except Exception as e:
+                with lock:
+                    errors.append(f"thread {tid}: {e}")
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(NUM_THREADS)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=60)
+            assert not t.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+    def test_warm_start_under_contention(self):
+        """Concurrent warm-started solves on a shared instance.
+
+        Warm starts read and write the sol struct, which is protected by the
+        per-instance lock. This test stresses that path.
+        """
+        data, cone, expected = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+
+        # Initial cold solve to populate warm-start data
+        sol0 = solver.solve()
+        assert sol0["info"]["status_val"] == 1
+
+        errors = []
+        lock = threading.Lock()
+
+        def worker():
+            try:
+                for _ in range(10):
+                    sol = solver.solve(
+                        x=np.array([0.9]),
+                        y=sol0["y"],
+                        s=sol0["s"],
+                    )
+                    assert sol["info"]["status_val"] == 1
+                    assert_almost_equal(sol["x"][0], expected, decimal=2)
+            except Exception as e:
+                with lock:
+                    errors.append(str(e))
+
+        threads = [threading.Thread(target=worker) for _ in range(NUM_THREADS)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=60)
+            assert not t.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
+class TestReInitRace:
+    """Test calling __init__ on an object while another thread is solving.
+
+    This is unusual (re-initializing an already-initialized object), but
+    it is possible in Python and exercises the SCS_init guard that checks
+    if self->work is already set, as well as the TOCTOU fix on dealloc.
+    """
+
+    def test_reinit_while_solving(self):
+        """One thread solves while another re-inits the same object.
+
+        Neither thread should crash. The solve may fail (workspace torn
+        down under it) or succeed (lock serialized the operations). We
+        only assert no segfaults/corruption.
+        """
+        data, cone, _ = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+        errors = []
+        lock = threading.Lock()
+        barrier = threading.Barrier(2)
+
+        def solve_loop():
+            try:
+                barrier.wait(timeout=10)
+                for _ in range(20):
+                    try:
+                        sol = solver.solve()
+                        # Might succeed or fail -- either is fine
+                        assert sol["info"]["status_val"] in (1, 2, -1, -2, -7)
+                    except ValueError:
+                        # "Workspace not initialized!" is expected if
+                        # re-init tore down the workspace
+                        pass
+            except Exception as e:
+                with lock:
+                    errors.append(f"solve: {e}")
+
+        def reinit_loop():
+            try:
+                barrier.wait(timeout=10)
+                for _ in range(20):
+                    try:
+                        # Re-initialize with same data -- SCS_init checks
+                        # if self->work is set and errors out
+                        solver.__init__(data, cone, verbose=False)
+                    except (ValueError, TypeError):
+                        pass
+            except Exception as e:
+                with lock:
+                    errors.append(f"reinit: {e}")
+
+        t1 = threading.Thread(target=solve_loop)
+        t2 = threading.Thread(target=reinit_loop)
+        t1.start()
+        t2.start()
+        t1.join(timeout=30)
+        t2.join(timeout=30)
+        assert not t1.is_alive()
+        assert not t2.is_alive()
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+
+@pytest.mark.thread_unsafe(reason="creates its own threads internally")
+class TestErrorPathContention:
+    """Tests that lock is properly released on error paths.
+
+    If a thread hits an error (e.g. bad warm-start dimensions) inside
+    the locked section, it must release the lock before returning. If it
+    doesn't, subsequent calls from other threads will deadlock.
+    """
+
+    def test_bad_warm_start_does_not_deadlock(self):
+        """One thread passes wrong-dimension warm-start vectors while others
+        solve normally. The error path must release the lock.
+        """
+        data, cone, expected = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+
+        # Do an initial solve so warm-start data is populated
+        solver.solve()
+
+        errors = []
+        lock = threading.Lock()
+        barrier = threading.Barrier(NUM_THREADS)
+
+        def good_worker():
+            try:
+                barrier.wait(timeout=10)
+                for _ in range(10):
+                    sol = solver.solve()
+                    assert sol["info"]["status_val"] == 1
+                    assert_almost_equal(sol["x"][0], expected, decimal=2)
+            except Exception as e:
+                with lock:
+                    errors.append(f"good: {e}")
+
+        def bad_worker():
+            try:
+                barrier.wait(timeout=10)
+                for _ in range(10):
+                    try:
+                        # Wrong dimension x -- should raise ValueError
+                        solver.solve(x=np.array([1.0, 2.0, 3.0]))
+                    except ValueError:
+                        pass  # expected -- lock must have been released
+            except Exception as e:
+                with lock:
+                    errors.append(f"bad: {e}")
+
+        threads = []
+        for i in range(NUM_THREADS):
+            if i == 0:
+                threads.append(threading.Thread(target=bad_worker))
+            else:
+                threads.append(threading.Thread(target=good_worker))
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+            assert not t.is_alive(), "Thread deadlocked -- lock not released on error?"
+
+        assert len(errors) == 0, f"Errors: {errors}"
+
+    def test_bad_update_does_not_deadlock(self):
+        """One thread passes wrong-dimension update vectors while others
+        solve normally. The error path in SCS_update must release the lock.
+        """
+        data, cone, expected = _make_simple_lp()
+        solver = scs.SCS(data, cone, verbose=False)
+        errors = []
+        lock = threading.Lock()
+        barrier = threading.Barrier(NUM_THREADS)
+
+        def good_worker():
+            try:
+                barrier.wait(timeout=10)
+                for _ in range(10):
+                    sol = solver.solve()
+                    assert sol["info"]["status_val"] in (1, 2)
+            except Exception as e:
+                with lock:
+                    errors.append(f"good: {e}")
+
+        def bad_worker():
+            try:
+                barrier.wait(timeout=10)
+                for _ in range(10):
+                    try:
+                        # Wrong dimension b -- should raise ValueError
+                        solver.update(b=np.array([1.0, 2.0, 3.0]))
+                    except ValueError:
+                        pass  # expected
+            except Exception as e:
+                with lock:
+                    errors.append(f"bad: {e}")
+
+        threads = []
+        for i in range(NUM_THREADS):
+            if i == 0:
+                threads.append(threading.Thread(target=bad_worker))
+            else:
+                threads.append(threading.Thread(target=good_worker))
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+            assert not t.is_alive(), "Thread deadlocked -- lock not released on error?"
+
+        assert len(errors) == 0, f"Errors: {errors}"

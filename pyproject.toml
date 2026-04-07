@@ -100,3 +100,10 @@ before-all = [
 testpaths = [
     "test",
 ]
+faulthandler_timeout = 600
+markers = [
+    "thread_unsafe: mark test as unsafe to run in parallel threads (pytest-run-parallel)",
+]
+# pytest-run-parallel: fixtures and functions that are not thread-safe
+thread_unsafe_fixtures = ["capsys", "capfd"]
+thread_unsafe_functions = ["numpy.random.seed"]

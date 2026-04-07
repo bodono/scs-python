@@ -347,12 +347,12 @@ def test_time_limit_secs_terminates_early():
     sufficiently large or ill-conditioned problem."""
     # Build a slightly larger problem (random feasible LP) where a near-zero
     # time limit causes early termination.
-    np.random.seed(42)
+    rng = np.random.RandomState(42)
     m, n = 50, 30
-    A_large = sp.random(m, n, density=0.3, format="csc")
-    A_large.data = np.random.randn(A_large.nnz)
-    b_large = np.abs(np.random.randn(m)) + 1.0
-    c_large = np.random.randn(n)
+    A_large = sp.random(m, n, density=0.3, format="csc", random_state=rng)
+    A_large.data = rng.randn(A_large.nnz)
+    b_large = np.abs(rng.randn(m)) + 1.0
+    c_large = rng.randn(n)
     data_large = {"A": A_large, "b": b_large, "c": c_large}
     cone_large = {"l": m}
 
@@ -1463,11 +1463,11 @@ def test_solution_y_s_shapes():
 def test_solution_shapes_match_problem_dimensions():
     """x, y, s shapes must match n and m from the problem data."""
     n, m = 3, 5
-    np.random.seed(99)
-    A_r = sp.random(m, n, density=0.8, format="csc")
-    A_r.data = np.random.randn(A_r.nnz) * 0.1
-    b_r = np.abs(np.random.randn(m)) + 1.0
-    c_r = np.random.randn(n)
+    rng = np.random.RandomState(99)
+    A_r = sp.random(m, n, density=0.8, format="csc", random_state=rng)
+    A_r.data = rng.randn(A_r.nnz) * 0.1
+    b_r = np.abs(rng.randn(m)) + 1.0
+    c_r = rng.randn(n)
     sol = scs.SCS(
         {"A": A_r, "b": b_r, "c": c_r}, {"l": m}, verbose=False
     ).solve()
@@ -1592,10 +1592,10 @@ def test_dual_exp_cone_random_feasible():
     sys.path.insert(0, "test")
     import gen_random_cone_prob as tools
 
-    np.random.seed(7)
+    rng = np.random.RandomState(7)
     K_ed = {"z": 3, "l": 5, "q": [4], "s": [], "ep": 0, "ed": 1, "p": []}
     m_ed = tools.get_scs_cone_dims(K_ed)
-    data, pstar = tools.gen_feasible(K_ed, n=m_ed // 3, density=0.2)
+    data, pstar = tools.gen_feasible(K_ed, n=m_ed // 3, density=0.2, rng=rng)
 
     solver = scs.SCS(
         data, K_ed,
@@ -1627,12 +1627,12 @@ def test_mixed_soc_sdp_random_feasible():
     sys.path.insert(0, "test")
     import gen_random_cone_prob as tools
 
-    np.random.seed(42)
+    rng = np.random.RandomState(42)
     K_mix = {
         "z": 5, "l": 5, "q": [4], "s": [3], "ep": 0, "ed": 0, "p": []
     }
     m_mix = tools.get_scs_cone_dims(K_mix)
-    data, pstar = tools.gen_feasible(K_mix, n=m_mix // 3, density=0.2)
+    data, pstar = tools.gen_feasible(K_mix, n=m_mix // 3, density=0.2, rng=rng)
 
     solver = scs.SCS(
         data, K_mix,
@@ -1767,10 +1767,10 @@ def test_large_random_lp():
     sys.path.insert(0, "test")
     import gen_random_cone_prob as tools
 
-    np.random.seed(3)
+    rng = np.random.RandomState(3)
     K_lp = {"z": 0, "l": 40, "q": [], "s": [], "ep": 0, "ed": 0, "p": []}
     m_lp = tools.get_scs_cone_dims(K_lp)
-    data, pstar = tools.gen_feasible(K_lp, n=20, density=0.3)
+    data, pstar = tools.gen_feasible(K_lp, n=20, density=0.3, rng=rng)
 
     solver = scs.SCS(
         data, K_lp,
@@ -1850,7 +1850,7 @@ def test_cs_cone_mixed_with_real_cones():
     Uses a randomly generated feasible problem (P=ε·I ensures bounded objective).
     Checks the solver returns a valid status.
     """
-    np.random.seed(1234)
+    rng = np.random.RandomState(1234)
     cone_cs = {"z": 1, "l": 2, "s": [3, 4], "cs": [5, 4]}
     # dimension: z=1, l=2, s=[3,4]->(3+4)→6+10=16, cs=[5,4]->25+16=41 => total=60
     m_cs = int(
@@ -1861,10 +1861,10 @@ def test_cs_cone_mixed_with_real_cones():
     )
     n_cs = m_cs
     P_cs = 0.1 * sp.eye(n_cs, format="csc")
-    A_cs = sp.random(m_cs, n_cs, density=0.05, format="csc")
-    A_cs.data = np.random.randn(A_cs.nnz)
-    b_cs = np.random.randn(m_cs)
-    c_cs = np.random.randn(n_cs)
+    A_cs = sp.random(m_cs, n_cs, density=0.05, format="csc", random_state=rng)
+    A_cs.data = rng.randn(A_cs.nnz)
+    b_cs = rng.randn(m_cs)
+    c_cs = rng.randn(n_cs)
 
     solver = scs.SCS(
         {"P": P_cs, "A": A_cs, "b": b_cs, "c": c_cs},
@@ -2078,14 +2078,14 @@ def test_mixed_ep_and_power_cone():
     sys.path.insert(0, "test")
     import gen_random_cone_prob as tools
 
-    np.random.seed(77)
+    rng = np.random.RandomState(77)
     K_mix = {
         "z": 3, "l": 5, "q": [], "s": [],
         "ep": 1, "ed": 0,
         "p": [0.4, -0.6],
     }
     m_mix = tools.get_scs_cone_dims(K_mix)
-    data, pstar = tools.gen_feasible(K_mix, n=m_mix // 3, density=0.2)
+    data, pstar = tools.gen_feasible(K_mix, n=m_mix // 3, density=0.2, rng=rng)
 
     solver = scs.SCS(
         data, K_mix,
@@ -2115,10 +2115,10 @@ def test_two_instances_same_problem_identical_result():
     sys.path.insert(0, "test")
     import gen_random_cone_prob as tools
 
-    np.random.seed(11)
+    rng = np.random.RandomState(11)
     K = {"z": 3, "l": 5, "q": [4], "s": [], "ep": 0, "ed": 0, "p": []}
     m = tools.get_scs_cone_dims(K)
-    data, _ = tools.gen_feasible(K, n=m // 2, density=0.2)
+    data, _ = tools.gen_feasible(K, n=m // 2, density=0.2, rng=rng)
 
     sol1 = scs.SCS(data, K, verbose=False).solve()
     sol2 = scs.SCS(data, K, verbose=False).solve()
@@ -2772,17 +2772,17 @@ def test_P_only_lower_triangular():
 
 def test_all_cone_types_simultaneously():
     """Problem using z, l, q, s, ep, p cone types all at once."""
-    np.random.seed(42)
+    rng = np.random.RandomState(42)
     # Cone dims: z=1, l=2, q=[3], s=[2] (vec dim=3), ep=1 (dim 3), p=[0.5] (dim 3)
     # Total rows: 1 + 2 + 3 + 3 + 3 + 3 = 15
     cone = {"z": 1, "l": 2, "q": [3], "s": [2], "ep": 1, "p": [0.5]}
     m = 15
     n = m
     P = 0.1 * sp.eye(n, format="csc")
-    A = sp.random(m, n, density=0.1, format="csc")
-    A.data = np.random.randn(A.nnz)
-    b = np.random.randn(m)
-    c = np.random.randn(n)
+    A = sp.random(m, n, density=0.1, format="csc", random_state=rng)
+    A.data = rng.randn(A.nnz)
+    b = rng.randn(m)
+    c = rng.randn(n)
     data = {"P": P, "A": A, "b": b, "c": c}
     sol = scs.solve(data, cone, verbose=False, max_iters=50000)
     assert sol["info"]["status"] in ("solved", "solved_inaccurate")

@@ -18,13 +18,13 @@ def main():
         pass
 
     for linear_solver in solvers:
-        np.random.seed(1)
-        solve_feasible(linear_solver)
-        solve_infeasible(linear_solver)
-        solve_unbounded(linear_solver)
+        rng = np.random.RandomState(3000)
+        solve_feasible(linear_solver, rng)
+        solve_infeasible(linear_solver, rng)
+        solve_unbounded(linear_solver, rng)
 
 
-def solve_feasible(linear_solver):
+def solve_feasible(linear_solver, rng):
     # cone:
     K = {
         "z": 10,
@@ -36,7 +36,7 @@ def solve_feasible(linear_solver):
         "p": [-0.25, 0.5, 0.75, -0.33],
     }
     m = tools.get_scs_cone_dims(K)
-    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.01)
+    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.01, rng=rng)
     params = {"normalize": True, "scale": 5}
 
     sol = scs.solve(data, K, linear_solver=linear_solver, **params)
@@ -47,7 +47,7 @@ def solve_feasible(linear_solver):
     print("dual error = ", (-np.dot(data["b"], y) - p_star) / p_star)
 
 
-def solve_infeasible(linear_solver):
+def solve_infeasible(linear_solver, rng):
     K = {
         "z": 10,
         "l": 15,
@@ -58,12 +58,12 @@ def solve_infeasible(linear_solver):
         "p": [-0.25, 0.5, 0.75, -0.33],
     }
     m = tools.get_scs_cone_dims(K)
-    data = tools.gen_infeasible(K, n=m // 3)
+    data = tools.gen_infeasible(K, n=m // 3, rng=rng)
     params = {"normalize": True, "scale": 0.5}
     sol = scs.solve(data, K, linear_solver=linear_solver, **params)
 
 
-def solve_unbounded(linear_solver):
+def solve_unbounded(linear_solver, rng):
     K = {
         "z": 10,
         "l": 15,
@@ -74,7 +74,7 @@ def solve_unbounded(linear_solver):
         "p": [-0.25, 0.5, 0.75, -0.33],
     }
     m = tools.get_scs_cone_dims(K)
-    data = tools.gen_unbounded(K, n=m // 3)
+    data = tools.gen_unbounded(K, n=m // 3, rng=rng)
     params = {"normalize": True, "scale": 0.5}
     sol = scs.solve(data, K, linear_solver=linear_solver, **params)
 

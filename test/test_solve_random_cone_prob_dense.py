@@ -21,8 +21,6 @@ except ImportError:
     import_error("Please install pytest to run tests.")
     raise
 
-np.random.seed(1)
-
 # cone:
 K = {
     "z": 10,
@@ -41,7 +39,8 @@ try:
     from scs import _scs_dense
 
     def test_solve_feasible():
-        data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
+        rng = np.random.RandomState(3000)
+        data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1, rng=rng)
         solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.DENSE, **params)
         sol = solver.solve()
         x = sol["x"]
@@ -60,7 +59,8 @@ try:
         np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=4)
 
     def test_solve_infeasible():
-        data = tools.gen_infeasible(K, n=m // 2)
+        rng = np.random.RandomState(3001)
+        data = tools.gen_infeasible(K, n=m // 2, rng=rng)
         solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.DENSE, **params)
         sol = solver.solve()
         y = sol["y"]
@@ -69,7 +69,8 @@ try:
         np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=4)
 
     def test_solve_unbounded():
-        data = tools.gen_unbounded(K, n=m // 2)
+        rng = np.random.RandomState(3002)
+        data = tools.gen_unbounded(K, n=m // 2, rng=rng)
         solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.DENSE, **params)
         sol = solver.solve()
         x = sol["x"]
