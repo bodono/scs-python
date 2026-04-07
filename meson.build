@@ -132,6 +132,7 @@ if get_option('native_arch')
 endif
 
 _deps = [blas_deps]
+_deps += dependency('threads')
 if get_option('use_openmp')
   _deps += dependency('openmp')
 endif
