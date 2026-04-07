@@ -51,8 +51,19 @@ jobs:
           source .venv/bin/activate
           python -m pytest test/ -v --parallel-threads=4 --iterations=3 -p no:faulthandler -o faulthandler_timeout=600
 
-  test_tsan:
+  test_sanitizers:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sanitizer: tsan
+            cpython_configure_flag: "--with-thread-sanitizer"
+            cflags: "-fsanitize=thread -g"
+          - sanitizer: asan
+            cpython_configure_flag: "--with-address-sanitizer"
+            cflags: "-fsanitize=address -g"
+
     steps:
       - uses: actions/checkout@v6
         with:
@@ -65,49 +76,52 @@ jobs:
             libbz2-dev libreadline-dev libsqlite3-dev libncurses5-dev \
             libncursesw5-dev xz-utils libffi-dev liblzma-dev
 
-      - name: Cache CPython TSan build
+      - name: Cache CPython ${{ matrix.sanitizer }} build
         id: cache-cpython
         uses: actions/cache@v4
         with:
-          path: cpython-tsan
-          key: cpython-tsan-3.14-${{ runner.os }}-v1
+          path: cpython-${{ matrix.sanitizer }}
+          key: cpython-${{ matrix.sanitizer }}-3.14-${{ runner.os }}-v1
 
-      - name: Build CPython 3.14t with Thread Sanitizer
+      - name: Build CPython 3.14t with ${{ matrix.sanitizer }}
         if: steps.cache-cpython.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 https://github.com/python/cpython.git -b 3.14 cpython-src
           cd cpython-src
-          CC=clang CXX=clang++ ./configure --disable-gil --with-thread-sanitizer \
-            --prefix $GITHUB_WORKSPACE/cpython-tsan
+          CC=clang CXX=clang++ ./configure --disable-gil ${{ matrix.cpython_configure_flag }} \
+            --prefix $GITHUB_WORKSPACE/cpython-${{ matrix.sanitizer }}
           make -j$(nproc)
           make install
 
       - name: Create venv and install dependencies
         run: |
-          $GITHUB_WORKSPACE/cpython-tsan/bin/python3.14t -m venv .tsan-venv
-          source .tsan-venv/bin/activate
+          $GITHUB_WORKSPACE/cpython-${{ matrix.sanitizer }}/bin/python3.14t -m venv .san-venv
+          source .san-venv/bin/activate
           pip install numpy scipy pytest meson-python meson ninja
 
       - name: Build and install scs
         run: |
-          source .tsan-venv/bin/activate
+          source .san-venv/bin/activate
           pip install -v . --no-build-isolation
         env:
           CC: clang
-          CFLAGS: "-fsanitize=thread -g"
+          CFLAGS: ${{ matrix.cflags }}
 
-      - name: Run tests under TSan
+      - name: Set sanitizer runtime options
         run: |
-          source .tsan-venv/bin/activate
+          if [ "${{ matrix.sanitizer }}" = "tsan" ]; then
+            echo "TSAN_OPTIONS=halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/tsan-suppressions.txt" >> $GITHUB_ENV
+            echo "OPENBLAS_NUM_THREADS=1" >> $GITHUB_ENV
+          elif [ "${{ matrix.sanitizer }}" = "asan" ]; then
+            echo "ASAN_OPTIONS=halt_on_error=1 detect_leaks=0 allocator_may_return_null=1" >> $GITHUB_ENV
+          fi
+
+      - name: Run tests under ${{ matrix.sanitizer }}
+        run: |
+          source .san-venv/bin/activate
           python -m pytest test/ -v -s
-        env:
-          TSAN_OPTIONS: "halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/tsan-suppressions.txt"
-          OPENBLAS_NUM_THREADS: "1"
 
-      - name: Run threading stress tests under TSan
+      - name: Run threading stress tests under ${{ matrix.sanitizer }}
         run: |
-          source .tsan-venv/bin/activate
+          source .san-venv/bin/activate
           python -m pytest test/test_free_threading.py test/test_thread_safety.py -v -s
-        env:
-          TSAN_OPTIONS: "halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/tsan-suppressions.txt"
-          OPENBLAS_NUM_THREADS: "1"
