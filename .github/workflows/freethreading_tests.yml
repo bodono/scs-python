@@ -102,10 +102,11 @@ jobs:
       - name: Set sanitizer runtime options
         run: |
           if [ "${{ matrix.sanitizer }}" = "tsan" ]; then
-            echo "TSAN_OPTIONS=halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/tsan-suppressions.txt" >> $GITHUB_ENV
+            echo "TSAN_OPTIONS=halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/test/tsan-suppressions.txt" >> $GITHUB_ENV
             echo "OPENBLAS_NUM_THREADS=1" >> $GITHUB_ENV
           elif [ "${{ matrix.sanitizer }}" = "asan" ]; then
-            echo "ASAN_OPTIONS=halt_on_error=1 detect_leaks=0 allocator_may_return_null=1" >> $GITHUB_ENV
+            echo "ASAN_OPTIONS=halt_on_error=1 allocator_may_return_null=1" >> $GITHUB_ENV
+            echo "LSAN_OPTIONS=suppressions=${{ github.workspace }}/test/lsan-suppressions.txt" >> $GITHUB_ENV
           fi
 
       - name: Build and install scs
