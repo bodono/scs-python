@@ -180,10 +180,8 @@ jobs:
 
       - name: Report wheel sizes
         run: |
-          echo "## Wheel sizes" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -lh ./wheelhouse/*.whl
           ls -lh ./wheelhouse/*.whl >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
           # Warn if any wheel exceeds 100MB (PyPI default limit)
           for whl in ./wheelhouse/*.whl; do
             size=$(stat -f%z "$whl" 2>/dev/null || stat -c%s "$whl")
