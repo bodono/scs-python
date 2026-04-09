@@ -40,7 +40,7 @@ jobs:
         run: echo "$(pwd)/.pixi/envs/default/bin" >> $GITHUB_PATH
         shell: bash
       - name: Install dependencies
-        run: pixi add scipy numpy pip pytest meson meson-python openblas python==${{ matrix.python-version }}
+        run: pixi add --platform linux-64 scipy numpy pip pytest meson meson-python openblas python==${{ matrix.python-version }}
       - name: Test
         run: |
           pixi r python -m pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true
@@ -86,7 +86,7 @@ jobs:
           else
             BLAS_PKGS="blas-devel=*=*openblas"
           fi
-          pixi add $BLAS_PKGS pip scipy numpy pytest mkl mkl-devel pkg-config meson meson-python
+          pixi add --platform linux-64 $BLAS_PKGS pip scipy numpy pytest mkl mkl-devel pkg-config meson meson-python
       - name: Build
         run: |
           pixi r python -c "import numpy as np;print(np.show_config())"
@@ -123,7 +123,7 @@ jobs:
         run: echo "$(pwd)/.pixi/envs/default/bin" >> $GITHUB_PATH
         shell: bash
       - name: Install dependencies
-        run: pixi add scipy numpy pip pytest meson meson-python openblas python==3.12
+        run: pixi add --platform linux-64 scipy numpy pip pytest meson meson-python openblas python==3.12
       - name: Build (native_arch=${{ matrix.native_arch }})
         run: |
           pixi r python -m pip install -v . --no-build-isolation \
@@ -155,9 +155,7 @@ jobs:
         run: echo "$(pwd)/.pixi/envs/default/bin" >> $GITHUB_PATH
         shell: bash
       - name: Install dependencies
-        run: |
-          pixi project platform add osx-arm64
-          pixi add scipy numpy pip pytest meson meson-python python==${{ matrix.python-version }}
+        run: pixi add --platform osx-arm64 scipy numpy pip pytest meson meson-python python==${{ matrix.python-version }}
       - name: Build and test
         run: |
           pixi r python -m pip install -v . --no-build-isolation
