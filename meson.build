@@ -291,6 +291,30 @@ if get_option('link_mkl')
   )
 endif
 
+# Apple Accelerate backend (macOS only, requires 32-bit ints)
+if host_machine.system() == 'darwin'
+  # Filter out DLONG from c_args since Accelerate requires 32-bit integers
+  accel_c_args = []
+  foreach arg : common_c_args
+    if arg != '-DDLONG=1'
+      accel_c_args += arg
+    endif
+  endforeach
+  py.extension_module(
+    '_scs_accelerate',
+    'scs/scspy.c',
+    'scs_source/linsys/accelerate/direct/private.c',
+    common_linsys_sources,
+    scs_core_sources,
+    spectral_cone_sources,
+    c_args: accel_c_args + ['-DPY_ACCELERATE'],
+    include_directories: common_includes + ['scs_source/linsys/accelerate/direct'],
+    dependencies: _deps,
+    install_dir: scs_dir,
+    install: true,
+  )
+endif
+
 if get_option('link_cudss')
   _deps += cuda_dep
   cudss_dep = dependency('cudss', required: true)
