@@ -11,16 +11,19 @@ import gen_random_cone_prob as tools
 #  Uses scs to solve a random cone problem  #
 #############################################
 
-# MKL is shipped in Linux x86_64 and Windows wheels.
-# On those platforms the import must succeed; elsewhere skip.
-_is_mkl_platform = (
-    (sys.platform == "linux" and platform.machine() == "x86_64")
-    or sys.platform == "win32"
-)
-if not _is_mkl_platform:
-    pytest.skip("MKL is not available on this platform", allow_module_level=True)
+# MKL is shipped in manylinux x86_64 and Windows wheels, but not in
+# musllinux or macOS or aarch64 wheels. Skip on platforms where MKL
+# is never available; on MKL platforms fail hard if the import is missing.
+if sys.platform == "darwin":
+    pytest.skip("MKL is not available on macOS", allow_module_level=True)
+if sys.platform == "linux" and platform.machine() != "x86_64":
+    pytest.skip("MKL is not available on this architecture", allow_module_level=True)
 
-from scs import _scs_mkl  # noqa: E402
+try:
+    from scs import _scs_mkl  # noqa: E402
+except ImportError:
+    # musllinux x86_64 ships openblas, not MKL
+    pytest.skip("MKL module not installed", allow_module_level=True)
 
 np.random.seed(1)
 
