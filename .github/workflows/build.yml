@@ -155,7 +155,9 @@ jobs:
         run: echo "$(pwd)/.pixi/envs/default/bin" >> $GITHUB_PATH
         shell: bash
       - name: Install dependencies
-        run: pixi add scipy numpy pip pytest meson meson-python python==${{ matrix.python-version }}
+        run: |
+          pixi project platform add osx-arm64
+          pixi add scipy numpy pip pytest meson meson-python python==${{ matrix.python-version }}
       - name: Build and test
         run: |
           pixi r python -m pip install -v . --no-build-isolation
