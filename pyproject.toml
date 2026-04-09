@@ -62,7 +62,6 @@ archs = [
 before-build = "pip install delvewheel"
 # This will probably become default in newer cibuildwheels versions
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
-config-settings = {setup-args = "-Dlink_mkl=true"}
 
 # Openblas installation for 3 different linux images
 
