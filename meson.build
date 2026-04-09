@@ -23,7 +23,12 @@ print(incdir)
 # Get BLAS
 blas_deps = []
 if get_option('link_mkl')
-    blas_deps = [cc.find_library('mkl_rt', required : false)]
+    # Prefer component libraries (lp64, sequential) so that wheel-repair
+    # tools (auditwheel / delvewheel) can detect and bundle them.
+    blas_deps = [dependency('mkl-dynamic-lp64-seq', required : false)]
+    if not blas_deps[0].found()
+        blas_deps = [cc.find_library('mkl_rt', required : false)]
+    endif
     if not blas_deps[0].found()
         blas_deps = [dependency('mkl-sdl', required : false)]
     endif
