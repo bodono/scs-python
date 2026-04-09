@@ -157,6 +157,10 @@ jobs:
         with:
           submodules: true
 
+      - name: Set up MSVC for Windows
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install conda on Windows
         if: runner.os == 'Windows'
         uses: conda-incubator/setup-miniconda@v3
@@ -164,15 +168,28 @@ jobs:
           miniconda-version: "latest"
           channels: conda-forge, anaconda
 
-      - name: Install openblas from conda on Windows
+      - name: Install MKL from conda on Windows
         if: runner.os == 'Windows'
-        run: conda install -y openblas pkgconfig
+        run: conda install -y mkl mkl-devel pkgconfig
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
         env:
           # Explicitly set the architecture based on the matrix
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+
+      - name: Report wheel sizes
+        run: |
+          ls -lh ./wheelhouse/*.whl
+          ls -lh ./wheelhouse/*.whl >> $GITHUB_STEP_SUMMARY
+          # Warn if any wheel exceeds 100MB (PyPI default limit)
+          for whl in ./wheelhouse/*.whl; do
+            size=$(stat -f%z "$whl" 2>/dev/null || stat -c%s "$whl")
+            if [ "$size" -gt 104857600 ]; then
+              echo "::warning file=$(basename $whl)::Wheel $(basename $whl) is $(( size / 1048576 ))MB — exceeds PyPI 100MB limit"
+            fi
+          done
+        shell: bash
 
       - uses: actions/upload-artifact@v7
         with:

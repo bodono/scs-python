@@ -62,6 +62,7 @@ archs = [
 before-build = "pip install delvewheel"
 # This will probably become default in newer cibuildwheels versions
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
+config-settings = {setup-args = "-Dlink_mkl=true"}
 
 # Openblas installation for 3 different linux images
 
@@ -69,10 +70,13 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  # "yum check-update", "yum search blas",
-  # netlib blas/lapack fallback compiles and tests (on aarch64) but is super slow
-  # "((yum install -y openblas-devel) || (yum install -y blas-devel lapack-devel))",
-  "yum install -y openblas-devel"]
+  "dnf install -y dnf-plugins-core",
+  "dnf config-manager --add-repo https://yum.repos.intel.com/oneapi",
+  "rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB",
+  "dnf install -y intel-oneapi-mkl-devel",
+]
+environment = {PKG_CONFIG_PATH = "/opt/intel/oneapi/mkl/latest/lib/pkgconfig:$PKG_CONFIG_PATH", LD_LIBRARY_PATH = "/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/mkl/latest/lib:$LD_LIBRARY_PATH"}
+config-settings = {setup-args = "-Dlink_mkl=true"}
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
