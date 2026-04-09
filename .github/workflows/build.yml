@@ -178,6 +178,21 @@ jobs:
           # Explicitly set the architecture based on the matrix
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
+      - name: Report wheel sizes
+        run: |
+          echo "## Wheel sizes" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -lh ./wheelhouse/*.whl >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Warn if any wheel exceeds 100MB (PyPI default limit)
+          for whl in ./wheelhouse/*.whl; do
+            size=$(stat -f%z "$whl" 2>/dev/null || stat -c%s "$whl")
+            if [ "$size" -gt 104857600 ]; then
+              echo "::warning file=$(basename $whl)::Wheel $(basename $whl) is $(( size / 1048576 ))MB — exceeds PyPI 100MB limit"
+            fi
+          done
+        shell: bash
+
       - uses: actions/upload-artifact@v7
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
