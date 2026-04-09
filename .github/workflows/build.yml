@@ -157,6 +157,10 @@ jobs:
         with:
           submodules: true
 
+      - name: Set up MSVC for Windows
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install conda on Windows
         if: runner.os == 'Windows'
         uses: conda-incubator/setup-miniconda@v3
@@ -164,9 +168,9 @@ jobs:
           miniconda-version: "latest"
           channels: conda-forge, anaconda
 
-      - name: Install openblas from conda on Windows
+      - name: Install MKL from conda on Windows
         if: runner.os == 'Windows'
-        run: conda install -y openblas pkgconfig
+        run: conda install -y mkl mkl-devel pkgconfig
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
