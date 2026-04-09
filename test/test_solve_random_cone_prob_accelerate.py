@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 import sys
-import platform
 import scs
 import numpy as np
 from scipy import sparse
@@ -11,19 +10,12 @@ import gen_random_cone_prob as tools
 #  Uses scs to solve a random cone problem  #
 #############################################
 
-# MKL is shipped in manylinux x86_64 and Windows wheels, but not in
-# musllinux or macOS or aarch64 wheels. Skip on platforms where MKL
-# is never available; on MKL platforms fail hard if the import is missing.
-if sys.platform == "darwin":
-    pytest.skip("MKL is not available on macOS", allow_module_level=True)
-if sys.platform == "linux" and platform.machine() != "x86_64":
-    pytest.skip("MKL is not available on this architecture", allow_module_level=True)
+# On macOS the accelerate module must be present (it ships in the wheel).
+# On other platforms, skip the entire module.
+if sys.platform != "darwin":
+    pytest.skip("Apple Accelerate is macOS-only", allow_module_level=True)
 
-try:
-    from scs import _scs_mkl  # noqa: E402
-except ImportError:
-    # musllinux x86_64 ships openblas, not MKL
-    pytest.skip("MKL module not installed", allow_module_level=True)
+from scs import _scs_accelerate  # noqa: E402
 
 np.random.seed(1)
 
@@ -43,7 +35,7 @@ params = {"verbose": True, "eps_abs": 1e-7, "eps_rel": 1e-7, "eps_infeas": 1e-7}
 
 def test_solve_feasible():
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-    solver = scs.SCS(data, K, mkl=True, **params)
+    solver = scs.SCS(data, K, apple_ldl=True, **params)
     sol = solver.solve()
     x = sol["x"]
     y = sol["y"]
@@ -62,7 +54,7 @@ def test_solve_feasible():
 
 def test_solve_infeasible():
     data = tools.gen_infeasible(K, n=m // 2)
-    solver = scs.SCS(data, K, mkl=True, **params)
+    solver = scs.SCS(data, K, apple_ldl=True, **params)
     sol = solver.solve()
     y = sol["y"]
     np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
@@ -72,7 +64,7 @@ def test_solve_infeasible():
 
 def test_solve_unbounded():
     data = tools.gen_unbounded(K, n=m // 2)
-    solver = scs.SCS(data, K, mkl=True, **params)
+    solver = scs.SCS(data, K, apple_ldl=True, **params)
     sol = solver.solve()
     x = sol["x"]
     s = sol["s"]

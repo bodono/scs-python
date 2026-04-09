@@ -24,6 +24,15 @@ pip install .
 
 ### Optional backends
 
+On macOS the Apple Accelerate backend is built automatically (no extra flags
+needed). Select it at runtime with `apple_ldl=True`:
+
+```python
+solver = scs.SCS(data, cone, apple_ldl=True)
+```
+
+Other backends require build-time flags:
+
 ```bash
 # MKL Pardiso direct solver
 pip install . -Csetup-args=-Dlink_mkl=true
