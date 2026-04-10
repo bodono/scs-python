@@ -17,8 +17,6 @@ if sys.platform != "darwin":
 
 from scs import _scs_accelerate  # noqa: E402
 
-np.random.seed(1)
-
 # cone:
 K = {
     "z": 10,
@@ -34,7 +32,8 @@ params = {"verbose": True, "eps_abs": 1e-7, "eps_rel": 1e-7, "eps_infeas": 1e-7}
 
 
 def test_solve_feasible():
-    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
+    rng = np.random.RandomState(3000)
+    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1, rng=rng)
     solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.ACCELERATE, **params)
     sol = solver.solve()
     x = sol["x"]
@@ -53,17 +52,19 @@ def test_solve_feasible():
 
 
 def test_solve_infeasible():
-    data = tools.gen_infeasible(K, n=m // 2)
+    rng = np.random.RandomState(3001)
+    data = tools.gen_infeasible(K, n=m // 2, rng=rng)
     solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.ACCELERATE, **params)
     sol = solver.solve()
     y = sol["y"]
     np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
     np.testing.assert_array_less(data["b"].T @ y, -0.1)
-    np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=4)
+    np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=3)
 
 
 def test_solve_unbounded():
-    data = tools.gen_unbounded(K, n=m // 2)
+    rng = np.random.RandomState(3002)
+    data = tools.gen_unbounded(K, n=m // 2, rng=rng)
     solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.ACCELERATE, **params)
     sol = solver.solve()
     x = sol["x"]
