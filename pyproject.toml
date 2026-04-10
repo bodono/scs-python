@@ -101,6 +101,7 @@ testpaths = [
     "test",
 ]
 faulthandler_timeout = 600
+faulthandler_exit_on_timeout = true
 markers = [
     "thread_unsafe: mark test as unsafe to run in parallel threads (pytest-run-parallel)",
 ]

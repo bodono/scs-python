@@ -44,12 +44,12 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          python -m pytest test/ -v -p no:faulthandler -o faulthandler_timeout=600
+          python -m pytest test/ -v
 
       - name: Run tests in parallel threads (race detection)
         run: |
           source .venv/bin/activate
-          python -m pytest test/ -v --parallel-threads=4 --iterations=3 -p no:faulthandler -o faulthandler_timeout=600
+          python -m pytest test/ -v --parallel-threads=4 --iterations=3
 
   test_sanitizers:
     runs-on: ubuntu-latest
