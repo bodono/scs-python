@@ -59,7 +59,7 @@ def test_solve_infeasible():
     y = sol["y"]
     np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
     np.testing.assert_array_less(data["b"].T @ y, -0.1)
-    np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=3)
+    np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=4)
 
 
 def test_solve_unbounded():
