@@ -306,7 +306,7 @@ def test_solution_keys():
 # ===========================================================================
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
 def test_tight_tolerances(linear_solver):
     """Tighter eps should still produce a correct solution."""
     solver = scs.SCS(
@@ -321,7 +321,7 @@ def test_tight_tolerances(linear_solver):
     assert_almost_equal(sol["x"][0], 1.0, decimal=3)
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
 def test_loose_tolerances(linear_solver):
     """Very loose tolerances should still converge quickly."""
     solver = scs.SCS(
@@ -686,7 +686,7 @@ def _make_qp_data():
     return {"A": _A.copy(), "b": _b.copy(), "c": np.array([-1.0]), "P": P}
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
 def test_qp_with_settings(linear_solver):
     solver = scs.SCS(
         _make_qp_data(), _CONE,
@@ -873,7 +873,7 @@ def test_exp_cone_primal_known_solution():
     assert_almost_equal(sol["x"][0], np.e, decimal=4)
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
 def test_exp_cone_both_solvers(linear_solver):
     """Exp cone problem solved with both direct and indirect backends."""
     A_exp = sp.csc_matrix(np.array([
@@ -1236,7 +1236,7 @@ def test_sdp_2x2_known_solution():
     assert_almost_equal(sol["x"][0], -1.0, decimal=4)
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
 def test_sdp_both_solvers(linear_solver):
     """SDP solved with both direct and indirect backends."""
     sq2 = np.sqrt(2.0)
@@ -2873,3 +2873,125 @@ def test_linear_solver_default_is_auto():
     solver = scs.SCS(_make_data(), _CONE, verbose=False)
     sol = solver.solve()
     assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_auto_explicit():
+    """Explicitly passing AUTO should solve correctly."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.AUTO, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+    assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+def test_linear_solver_auto_string():
+    """Passing 'auto' as a string should work."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver="auto", verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+# ===========================================================================
+# 92. AUTO fallback logic
+# ===========================================================================
+
+
+def test_resolve_auto_falls_back_to_qdldl():
+    """AUTO should fall back to QDLDL when platform-preferred module is missing."""
+    from unittest.mock import patch
+    from scs import _resolve_auto, _scs_direct
+
+    def fail_import(name):
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs._load_module", side_effect=fail_import):
+        module = _resolve_auto()
+    assert module is _scs_direct
+
+
+def test_resolve_auto_darwin_tries_accelerate():
+    """On macOS, AUTO should try _scs_accelerate first."""
+    from unittest.mock import patch, MagicMock
+    from scs import _resolve_auto
+
+    fake_accel = MagicMock()
+
+    def mock_load(name):
+        if name == "_scs_accelerate":
+            return fake_accel
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "darwin"
+        with patch("scs._load_module", side_effect=mock_load):
+            module = _resolve_auto()
+    assert module is fake_accel
+
+
+def test_resolve_auto_linux_tries_mkl():
+    """On Linux, AUTO should try _scs_mkl first."""
+    from unittest.mock import patch, MagicMock
+    from scs import _resolve_auto
+
+    fake_mkl = MagicMock()
+
+    def mock_load(name):
+        if name == "_scs_mkl":
+            return fake_mkl
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "linux"
+        with patch("scs._load_module", side_effect=mock_load):
+            module = _resolve_auto()
+    assert module is fake_mkl
+
+
+def test_resolve_auto_windows_tries_mkl():
+    """On Windows, AUTO should try _scs_mkl first."""
+    from unittest.mock import patch, MagicMock
+    from scs import _resolve_auto
+
+    fake_mkl = MagicMock()
+
+    def mock_load(name):
+        if name == "_scs_mkl":
+            return fake_mkl
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "win32"
+        with patch("scs._load_module", side_effect=mock_load):
+            module = _resolve_auto()
+    assert module is fake_mkl
+
+
+def test_resolve_auto_darwin_fallback_when_no_accelerate():
+    """On macOS, AUTO should fall back to QDLDL when Accelerate is missing."""
+    from unittest.mock import patch
+    from scs import _resolve_auto, _scs_direct
+
+    def fail_import(name):
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "darwin"
+        with patch("scs._load_module", side_effect=fail_import):
+            module = _resolve_auto()
+    assert module is _scs_direct
+
+
+def test_resolve_auto_linux_fallback_when_no_mkl():
+    """On Linux, AUTO should fall back to QDLDL when MKL is missing."""
+    from unittest.mock import patch
+    from scs import _resolve_auto, _scs_direct
+
+    def fail_import(name):
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "linux"
+        with patch("scs._load_module", side_effect=fail_import):
+            module = _resolve_auto()
+    assert module is _scs_direct
