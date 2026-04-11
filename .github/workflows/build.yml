@@ -194,11 +194,11 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
-          channels: conda-forge, anaconda
+          channels: https://software.repos.intel.com/python/conda/, conda-forge
 
       - name: Install MKL from conda on Windows
         if: runner.os == 'Windows'
-        run: conda install -y mkl mkl-devel pkgconfig
+        run: conda install -y -c https://software.repos.intel.com/python/conda/ -c conda-forge mkl mkl-devel pkgconfig
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
