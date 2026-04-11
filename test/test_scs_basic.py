@@ -43,6 +43,7 @@ FAIL = "failure"  # scs code for failure
 
 
 _solver_configs = [
+    scs.LinearSolver.AUTO,
     scs.LinearSolver.QDLDL,
     scs.LinearSolver.INDIRECT,
 ]
@@ -76,8 +77,10 @@ if platform.python_version_tuple() < ("3", "0", "0"):
     @pytest.mark.parametrize(
         "cone,linear_solver,expected",
         [
+            ({"q": [], "l": long(2)}, scs.LinearSolver.AUTO, 1),
             ({"q": [], "l": long(2)}, scs.LinearSolver.QDLDL, 1),
             ({"q": [], "l": long(2)}, scs.LinearSolver.INDIRECT, 1),
+            ({"q": [long(2)], "l": 0}, scs.LinearSolver.AUTO, 0.5),
             ({"q": [long(2)], "l": 0}, scs.LinearSolver.QDLDL, 0.5),
             ({"q": [long(2)], "l": 0}, scs.LinearSolver.INDIRECT, 0.5),
         ],

@@ -13,6 +13,8 @@ P = sp.csc_matrix([1.2345]).tocsc()
 data = {"A": A, "P": P, "b": b, "c": c}
 cone = {"q": [], "l": 2}
 
+sol = scs.solve(data, cone, linear_solver=scs.LinearSolver.AUTO)
+print(sol)
 sol = scs.solve(data, cone, linear_solver=scs.LinearSolver.QDLDL)
 print(sol)
 sol = scs.solve(data, cone, linear_solver=scs.LinearSolver.INDIRECT)

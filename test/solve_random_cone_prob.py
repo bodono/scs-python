@@ -9,7 +9,7 @@ import gen_random_cone_prob as tools
 
 
 def main():
-    solvers = [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
+    solvers = [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
     try:
         from scs import _scs_gpu
 

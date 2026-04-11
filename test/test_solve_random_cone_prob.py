@@ -21,7 +21,7 @@ except ImportError:
     import_error("Please install pytest to run tests.")
     raise
 
-solvers = [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
+solvers = [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
 try:
     from scs import _scs_gpu
 

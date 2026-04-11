@@ -82,6 +82,7 @@ except ImportError:
     pass
 
 _solver_configs = [
+    {"linear_solver": scs.LinearSolver.AUTO},
     {"linear_solver": scs.LinearSolver.QDLDL},
     {"linear_solver": scs.LinearSolver.INDIRECT},
 ]
