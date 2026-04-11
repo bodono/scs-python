@@ -34,10 +34,7 @@ selects the best available solver for the platform:
 solver = scs.SCS(data, cone)
 
 # Explicitly select a solver
-solver = scs.SCS(data, cone, linear_solver=scs.LinearSolver.MKL)
-
-# String values also work
-solver = scs.SCS(data, cone, linear_solver="indirect")
+solver = scs.SCS(data, cone, linear_solver=scs.LinearSolver.QDLDL)
 ```
 
 Available values: `AUTO`, `QDLDL`, `INDIRECT`, `MKL`, `ACCELERATE`, `DENSE`,
