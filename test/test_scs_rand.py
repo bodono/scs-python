@@ -82,11 +82,11 @@ except ImportError:
     pass
 
 _solver_configs = [
-    {"use_indirect": False},
-    {"use_indirect": True},
+    {"linear_solver": scs.LinearSolver.QDLDL},
+    {"linear_solver": scs.LinearSolver.INDIRECT},
 ]
 if _dense_available:
-    _solver_configs.append({"dense": True})
+    _solver_configs.append({"linear_solver": scs.LinearSolver.DENSE})
 
 
 @pytest.mark.parametrize("solver_opts", _solver_configs)
@@ -109,9 +109,9 @@ def test_infeasible(solver_opts):
 
 
 # TODO: indirect solver has trouble in this test, so disable for now
-_unbounded_configs = [{"use_indirect": False}]
+_unbounded_configs = [{"linear_solver": scs.LinearSolver.QDLDL}]
 if _dense_available:
-    _unbounded_configs.append({"dense": True})
+    _unbounded_configs.append({"linear_solver": scs.LinearSolver.DENSE})
 
 
 @pytest.mark.parametrize("solver_opts", _unbounded_configs)

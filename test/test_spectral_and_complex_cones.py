@@ -92,11 +92,11 @@ except ImportError:
     pass
 
 _solver_configs = [
-    {"use_indirect": False},
-    {"use_indirect": True},
+    {"linear_solver": scs.LinearSolver.QDLDL},
+    {"linear_solver": scs.LinearSolver.INDIRECT},
 ]
 if _dense_available:
-    _solver_configs.append({"dense": True})
+    _solver_configs.append({"linear_solver": scs.LinearSolver.DENSE})
 
 skip_no_spectral = pytest.mark.skipif(
     not _spectral_available,

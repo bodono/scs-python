@@ -37,158 +37,44 @@ class LinearSolver(enum.Enum):
   CUDSS = "cudss"
 
 
-# Old boolean flags that are now deprecated in favor of linear_solver=.
-_DEPRECATED_FLAGS = (
-    "use_indirect", "gpu", "mkl", "apple_ldl", "dense", "cudss", "qdldl",
-)
-
-
-def _map_legacy_flags(stgs):
-  """Convert deprecated boolean flags to a LinearSolver value.
-
-  Pops all legacy flags from stgs. Returns a LinearSolver or None if no
-  legacy flags were set (all False / absent).
-  """
-  cudss = stgs.pop("cudss", False)
-  gpu = stgs.pop("gpu", False)
-  mkl = stgs.pop("mkl", False)
-  apple_ldl = stgs.pop("apple_ldl", False)
-  dense = stgs.pop("dense", False)
-  qdldl = stgs.pop("qdldl", False)
-  use_indirect = stgs.pop("use_indirect", False)
-
-  any_set = cudss or gpu or mkl or apple_ldl or dense or qdldl or use_indirect
-  if not any_set:
-    return None
-
-  warnings.warn(
-      "Passing boolean flags (gpu, mkl, apple_ldl, dense, cudss, qdldl, "
-      "use_indirect) to select the linear solver is deprecated. "
-      "Use linear_solver=scs.LinearSolver.<SOLVER> instead.",
-      DeprecationWarning,
-      stacklevel=4,
-  )
-
-  if cudss:
-    if not gpu or use_indirect:
-      raise ValueError("To use cuDSS set gpu=True and use_indirect=False.")
-    return LinearSolver.CUDSS
-
-  if gpu:
-    if use_indirect:
-      return LinearSolver.GPU
-    return LinearSolver.CUDSS
-
-  if mkl:
-    if use_indirect:
-      raise NotImplementedError(
-          "MKL indirect solver not yet available, pass `use_indirect=False`."
-      )
-    return LinearSolver.MKL
-
-  if apple_ldl:
-    if use_indirect:
-      raise ValueError(
-          "Accelerate solver is a direct method, pass `use_indirect=False`."
-      )
-    return LinearSolver.ACCELERATE
-
-  if dense:
-    if use_indirect:
-      raise ValueError(
-          "Dense solver is a direct method, pass `use_indirect=False`."
-      )
-    return LinearSolver.DENSE
-
-  if qdldl:
-    if use_indirect:
-      raise ValueError(
-          "QDLDL solver is a direct method, pass `use_indirect=False`."
-      )
-    return LinearSolver.QDLDL
-
-  if use_indirect:
-    return LinearSolver.INDIRECT
-
-  return None
+def _load_module(name):
+  from importlib import import_module
+  return import_module(f"scs.{name}")
 
 
 def _resolve_auto():
   """Auto-detect the best available direct solver for this platform."""
   if sys.platform == "darwin":
     try:
-      from scs import _scs_accelerate  # pylint: disable=g-import-not-at-top
-
-      return _scs_accelerate
+      return _load_module("_scs_accelerate")
     except ImportError:
       pass
   else:
     try:
-      from scs import _scs_mkl  # pylint: disable=g-import-not-at-top
-
-      return _scs_mkl
+      return _load_module("_scs_mkl")
     except ImportError:
       pass
   return _scs_direct
 
 
+_SOLVER_DISPATCH = {
+    LinearSolver.AUTO: _resolve_auto,
+    LinearSolver.QDLDL: lambda: _scs_direct,
+    LinearSolver.INDIRECT: lambda: _load_module("_scs_indirect"),
+    LinearSolver.MKL: lambda: _load_module("_scs_mkl"),
+    LinearSolver.ACCELERATE: lambda: _load_module("_scs_accelerate"),
+    LinearSolver.DENSE: lambda: _load_module("_scs_dense"),
+    LinearSolver.GPU: lambda: _load_module("_scs_gpu"),
+    LinearSolver.CUDSS: lambda: _load_module("_scs_cudss"),
+}
+
+
 def _select_scs_module(stgs):
   """Choose which SCS C extension to import based on settings."""
-  linear_solver = stgs.pop("linear_solver", None)
-
-  # Check for deprecated boolean flags.
-  legacy = _map_legacy_flags(stgs)
-
-  if linear_solver is not None and legacy is not None:
-    raise ValueError(
-        "Cannot combine 'linear_solver' with deprecated boolean flags "
-        "(gpu, mkl, apple_ldl, dense, cudss, qdldl, use_indirect). "
-        "Use only 'linear_solver'."
-    )
-
-  if linear_solver is None:
-    linear_solver = legacy if legacy is not None else LinearSolver.AUTO
-
+  linear_solver = stgs.pop("linear_solver", LinearSolver.AUTO)
   if isinstance(linear_solver, str):
     linear_solver = LinearSolver(linear_solver)
-
-  if linear_solver == LinearSolver.AUTO:
-    return _resolve_auto()
-
-  if linear_solver == LinearSolver.QDLDL:
-    return _scs_direct
-
-  if linear_solver == LinearSolver.INDIRECT:
-    from scs import _scs_indirect  # pylint: disable=g-import-not-at-top
-
-    return _scs_indirect
-
-  if linear_solver == LinearSolver.MKL:
-    from scs import _scs_mkl  # pylint: disable=g-import-not-at-top
-
-    return _scs_mkl
-
-  if linear_solver == LinearSolver.ACCELERATE:
-    from scs import _scs_accelerate  # pylint: disable=g-import-not-at-top
-
-    return _scs_accelerate
-
-  if linear_solver == LinearSolver.DENSE:
-    from scs import _scs_dense  # pylint: disable=g-import-not-at-top
-
-    return _scs_dense
-
-  if linear_solver == LinearSolver.GPU:
-    from scs import _scs_gpu  # pylint: disable=g-import-not-at-top
-
-    return _scs_gpu
-
-  if linear_solver == LinearSolver.CUDSS:
-    from scs import _scs_cudss  # pylint: disable=g-import-not-at-top
-
-    return _scs_cudss
-
-  raise ValueError(f"Unknown linear_solver: {linear_solver!r}")
+  return _SOLVER_DISPATCH[linear_solver]()
 
 
 def _has_lower_tri(P):
