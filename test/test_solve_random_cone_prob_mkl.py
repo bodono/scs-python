@@ -43,7 +43,7 @@ params = {"verbose": True, "eps_abs": 1e-7, "eps_rel": 1e-7, "eps_infeas": 1e-7}
 
 def test_solve_feasible():
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-    solver = scs.SCS(data, K, mkl=True, **params)
+    solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.MKL, **params)
     sol = solver.solve()
     x = sol["x"]
     y = sol["y"]
@@ -62,7 +62,7 @@ def test_solve_feasible():
 
 def test_solve_infeasible():
     data = tools.gen_infeasible(K, n=m // 2)
-    solver = scs.SCS(data, K, mkl=True, **params)
+    solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.MKL, **params)
     sol = solver.solve()
     y = sol["y"]
     np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
@@ -72,7 +72,7 @@ def test_solve_infeasible():
 
 def test_solve_unbounded():
     data = tools.gen_unbounded(K, n=m // 2)
-    solver = scs.SCS(data, K, mkl=True, **params)
+    solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.MKL, **params)
     sol = solver.solve()
     x = sol["x"]
     s = sol["s"]

@@ -42,34 +42,31 @@ data = {"A": A, "b": b, "c": c}
 FAIL = "failure"  # scs code for failure
 
 
-_dense_available = False
+_solver_configs = [
+    scs.LinearSolver.AUTO,
+    scs.LinearSolver.QDLDL,
+    scs.LinearSolver.INDIRECT,
+]
 try:
     from scs import _scs_dense
-    _dense_available = True
+    _solver_configs.append(scs.LinearSolver.DENSE)
 except ImportError:
     pass
 
-_test_configs = [
-    (False, False),
-    (True, False),
-]
-if _dense_available:
-    _test_configs.append((False, True))
-
 
 @pytest.mark.parametrize(
-    "cone,use_indirect,dense,expected",
+    "cone,linear_solver,expected",
     [
-        (c, ui, d, e)
+        (c, ls, e)
         for c, e in [
             ({"q": [], "l": 2}, 1),
             ({"q": [2], "l": 0}, 0.5),
         ]
-        for ui, d in _test_configs
+        for ls in _solver_configs
     ],
 )
-def test_problems(cone, use_indirect, dense, expected):
-    solver = scs.SCS(data, cone=cone, use_indirect=use_indirect, dense=dense,
+def test_problems(cone, linear_solver, expected):
+    solver = scs.SCS(data, cone=cone, linear_solver=linear_solver,
                      verbose=False)
     sol = solver.solve()
     assert_almost_equal(sol["x"][0], expected, decimal=2)
@@ -78,17 +75,19 @@ def test_problems(cone, use_indirect, dense, expected):
 if platform.python_version_tuple() < ("3", "0", "0"):
 
     @pytest.mark.parametrize(
-        "cone,use_indirect,expected",
+        "cone,linear_solver,expected",
         [
-            ({"q": [], "l": long(2)}, False, 1),
-            ({"q": [], "l": long(2)}, True, 1),
-            ({"q": [long(2)], "l": 0}, False, 0.5),
-            ({"q": [long(2)], "l": 0}, True, 0.5),
+            ({"q": [], "l": long(2)}, scs.LinearSolver.AUTO, 1),
+            ({"q": [], "l": long(2)}, scs.LinearSolver.QDLDL, 1),
+            ({"q": [], "l": long(2)}, scs.LinearSolver.INDIRECT, 1),
+            ({"q": [long(2)], "l": 0}, scs.LinearSolver.AUTO, 0.5),
+            ({"q": [long(2)], "l": 0}, scs.LinearSolver.QDLDL, 0.5),
+            ({"q": [long(2)], "l": 0}, scs.LinearSolver.INDIRECT, 0.5),
         ],
     )
-    def test_problems_with_longs(cone, use_indirect, expected):
+    def test_problems_with_longs(cone, linear_solver, expected):
         sol = scs.solve(
-            data, cone=cone, use_indirect=use_indirect, verbose=False
+            data, cone=cone, linear_solver=linear_solver, verbose=False
         )
         assert_almost_equal(sol["x"][0], expected, decimal=2)
 

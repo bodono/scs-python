@@ -9,22 +9,22 @@ import gen_random_cone_prob as tools
 
 
 def main():
-    flags = [(False, False), (True, False)]
+    solvers = [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
     try:
-        import _scs_gpu
+        from scs import _scs_gpu
 
-        flags += [(True, True)]
+        solvers.append(scs.LinearSolver.GPU)
     except ImportError:
         pass
 
-    for use_indirect, gpu in flags:
+    for linear_solver in solvers:
         np.random.seed(1)
-        solve_feasible(use_indirect, gpu)
-        solve_infeasible(use_indirect, gpu)
-        solve_unbounded(use_indirect, gpu)
+        solve_feasible(linear_solver)
+        solve_infeasible(linear_solver)
+        solve_unbounded(linear_solver)
 
 
-def solve_feasible(use_indirect, gpu):
+def solve_feasible(linear_solver):
     # cone:
     K = {
         "z": 10,
@@ -39,7 +39,7 @@ def solve_feasible(use_indirect, gpu):
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.01)
     params = {"normalize": True, "scale": 5}
 
-    sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    sol = scs.solve(data, K, linear_solver=linear_solver, **params)
     x = sol["x"]
     y = sol["y"]
     print("p*  = ", p_star)
@@ -47,7 +47,7 @@ def solve_feasible(use_indirect, gpu):
     print("dual error = ", (-np.dot(data["b"], y) - p_star) / p_star)
 
 
-def solve_infeasible(use_indirect, gpu):
+def solve_infeasible(linear_solver):
     K = {
         "z": 10,
         "l": 15,
@@ -60,10 +60,10 @@ def solve_infeasible(use_indirect, gpu):
     m = tools.get_scs_cone_dims(K)
     data = tools.gen_infeasible(K, n=m // 3)
     params = {"normalize": True, "scale": 0.5}
-    sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    sol = scs.solve(data, K, linear_solver=linear_solver, **params)
 
 
-def solve_unbounded(use_indirect, gpu):
+def solve_unbounded(linear_solver):
     K = {
         "z": 10,
         "l": 15,
@@ -76,7 +76,7 @@ def solve_unbounded(use_indirect, gpu):
     m = tools.get_scs_cone_dims(K)
     data = tools.gen_unbounded(K, n=m // 3)
     params = {"normalize": True, "scale": 0.5}
-    sol = scs.solve(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    sol = scs.solve(data, K, linear_solver=linear_solver, **params)
 
 
 if __name__ == "__main__":

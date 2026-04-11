@@ -22,16 +22,27 @@ cd scs-python
 pip install .
 ```
 
-### Optional backends
+### Linear solver backends
 
-On macOS the Apple Accelerate backend is built automatically (no extra flags
-needed). Select it at runtime with `apple_ldl=True`:
+SCS supports several linear solver backends. The default is `AUTO`, which
+selects the best available solver for the platform:
+- **macOS**: Apple Accelerate if available, otherwise QDLDL
+- **Linux / Windows**: MKL Pardiso if available, otherwise QDLDL
 
 ```python
-solver = scs.SCS(data, cone, apple_ldl=True)
+# Auto-detect best backend (default)
+solver = scs.SCS(data, cone)
+
+# Explicitly select a solver
+solver = scs.SCS(data, cone, linear_solver=scs.LinearSolver.QDLDL)
 ```
 
-Other backends require build-time flags:
+Available values: `AUTO`, `QDLDL`, `INDIRECT`, `MKL`, `ACCELERATE`, `DENSE`,
+`GPU`, `CUDSS`.
+
+The pre-built wheels (`pip install scs`) include MKL on x86_64 Linux and
+Windows, and Apple Accelerate on macOS. When installing from source, additional
+backends can be enabled with build-time flags:
 
 ```bash
 # MKL Pardiso direct solver

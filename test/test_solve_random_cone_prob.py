@@ -21,11 +21,11 @@ except ImportError:
     import_error("Please install pytest to run tests.")
     raise
 
-flags = [(False, False), (True, False)]
+solvers = [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
 try:
-    import _scs_gpu
+    from scs import _scs_gpu
 
-    flags += [(True, True)]
+    solvers.append(scs.LinearSolver.GPU)
 except ImportError:
     pass
 
@@ -45,10 +45,10 @@ m = tools.get_scs_cone_dims(K)
 params = {"verbose": True, "eps_abs": 1e-7, "eps_rel": 1e-7, "eps_infeas": 1e-7}
 
 
-@pytest.mark.parametrize("use_indirect,gpu", flags)
-def test_solve_feasible(use_indirect, gpu):
+@pytest.mark.parametrize("linear_solver", solvers)
+def test_solve_feasible(linear_solver):
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
-    solver = scs.SCS(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    solver = scs.SCS(data, K, linear_solver=linear_solver, **params)
     sol = solver.solve()
     x = sol["x"]
     y = sol["y"]
@@ -66,10 +66,10 @@ def test_solve_feasible(use_indirect, gpu):
     np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=3)
 
 
-@pytest.mark.parametrize("use_indirect,gpu", flags)
-def test_solve_infeasible(use_indirect, gpu):
+@pytest.mark.parametrize("linear_solver", solvers)
+def test_solve_infeasible(linear_solver):
     data = tools.gen_infeasible(K, n=m // 2)
-    solver = scs.SCS(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    solver = scs.SCS(data, K, linear_solver=linear_solver, **params)
     sol = solver.solve()
     y = sol["y"]
     np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
@@ -78,10 +78,10 @@ def test_solve_infeasible(use_indirect, gpu):
 
 
 # TODO: indirect solver has trouble in this test, so disable for now
-@pytest.mark.parametrize("use_indirect,gpu", [(False, False)])
-def test_solve_unbounded(use_indirect, gpu):
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.QDLDL])
+def test_solve_unbounded(linear_solver):
     data = tools.gen_unbounded(K, n=m // 2)
-    solver = scs.SCS(data, K, use_indirect=use_indirect, gpu=gpu, **params)
+    solver = scs.SCS(data, K, linear_solver=linear_solver, **params)
     sol = solver.solve()
     x = sol["x"]
     s = sol["s"]

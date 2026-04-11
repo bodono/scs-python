@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import enum
+import sys
 import numpy as np
 from scipy import sparse
 from scs import _scs_direct
@@ -7,8 +9,6 @@ import warnings
 __version__ = _scs_direct.version()
 __sizeof_int__ = _scs_direct.sizeof_int()
 __sizeof_float__ = _scs_direct.sizeof_float()
-
-_USE_INDIRECT_DEFAULT = False
 
 
 # SCS return integers correspond to one of these flags:
@@ -25,63 +25,56 @@ SOLVED = 1  # problem solved to desired accuracy
 SOLVED_INACCURATE = 2  # SCS best guess solved
 
 
-# Choose which SCS to import based on settings.
-def _select_scs_module(stgs):
+class LinearSolver(enum.Enum):
+  """Linear system solver backend for SCS."""
+  AUTO = "auto"
+  QDLDL = "qdldl"
+  INDIRECT = "indirect"
+  MKL = "mkl"
+  ACCELERATE = "accelerate"
+  DENSE = "dense"
+  GPU = "gpu"
+  CUDSS = "cudss"
 
-  cudss = stgs.pop("cudss", False)
-  gpu = stgs.pop("gpu", False)
-  mkl = stgs.pop("mkl", False)
-  apple_ldl = stgs.pop("apple_ldl", False)
-  dense = stgs.pop("dense", False)
-  use_indirect = stgs.pop("use_indirect", _USE_INDIRECT_DEFAULT)
 
-  if cudss:
-    if not gpu or use_indirect:
-      raise ValueError("To use cuDSS set gpu=True and use_indirect=False.")
+def _load_module(name):
+  from importlib import import_module
+  return import_module(f"scs.{name}")
 
-  if gpu:
-    if use_indirect:
-      from scs import _scs_gpu  # pylint: disable=g-import-not-at-top
 
-      return _scs_gpu
-    else:
-      from scs import _scs_cudss  # pylint: disable=g-import-not-at-top
-
-      return _scs_cudss
-
-  if mkl:
-    if use_indirect:
-      raise NotImplementedError(
-          "MKL indirect solver not yet available, pass `use_indirect=False`."
-      )
-    from scs import _scs_mkl  # pylint: disable=g-import-not-at-top
-
-    return _scs_mkl
-
-  if apple_ldl:
-    if use_indirect:
-      raise ValueError(
-          "Accelerate solver is a direct method, pass `use_indirect=False`."
-      )
-    from scs import _scs_accelerate  # pylint: disable=g-import-not-at-top
-
-    return _scs_accelerate
-
-  if dense:
-    if use_indirect:
-      raise ValueError(
-          "Dense solver is a direct method, pass `use_indirect=False`."
-      )
-    from scs import _scs_dense  # pylint: disable=g-import-not-at-top
-
-    return _scs_dense
-
-  if use_indirect:
-    from scs import _scs_indirect  # pylint: disable=g-import-not-at-top
-
-    return _scs_indirect
-
+def _resolve_auto():
+  """Auto-detect the best available direct solver for this platform."""
+  if sys.platform == "darwin":
+    try:
+      return _load_module("_scs_accelerate")
+    except ImportError:
+      pass
+  else:
+    try:
+      return _load_module("_scs_mkl")
+    except ImportError:
+      pass
   return _scs_direct
+
+
+_SOLVER_DISPATCH = {
+    LinearSolver.AUTO: _resolve_auto,
+    LinearSolver.QDLDL: lambda: _scs_direct,
+    LinearSolver.INDIRECT: lambda: _load_module("_scs_indirect"),
+    LinearSolver.MKL: lambda: _load_module("_scs_mkl"),
+    LinearSolver.ACCELERATE: lambda: _load_module("_scs_accelerate"),
+    LinearSolver.DENSE: lambda: _load_module("_scs_dense"),
+    LinearSolver.GPU: lambda: _load_module("_scs_gpu"),
+    LinearSolver.CUDSS: lambda: _load_module("_scs_cudss"),
+}
+
+
+def _select_scs_module(stgs):
+  """Choose which SCS C extension to import based on settings."""
+  linear_solver = stgs.pop("linear_solver", LinearSolver.AUTO)
+  if isinstance(linear_solver, str):
+    linear_solver = LinearSolver(linear_solver)
+  return _SOLVER_DISPATCH[linear_solver]()
 
 
 def _has_lower_tri(P):

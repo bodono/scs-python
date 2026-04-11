@@ -232,34 +232,17 @@ def test_P_full_symmetric_extracts_upper():
 # ===========================================================================
 
 
-def test_cudss_without_gpu_raises():
-    """Passing cudss=True without gpu=True should raise ValueError."""
-    with pytest.raises(ValueError, match="gpu=True"):
-        scs.SCS(_make_data(), _CONE, cudss=True, verbose=False)
+def test_invalid_linear_solver_string_raises():
+    """Passing an invalid string for linear_solver should raise ValueError."""
+    with pytest.raises(ValueError):
+        scs.SCS(_make_data(), _CONE, linear_solver="invalid", verbose=False)
 
 
-def test_mkl_with_indirect_raises():
-    """Passing mkl=True and use_indirect=True should raise NotImplementedError."""
+def test_dense_tries_import():
+    """linear_solver=DENSE should attempt to import _scs_dense."""
     try:
-        scs.SCS(_make_data(), _CONE, mkl=True, use_indirect=True, verbose=False)
-        pytest.skip("_scs_mkl not built")
-    except NotImplementedError as exc:
-        assert "use_indirect=False" in str(exc)
-    except ImportError:
-        pytest.skip("_scs_mkl not built")
-
-
-def test_dense_with_indirect_raises():
-    """Passing dense=True and use_indirect=True should raise ValueError."""
-    with pytest.raises(ValueError, match="use_indirect=False"):
-        scs.SCS(_make_data(), _CONE, dense=True, use_indirect=True, verbose=False)
-
-
-def test_dense_direct_tries_import():
-    """dense=True, use_indirect=False should attempt to import _scs_dense."""
-    try:
-        scs.SCS(_make_data(), _CONE, dense=True, use_indirect=False,
-                verbose=False)
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.DENSE, verbose=False)
     except ImportError:
         pass  # Expected: _scs_dense not built
 
@@ -323,12 +306,12 @@ def test_solution_keys():
 # ===========================================================================
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_tight_tolerances(use_indirect):
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+def test_tight_tolerances(linear_solver):
     """Tighter eps should still produce a correct solution."""
     solver = scs.SCS(
         _make_data(), _CONE,
-        use_indirect=use_indirect,
+        linear_solver=linear_solver,
         eps_abs=1e-9,
         eps_rel=1e-9,
         verbose=False,
@@ -338,12 +321,12 @@ def test_tight_tolerances(use_indirect):
     assert_almost_equal(sol["x"][0], 1.0, decimal=3)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_loose_tolerances(use_indirect):
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+def test_loose_tolerances(linear_solver):
     """Very loose tolerances should still converge quickly."""
     solver = scs.SCS(
         _make_data(), _CONE,
-        use_indirect=use_indirect,
+        linear_solver=linear_solver,
         eps_abs=1e-2,
         eps_rel=1e-2,
         verbose=False,
@@ -671,7 +654,7 @@ def test_legacy_solve_partial_warmstart():
 def test_indirect_solver_with_tight_tolerances():
     solver = scs.SCS(
         _make_data(), _CONE,
-        use_indirect=True,
+        linear_solver=scs.LinearSolver.INDIRECT,
         eps_abs=1e-8,
         eps_rel=1e-8,
         verbose=False,
@@ -684,7 +667,7 @@ def test_indirect_solver_with_tight_tolerances():
 def test_indirect_solver_acceleration_off():
     solver = scs.SCS(
         _make_data(), _CONE,
-        use_indirect=True,
+        linear_solver=scs.LinearSolver.INDIRECT,
         acceleration_lookback=0,
         verbose=False,
     )
@@ -703,11 +686,11 @@ def _make_qp_data():
     return {"A": _A.copy(), "b": _b.copy(), "c": np.array([-1.0]), "P": P}
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_qp_with_settings(use_indirect):
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+def test_qp_with_settings(linear_solver):
     solver = scs.SCS(
         _make_qp_data(), _CONE,
-        use_indirect=use_indirect,
+        linear_solver=linear_solver,
         eps_abs=1e-7,
         eps_rel=1e-7,
         verbose=False,
@@ -890,8 +873,8 @@ def test_exp_cone_primal_known_solution():
     assert_almost_equal(sol["x"][0], np.e, decimal=4)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_exp_cone_both_solvers(use_indirect):
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+def test_exp_cone_both_solvers(linear_solver):
     """Exp cone problem solved with both direct and indirect backends."""
     A_exp = sp.csc_matrix(np.array([
         [0.0,  1.0,  0.0],
@@ -907,7 +890,7 @@ def test_exp_cone_both_solvers(use_indirect):
     solver = scs.SCS(
         {"A": A_exp, "b": b_exp, "c": c_exp},
         cone_exp,
-        use_indirect=use_indirect,
+        linear_solver=linear_solver,
         verbose=False,
     )
     sol = solver.solve()
@@ -1253,8 +1236,8 @@ def test_sdp_2x2_known_solution():
     assert_almost_equal(sol["x"][0], -1.0, decimal=4)
 
 
-@pytest.mark.parametrize("use_indirect", [False, True])
-def test_sdp_both_solvers(use_indirect):
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+def test_sdp_both_solvers(linear_solver):
     """SDP solved with both direct and indirect backends."""
     sq2 = np.sqrt(2.0)
     A_sdp = sp.csc_matrix(np.array([[0.0], [-sq2], [0.0]]))
@@ -1265,7 +1248,7 @@ def test_sdp_both_solvers(use_indirect):
     solver = scs.SCS(
         {"A": A_sdp, "b": b_sdp, "c": c_sdp},
         cone_sdp,
-        use_indirect=use_indirect,
+        linear_solver=linear_solver,
         verbose=False,
     )
     sol = solver.solve()
@@ -1903,8 +1886,10 @@ def test_cs_cone_mixed_with_real_cones():
 def test_direct_indirect_same_answer_lp():
     """Direct and indirect solvers must agree on the LP optimal to 4 decimal places."""
     opts = dict(eps_abs=1e-9, eps_rel=1e-9, verbose=False)
-    sol_d = scs.SCS(_make_data(), _CONE, **opts).solve()
-    sol_i = scs.SCS(_make_data(), _CONE, use_indirect=True, **opts).solve()
+    sol_d = scs.SCS(_make_data(), _CONE,
+                    linear_solver=scs.LinearSolver.QDLDL, **opts).solve()
+    sol_i = scs.SCS(_make_data(), _CONE,
+                    linear_solver=scs.LinearSolver.INDIRECT, **opts).solve()
     assert sol_d["info"]["status"] in ("solved", "solved_inaccurate")
     assert sol_i["info"]["status"] in ("solved", "solved_inaccurate")
     assert_almost_equal(sol_d["x"][0], sol_i["x"][0], decimal=4)
@@ -1914,10 +1899,10 @@ def test_direct_indirect_same_answer_qp():
     """Direct and indirect solvers must agree on the QP optimal to 3 decimal places."""
     P = sp.csc_matrix(np.array([[2.0]]))
     opts = dict(eps_abs=1e-9, eps_rel=1e-9, verbose=False)
-    sol_d = scs.SCS({"A": _A, "b": _b, "c": _c, "P": P}, _CONE, **opts).solve()
-    sol_i = scs.SCS(
-        {"A": _A, "b": _b, "c": _c, "P": P}, _CONE, use_indirect=True, **opts
-    ).solve()
+    sol_d = scs.SCS({"A": _A, "b": _b, "c": _c, "P": P}, _CONE,
+                    linear_solver=scs.LinearSolver.QDLDL, **opts).solve()
+    sol_i = scs.SCS({"A": _A, "b": _b, "c": _c, "P": P}, _CONE,
+                    linear_solver=scs.LinearSolver.INDIRECT, **opts).solve()
     assert_almost_equal(sol_d["x"][0], sol_i["x"][0], decimal=3)
 
 
@@ -2211,59 +2196,38 @@ def test_negative_max_iters_raises():
 # ===========================================================================
 
 
-def test_cudss_true_gpu_true_indirect_true_raises():
-    """cudss=True, gpu=True, use_indirect=True should raise ValueError."""
-    with pytest.raises(ValueError, match="gpu=True"):
-        scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
-                use_indirect=True, verbose=False)
-
-
-def test_cudss_true_gpu_true_indirect_false_tries_import():
-    """cudss=True, gpu=True, use_indirect=False should attempt to import
-    _scs_cudss (ImportError expected if not built)."""
+def test_cudss_tries_import():
+    """linear_solver=CUDSS should attempt to import _scs_cudss."""
     try:
-        scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
-                use_indirect=False, verbose=False)
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.CUDSS, verbose=False)
     except ImportError:
         pass  # Expected: _scs_cudss not built
 
 
-def test_gpu_true_mkl_true_no_leak():
-    """gpu=True, mkl=True should NOT leak 'mkl' kwarg into the C extension.
-    The mkl flag must be popped before passing settings to C."""
+def test_gpu_tries_import():
+    """linear_solver=GPU should attempt to import _scs_gpu."""
     try:
-        scs.SCS(_make_data(), _CONE, gpu=True, mkl=True, verbose=False)
-    except ImportError:
-        pass  # Expected: _scs_gpu/_scs_cudss not built
-    # If mkl leaked through, the C extension would raise TypeError
-    # about unexpected kwarg. The ImportError (not TypeError) proves it
-    # was properly popped.
-
-
-def test_gpu_indirect_tries_import():
-    """gpu=True, use_indirect=True should attempt to import _scs_gpu."""
-    try:
-        scs.SCS(_make_data(), _CONE, gpu=True, use_indirect=True,
-                verbose=False)
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.GPU, verbose=False)
     except ImportError:
         pass  # Expected: _scs_gpu not built
 
 
-def test_mkl_direct_tries_import():
-    """mkl=True, use_indirect=False should attempt to import _scs_mkl."""
+def test_mkl_tries_import():
+    """linear_solver=MKL should attempt to import _scs_mkl."""
     try:
-        scs.SCS(_make_data(), _CONE, mkl=True, use_indirect=False,
-                verbose=False)
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.MKL, verbose=False)
     except ImportError:
         pass  # Expected: _scs_mkl not built
 
 
-def test_select_module_pops_all_flags():
-    """Verify that _select_scs_module pops all five selection flags."""
-    stgs = {"use_indirect": False, "gpu": False, "mkl": False,
-            "cudss": False, "dense": False, "verbose": False}
-    scs.SCS(_make_data(), _CONE, **stgs)
-    # If any flag wasn't popped, the C extension would raise TypeError
+def test_select_module_pops_linear_solver():
+    """Verify that _select_scs_module pops linear_solver from settings."""
+    scs.SCS(_make_data(), _CONE,
+            linear_solver=scs.LinearSolver.QDLDL, verbose=False)
+    # If linear_solver wasn't popped, the C extension would raise TypeError
 
 
 # ===========================================================================
@@ -2838,3 +2802,196 @@ def test_warm_start_true_x_y_s_on_first_solve():
     sol = solver.solve(warm_start=True, x=x0, y=y0, s=s0)
     assert sol["info"]["status"] == "solved"
     assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+# ===========================================================================
+# 91. LinearSolver enum API
+# ===========================================================================
+
+
+def test_linear_solver_auto():
+    """linear_solver=AUTO should solve using the best available backend."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.AUTO, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_qdldl():
+    """linear_solver=QDLDL should use the direct QDLDL solver."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.QDLDL, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_indirect():
+    """linear_solver=INDIRECT should use the CG (indirect) solver."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.INDIRECT, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_mkl_tries_import():
+    """linear_solver=MKL should attempt to import _scs_mkl."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.MKL, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_mkl not built
+
+
+def test_linear_solver_accelerate_tries_import():
+    """linear_solver=ACCELERATE should attempt to import _scs_accelerate."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.ACCELERATE, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_accelerate not built
+
+
+def test_linear_solver_dense_tries_import():
+    """linear_solver=DENSE should attempt to import _scs_dense."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.DENSE, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_dense not built
+
+
+def test_linear_solver_string():
+    """linear_solver can be passed as a string."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver="qdldl", verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_default_is_auto():
+    """Not passing linear_solver should use AUTO."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_auto_explicit():
+    """Explicitly passing AUTO should solve correctly."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.AUTO, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+    assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+def test_linear_solver_auto_string():
+    """Passing 'auto' as a string should work."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver="auto", verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+# ===========================================================================
+# 92. AUTO fallback logic
+# ===========================================================================
+
+
+def test_resolve_auto_falls_back_to_qdldl():
+    """AUTO should fall back to QDLDL when platform-preferred module is missing."""
+    from unittest.mock import patch
+    from scs import _resolve_auto, _scs_direct
+
+    def fail_import(name):
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs._load_module", side_effect=fail_import):
+        module = _resolve_auto()
+    assert module is _scs_direct
+
+
+def test_resolve_auto_darwin_tries_accelerate():
+    """On macOS, AUTO should try _scs_accelerate first."""
+    from unittest.mock import patch, MagicMock
+    from scs import _resolve_auto
+
+    fake_accel = MagicMock()
+
+    def mock_load(name):
+        if name == "_scs_accelerate":
+            return fake_accel
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "darwin"
+        with patch("scs._load_module", side_effect=mock_load):
+            module = _resolve_auto()
+    assert module is fake_accel
+
+
+def test_resolve_auto_linux_tries_mkl():
+    """On Linux, AUTO should try _scs_mkl first."""
+    from unittest.mock import patch, MagicMock
+    from scs import _resolve_auto
+
+    fake_mkl = MagicMock()
+
+    def mock_load(name):
+        if name == "_scs_mkl":
+            return fake_mkl
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "linux"
+        with patch("scs._load_module", side_effect=mock_load):
+            module = _resolve_auto()
+    assert module is fake_mkl
+
+
+def test_resolve_auto_windows_tries_mkl():
+    """On Windows, AUTO should try _scs_mkl first."""
+    from unittest.mock import patch, MagicMock
+    from scs import _resolve_auto
+
+    fake_mkl = MagicMock()
+
+    def mock_load(name):
+        if name == "_scs_mkl":
+            return fake_mkl
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "win32"
+        with patch("scs._load_module", side_effect=mock_load):
+            module = _resolve_auto()
+    assert module is fake_mkl
+
+
+def test_resolve_auto_darwin_fallback_when_no_accelerate():
+    """On macOS, AUTO should fall back to QDLDL when Accelerate is missing."""
+    from unittest.mock import patch
+    from scs import _resolve_auto, _scs_direct
+
+    def fail_import(name):
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "darwin"
+        with patch("scs._load_module", side_effect=fail_import):
+            module = _resolve_auto()
+    assert module is _scs_direct
+
+
+def test_resolve_auto_linux_fallback_when_no_mkl():
+    """On Linux, AUTO should fall back to QDLDL when MKL is missing."""
+    from unittest.mock import patch
+    from scs import _resolve_auto, _scs_direct
+
+    def fail_import(name):
+        raise ImportError(f"mocked: {name}")
+
+    with patch("scs.sys") as mock_sys:
+        mock_sys.platform = "linux"
+        with patch("scs._load_module", side_effect=fail_import):
+            module = _resolve_auto()
+    assert module is _scs_direct
