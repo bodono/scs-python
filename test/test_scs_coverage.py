@@ -234,34 +234,42 @@ def test_P_full_symmetric_extracts_upper():
 
 def test_cudss_without_gpu_raises():
     """Passing cudss=True without gpu=True should raise ValueError."""
-    with pytest.raises(ValueError, match="gpu=True"):
-        scs.SCS(_make_data(), _CONE, cudss=True, verbose=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        with pytest.raises(ValueError, match="gpu=True"):
+            scs.SCS(_make_data(), _CONE, cudss=True, verbose=False)
 
 
 def test_mkl_with_indirect_raises():
     """Passing mkl=True and use_indirect=True should raise NotImplementedError."""
-    try:
-        scs.SCS(_make_data(), _CONE, mkl=True, use_indirect=True, verbose=False)
-        pytest.skip("_scs_mkl not built")
-    except NotImplementedError as exc:
-        assert "use_indirect=False" in str(exc)
-    except ImportError:
-        pytest.skip("_scs_mkl not built")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            scs.SCS(_make_data(), _CONE, mkl=True, use_indirect=True, verbose=False)
+            pytest.skip("_scs_mkl not built")
+        except NotImplementedError as exc:
+            assert "use_indirect=False" in str(exc)
+        except ImportError:
+            pytest.skip("_scs_mkl not built")
 
 
 def test_dense_with_indirect_raises():
     """Passing dense=True and use_indirect=True should raise ValueError."""
-    with pytest.raises(ValueError, match="use_indirect=False"):
-        scs.SCS(_make_data(), _CONE, dense=True, use_indirect=True, verbose=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        with pytest.raises(ValueError, match="use_indirect=False"):
+            scs.SCS(_make_data(), _CONE, dense=True, use_indirect=True, verbose=False)
 
 
 def test_dense_direct_tries_import():
     """dense=True, use_indirect=False should attempt to import _scs_dense."""
-    try:
-        scs.SCS(_make_data(), _CONE, dense=True, use_indirect=False,
-                verbose=False)
-    except ImportError:
-        pass  # Expected: _scs_dense not built
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            scs.SCS(_make_data(), _CONE, dense=True, use_indirect=False,
+                    verbose=False)
+        except ImportError:
+            pass  # Expected: _scs_dense not built
 
 
 # ===========================================================================
@@ -2213,53 +2221,63 @@ def test_negative_max_iters_raises():
 
 def test_cudss_true_gpu_true_indirect_true_raises():
     """cudss=True, gpu=True, use_indirect=True should raise ValueError."""
-    with pytest.raises(ValueError, match="gpu=True"):
-        scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
-                use_indirect=True, verbose=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        with pytest.raises(ValueError, match="gpu=True"):
+            scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
+                    use_indirect=True, verbose=False)
 
 
 def test_cudss_true_gpu_true_indirect_false_tries_import():
     """cudss=True, gpu=True, use_indirect=False should attempt to import
     _scs_cudss (ImportError expected if not built)."""
-    try:
-        scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
-                use_indirect=False, verbose=False)
-    except ImportError:
-        pass  # Expected: _scs_cudss not built
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            scs.SCS(_make_data(), _CONE, cudss=True, gpu=True,
+                    use_indirect=False, verbose=False)
+        except ImportError:
+            pass  # Expected: _scs_cudss not built
 
 
 def test_gpu_true_mkl_true_no_leak():
     """gpu=True, mkl=True should NOT leak 'mkl' kwarg into the C extension.
     The mkl flag must be popped before passing settings to C."""
-    try:
-        scs.SCS(_make_data(), _CONE, gpu=True, mkl=True, verbose=False)
-    except ImportError:
-        pass  # Expected: _scs_gpu/_scs_cudss not built
-    # If mkl leaked through, the C extension would raise TypeError
-    # about unexpected kwarg. The ImportError (not TypeError) proves it
-    # was properly popped.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            scs.SCS(_make_data(), _CONE, gpu=True, mkl=True, verbose=False)
+        except ImportError:
+            pass  # Expected: _scs_gpu/_scs_cudss not built
+        # If mkl leaked through, the C extension would raise TypeError
+        # about unexpected kwarg. The ImportError (not TypeError) proves it
+        # was properly popped.
 
 
 def test_gpu_indirect_tries_import():
     """gpu=True, use_indirect=True should attempt to import _scs_gpu."""
-    try:
-        scs.SCS(_make_data(), _CONE, gpu=True, use_indirect=True,
-                verbose=False)
-    except ImportError:
-        pass  # Expected: _scs_gpu not built
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            scs.SCS(_make_data(), _CONE, gpu=True, use_indirect=True,
+                    verbose=False)
+        except ImportError:
+            pass  # Expected: _scs_gpu not built
 
 
 def test_mkl_direct_tries_import():
     """mkl=True, use_indirect=False should attempt to import _scs_mkl."""
-    try:
-        scs.SCS(_make_data(), _CONE, mkl=True, use_indirect=False,
-                verbose=False)
-    except ImportError:
-        pass  # Expected: _scs_mkl not built
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            scs.SCS(_make_data(), _CONE, mkl=True, use_indirect=False,
+                    verbose=False)
+        except ImportError:
+            pass  # Expected: _scs_mkl not built
 
 
 def test_select_module_pops_all_flags():
-    """Verify that _select_scs_module pops all five selection flags."""
+    """Verify that _select_scs_module pops all legacy selection flags."""
     stgs = {"use_indirect": False, "gpu": False, "mkl": False,
             "cudss": False, "dense": False, "verbose": False}
     scs.SCS(_make_data(), _CONE, **stgs)
@@ -2838,3 +2856,134 @@ def test_warm_start_true_x_y_s_on_first_solve():
     sol = solver.solve(warm_start=True, x=x0, y=y0, s=s0)
     assert sol["info"]["status"] == "solved"
     assert_almost_equal(sol["x"][0], 1.0, decimal=3)
+
+
+# ===========================================================================
+# 91. LinearSolver enum API
+# ===========================================================================
+
+
+def test_linear_solver_auto():
+    """linear_solver=AUTO should solve using the best available backend."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.AUTO, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_qdldl():
+    """linear_solver=QDLDL should use the direct QDLDL solver."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.QDLDL, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_indirect():
+    """linear_solver=INDIRECT should use the CG (indirect) solver."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver=scs.LinearSolver.INDIRECT, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_mkl_tries_import():
+    """linear_solver=MKL should attempt to import _scs_mkl."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.MKL, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_mkl not built
+
+
+def test_linear_solver_accelerate_tries_import():
+    """linear_solver=ACCELERATE should attempt to import _scs_accelerate."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.ACCELERATE, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_accelerate not built
+
+
+def test_linear_solver_dense_tries_import():
+    """linear_solver=DENSE should attempt to import _scs_dense."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.DENSE, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_dense not built
+
+
+def test_linear_solver_gpu_tries_import():
+    """linear_solver=GPU should attempt to import _scs_gpu."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.GPU, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_gpu not built
+
+
+def test_linear_solver_cudss_tries_import():
+    """linear_solver=CUDSS should attempt to import _scs_cudss."""
+    try:
+        scs.SCS(_make_data(), _CONE,
+                linear_solver=scs.LinearSolver.CUDSS, verbose=False)
+    except ImportError:
+        pass  # Expected: _scs_cudss not built
+
+
+def test_linear_solver_string():
+    """linear_solver can be passed as a string."""
+    solver = scs.SCS(_make_data(), _CONE,
+                     linear_solver="qdldl", verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+def test_linear_solver_default_is_auto():
+    """Not passing linear_solver (or any legacy flag) should use AUTO."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] == "solved"
+
+
+# ===========================================================================
+# 92. LinearSolver + legacy flags conflict
+# ===========================================================================
+
+
+def test_linear_solver_with_legacy_flag_raises():
+    """Passing both linear_solver and a legacy flag should raise ValueError."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        with pytest.raises(ValueError, match="Cannot combine"):
+            scs.SCS(_make_data(), _CONE,
+                    linear_solver=scs.LinearSolver.QDLDL,
+                    use_indirect=True, verbose=False)
+
+
+# ===========================================================================
+# 93. Legacy flags emit DeprecationWarning
+# ===========================================================================
+
+
+def test_legacy_use_indirect_warns():
+    """use_indirect=True should emit a DeprecationWarning."""
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        scs.SCS(_make_data(), _CONE, use_indirect=True, verbose=False)
+
+
+def test_legacy_mkl_warns():
+    """mkl=True should emit a DeprecationWarning."""
+    try:
+        with pytest.warns(DeprecationWarning, match="deprecated"):
+            scs.SCS(_make_data(), _CONE, mkl=True, verbose=False)
+    except ImportError:
+        pass  # _scs_mkl not built, but warning was still emitted
+
+
+def test_legacy_flags_all_false_no_warning():
+    """Legacy flags all set to False should NOT emit a DeprecationWarning."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        scs.SCS(_make_data(), _CONE, verbose=False)
