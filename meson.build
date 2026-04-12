@@ -23,17 +23,41 @@ print(incdir)
 # Get BLAS
 blas_deps = []
 if get_option('link_mkl')
-    # Prefer component libraries (lp64, sequential) so that wheel-repair
-    # tools (auditwheel / delvewheel) can detect and bundle them.
-    blas_deps = [dependency('mkl-dynamic-lp64-seq', required : false)]
+    # Link against MKL component libraries. The integer width must match:
+    #   use_blas64=false (default) -> LP64  (32-bit BLAS integers)
+    #   use_blas64=true            -> ILP64 (64-bit BLAS integers)
+    #
+    # Note: PARDISO integer width is independent — it is controlled by the
+    # pardiso vs pardiso_64 entry point (selected via DLONG), not by the
+    # interface layer. See linsys/mkl/direct/private.c for details.
+    # Prefer Intel OpenMP (iomp) for multi-threaded MKL, fall back to
+    # sequential if iomp is not available.
+    #
+    # TODO: On Windows the conda MKL iomp .pc file (mkl-dynamic-*-iomp)
+    # has broken Cflags (raw path without -I prefix). Revisit once Intel
+    # ships a fixed pkg-config file; until then Windows gets sequential MKL.
+    if get_option('use_blas64')
+        _mkl_iomp = 'mkl-dynamic-ilp64-iomp'
+        _mkl_seq = 'mkl-dynamic-ilp64-seq'
+    else
+        _mkl_iomp = 'mkl-dynamic-lp64-iomp'
+        _mkl_seq = 'mkl-dynamic-lp64-seq'
+    endif
+    if host_machine.system() == 'windows'
+        # On Windows the conda MKL iomp .pc file has broken Cflags (raw path
+        # without -I prefix). Use sequential MKL until Intel ships a fix.
+        blas_deps = [dependency(_mkl_seq, required : false)]
+    else
+        blas_deps = [dependency(_mkl_iomp, required : false)]
+        if not blas_deps[0].found()
+            blas_deps = [dependency(_mkl_seq, required : false)]
+        endif
+    endif
     if not blas_deps[0].found()
         blas_deps = [cc.find_library('mkl_rt', required : false)]
     endif
     if not blas_deps[0].found()
         blas_deps = [dependency('mkl-sdl', required : false)]
-    endif
-    if not blas_deps[0].found()
-      blas_deps = [ dependency('mkl-dynamic-ilp64-iomp', required: false) ]
     endif
 else
     if host_machine.system() == 'darwin'
@@ -276,6 +300,28 @@ if get_option('use_gpu')
 endif
 
 if get_option('link_mkl')
+  # The MKL backend calls MKL_Set_Interface_Layer() for a runtime interface
+  # check. This symbol is only exported by mkl_rt (the single dynamic library),
+  # not by component libraries (mkl_intel_lp64 etc.) that pkg-config may link.
+  # Add mkl_rt explicitly so the symbol is always available.
+  _mkl_deps = _deps
+  mkl_rt_dep = dependency('mkl-sdl', required : false)
+  if not mkl_rt_dep.found()
+    mkl_rt_dep = cc.find_library('mkl_rt', required : false)
+  endif
+  if not mkl_rt_dep.found()
+    # Extract lib directory from pkg-config and search there
+    _mkl_libdir = run_command('pkg-config', '--variable=libdir', 'mkl-dynamic-lp64-seq',
+                              check: false).stdout().strip()
+    if _mkl_libdir != ''
+      mkl_rt_dep = cc.find_library('mkl_rt', dirs: [_mkl_libdir], required : false)
+    endif
+  endif
+  if mkl_rt_dep.found()
+    _mkl_deps += mkl_rt_dep
+  else
+    warning('mkl_rt not found — MKL_Set_Interface_Layer runtime check will not be available')
+  endif
   py.extension_module(
     '_scs_mkl',
     'scs/scspy.c',
@@ -285,7 +331,7 @@ if get_option('link_mkl')
     spectral_cone_sources,
     c_args: common_c_args + ['-DPY_MKL'],
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
-    dependencies: _deps,
+    dependencies: _mkl_deps,
     install_dir: scs_dir,
     install: true,
   )
