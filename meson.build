@@ -22,7 +22,6 @@ print(incdir)
 
 # Get BLAS
 blas_deps = []
-mkl_force_sequential = false
 mkl_pkg_name = ''
 if get_option('link_mkl')
     if get_option('use_blas64') and get_option('int32')
@@ -53,7 +52,6 @@ if get_option('link_mkl')
         # without -I prefix). Use sequential MKL until Intel ships a fix.
         blas_deps = [dependency(_mkl_seq, required : false)]
         if blas_deps[0].found()
-            mkl_force_sequential = true
             mkl_pkg_name = _mkl_seq
         endif
     else
@@ -61,7 +59,6 @@ if get_option('link_mkl')
         if not blas_deps[0].found()
             blas_deps = [dependency(_mkl_seq, required : false)]
             if blas_deps[0].found()
-                mkl_force_sequential = true
                 mkl_pkg_name = _mkl_seq
             endif
         else
@@ -340,10 +337,6 @@ if get_option('link_mkl')
     error('link_mkl=true requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
   endif
   _mkl_deps += mkl_rt_dep
-  _mkl_c_args = common_c_args + ['-DPY_MKL']
-  if mkl_force_sequential
-    _mkl_c_args += '-DSCS_MKL_FORCE_SEQUENTIAL=1'
-  endif
   py.extension_module(
     '_scs_mkl',
     'scs/scspy.c',
@@ -351,7 +344,7 @@ if get_option('link_mkl')
     common_linsys_sources,
     scs_core_sources,
     spectral_cone_sources,
-    c_args: _mkl_c_args,
+    c_args: common_c_args + ['-DPY_MKL'],
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
     dependencies: _mkl_deps,
     install_dir: scs_dir,
