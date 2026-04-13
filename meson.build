@@ -316,15 +316,13 @@ if get_option('link_mkl')
   # check. This symbol is only exported by mkl_rt (the single dynamic library),
   # not by component libraries (mkl_intel_lp64 etc.) that pkg-config may link.
   # Add mkl_rt explicitly so the symbol is always available.
-  _mkl_deps = _deps
   mkl_rt_dep = dependency('mkl-sdl', required : false)
   if not mkl_rt_dep.found()
     mkl_rt_dep = cc.find_library('mkl_rt', required : false)
   endif
   if not mkl_rt_dep.found() and mkl_pkg_name != ''
-    # Extract lib directory from pkg-config and search there
-    _mkl_libdir = run_command('pkg-config', '--variable=libdir', mkl_pkg_name,
-                              check: false).stdout().strip()
+    # Search next to the pkg-config-provided MKL component libraries.
+    _mkl_libdir = blas_deps[0].get_variable(pkgconfig: 'libdir', default_value: '')
     if _mkl_libdir != ''
       mkl_rt_dep = cc.find_library('mkl_rt', dirs: [_mkl_libdir], required : false)
     endif
@@ -332,7 +330,7 @@ if get_option('link_mkl')
   if not mkl_rt_dep.found()
     error('link_mkl=true requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
   endif
-  _mkl_deps += mkl_rt_dep
+  _mkl_deps = _deps + [mkl_rt_dep]
   py.extension_module(
     '_scs_mkl',
     'scs/scspy.c',
