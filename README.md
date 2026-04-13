@@ -48,6 +48,9 @@ backends can be enabled with build-time flags:
 # MKL Pardiso direct solver
 pip install . -Csetup-args=-Dlink_mkl=true
 
+# Use 64-bit BLAS/LAPACK integers (ILP64 / BLAS64)
+pip install . -Csetup-args=-Duse_blas64=true
+
 # GPU direct solver (cuDSS)
 pip install . -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true
 
@@ -57,6 +60,11 @@ pip install . -Csetup-args=-Duse_lapack=true
 # Spectral cones (logdet, nuclear norm, ell-1, sum-of-largest)
 pip install . -Csetup-args=-Duse_spectral_cones=true
 ```
+
+Notes:
+- Linux x86_64 wheels are built and tested against threaded MKL, and CI asserts a `libiomp5` dependency on the packaged `_scs_mkl` extension. Windows currently falls back to sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
+- `BLAS64` is a general SCS build mode for ILP64 BLAS/LAPACK libraries, not an MKL-only feature.
+- For the MKL Pardiso backend specifically, `BLAS64` must be paired with 64-bit SCS integers (`DLONG` / `int32=false`), and SCS now fails early if another library in the process has already fixed MKL to an incompatible LP64/ILP64 interface layer.
 
 ## Usage
 

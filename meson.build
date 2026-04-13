@@ -110,10 +110,6 @@ if not blas_deps[0].found() and not get_option('sdist_mode')
     error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms, and was not found.')
 endif
 
-if get_option('use_blas64') and not get_option('link_mkl')
-  error('use_blas64 is currently only supported for MKL builds. Re-run Meson with -Dlink_mkl=true or -Duse_blas64=false.')
-endif
-
 # Common
 common_c_args = cc.get_supported_arguments(
   '-Wno-unused-result',
@@ -344,7 +340,7 @@ if get_option('link_mkl')
     common_linsys_sources,
     scs_core_sources,
     spectral_cone_sources,
-    c_args: common_c_args + ['-DPY_MKL'],
+    c_args: common_c_args + ['-DPY_MKL', '-DSCS_MKL=1'],
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
     dependencies: _mkl_deps,
     install_dir: scs_dir,
