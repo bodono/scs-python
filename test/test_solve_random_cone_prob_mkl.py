@@ -1,4 +1,6 @@
 from __future__ import print_function, division
+import os
+import subprocess
 import sys
 import platform
 import scs
@@ -39,6 +41,15 @@ K = {
 }
 m = tools.get_scs_cone_dims(K)
 params = {"verbose": True, "eps_abs": 1e-7, "eps_rel": 1e-7, "eps_infeas": 1e-7}
+
+
+@pytest.mark.skipif(
+    not (sys.platform == "linux" and platform.machine() == "x86_64"),
+    reason="Threaded MKL linkage is only checked on Linux x86_64",
+)
+def test_mkl_module_links_intel_openmp():
+    out = subprocess.check_output(["ldd", os.fspath(_scs_mkl.__file__)], text=True)
+    assert "libiomp5" in out
 
 
 def test_solve_feasible():

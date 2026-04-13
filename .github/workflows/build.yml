@@ -58,10 +58,12 @@ jobs:
         os: [ ubuntu-latest ]
         python-version: [ 3.9, "3.10", "3.11", "3.12", "3.13", "3.14"]
         link_mkl: [true]
+        use_blas64: [true, false]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       LINK_MKL: ${{ matrix.link_mkl }}
+      USE_BLAS64: ${{ matrix.use_blas64 }}
 
     steps:
       - uses: actions/checkout@v6
@@ -90,12 +92,11 @@ jobs:
       - name: Build
         run: |
           pixi r python -c "import numpy as np;print(np.show_config())"
-          if [[ "$LINK_MKL" == "true" ]]; then
-
-            pixi r python -m pip install --verbose --no-build-isolation -Csetup-args=-Dlink_mkl=true .
-          else
-            pixi r python -m pip install --verbose --no-build-isolation .
+          MESON_ARGS="-Csetup-args=-Dlink_mkl=true"
+          if [[ "$USE_BLAS64" == "true" ]]; then
+            MESON_ARGS="$MESON_ARGS -Csetup-args=-Duse_blas64=true"
           fi
+          pixi r python -m pip install --verbose --no-build-isolation $MESON_ARGS .
       - name: Test
         run: |
           pixi r pytest
@@ -198,7 +199,7 @@ jobs:
 
       - name: Install MKL from conda on Windows
         if: runner.os == 'Windows'
-        run: conda install -y -c https://software.repos.intel.com/python/conda/ -c conda-forge mkl mkl-devel pkgconfig
+        run: conda install -y -c https://software.repos.intel.com/python/conda/ -c conda-forge mkl mkl-devel intel-openmp pkgconfig
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1

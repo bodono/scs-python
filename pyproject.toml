@@ -75,7 +75,7 @@ before-all = [
   "rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB",
   "dnf install -y intel-oneapi-mkl-devel",
 ]
-environment = {PKG_CONFIG_PATH = "/opt/intel/oneapi/mkl/latest/lib/pkgconfig:$PKG_CONFIG_PATH", LD_LIBRARY_PATH = "/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/mkl/latest/lib:$LD_LIBRARY_PATH"}
+environment = {PKG_CONFIG_PATH = "/opt/intel/oneapi/mkl/latest/lib/pkgconfig:/opt/intel/oneapi/compiler/latest/lib/pkgconfig:$PKG_CONFIG_PATH", LD_LIBRARY_PATH = "/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/mkl/latest/lib:/opt/intel/oneapi/compiler/latest/lib:$LD_LIBRARY_PATH"}
 config-settings = {setup-args = "-Dlink_mkl=true"}
 
 [[tool.cibuildwheel.overrides]]
