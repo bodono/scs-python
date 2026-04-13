@@ -22,7 +22,12 @@ print(incdir)
 
 # Get BLAS
 blas_deps = []
+mkl_force_sequential = false
+mkl_pkg_name = ''
 if get_option('link_mkl')
+    if get_option('use_blas64') and get_option('int32')
+        error('MKL BLAS64 requires 64-bit SCS integers. Re-run Meson with -Dint32=false.')
+    endif
     # Link against MKL component libraries. The integer width must match:
     #   use_blas64=false (default) -> LP64  (32-bit BLAS integers)
     #   use_blas64=true            -> ILP64 (64-bit BLAS integers)
@@ -47,10 +52,20 @@ if get_option('link_mkl')
         # On Windows the conda MKL iomp .pc file has broken Cflags (raw path
         # without -I prefix). Use sequential MKL until Intel ships a fix.
         blas_deps = [dependency(_mkl_seq, required : false)]
+        if blas_deps[0].found()
+            mkl_force_sequential = true
+            mkl_pkg_name = _mkl_seq
+        endif
     else
         blas_deps = [dependency(_mkl_iomp, required : false)]
         if not blas_deps[0].found()
             blas_deps = [dependency(_mkl_seq, required : false)]
+            if blas_deps[0].found()
+                mkl_force_sequential = true
+                mkl_pkg_name = _mkl_seq
+            endif
+        else
+            mkl_pkg_name = _mkl_iomp
         endif
     endif
     if not blas_deps[0].found()
@@ -96,6 +111,10 @@ endif
 # When creating an sdist we are not compiling / linking, so don't need to fail.
 if not blas_deps[0].found() and not get_option('sdist_mode')
     error('OpenBLAS or Netlib BLAS/CBLAS is required on all platforms, and was not found.')
+endif
+
+if get_option('use_blas64') and not get_option('link_mkl')
+  error('use_blas64 is currently only supported for MKL builds. Re-run Meson with -Dlink_mkl=true or -Duse_blas64=false.')
 endif
 
 # Common
@@ -309,18 +328,21 @@ if get_option('link_mkl')
   if not mkl_rt_dep.found()
     mkl_rt_dep = cc.find_library('mkl_rt', required : false)
   endif
-  if not mkl_rt_dep.found()
+  if not mkl_rt_dep.found() and mkl_pkg_name != ''
     # Extract lib directory from pkg-config and search there
-    _mkl_libdir = run_command('pkg-config', '--variable=libdir', 'mkl-dynamic-lp64-seq',
+    _mkl_libdir = run_command('pkg-config', '--variable=libdir', mkl_pkg_name,
                               check: false).stdout().strip()
     if _mkl_libdir != ''
       mkl_rt_dep = cc.find_library('mkl_rt', dirs: [_mkl_libdir], required : false)
     endif
   endif
-  if mkl_rt_dep.found()
-    _mkl_deps += mkl_rt_dep
-  else
-    warning('mkl_rt not found — MKL_Set_Interface_Layer runtime check will not be available')
+  if not mkl_rt_dep.found()
+    error('link_mkl=true requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
+  endif
+  _mkl_deps += mkl_rt_dep
+  _mkl_c_args = common_c_args + ['-DPY_MKL']
+  if mkl_force_sequential
+    _mkl_c_args += '-DSCS_MKL_FORCE_SEQUENTIAL=1'
   endif
   py.extension_module(
     '_scs_mkl',
@@ -329,7 +351,7 @@ if get_option('link_mkl')
     common_linsys_sources,
     scs_core_sources,
     spectral_cone_sources,
-    c_args: common_c_args + ['-DPY_MKL'],
+    c_args: _mkl_c_args,
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
     dependencies: _mkl_deps,
     install_dir: scs_dir,
