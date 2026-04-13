@@ -88,7 +88,7 @@ jobs:
           else
             BLAS_PKGS="blas-devel=*=*openblas"
           fi
-          pixi add --platform linux-64 $BLAS_PKGS pip scipy numpy pytest mkl mkl-devel intel-openmp pkg-config meson meson-python
+          pixi add --platform linux-64 $BLAS_PKGS pip scipy numpy pytest mkl mkl-devel pkg-config meson meson-python
       - name: Build
         run: |
           pixi r python -c "import numpy as np;print(np.show_config())"
