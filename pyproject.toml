@@ -23,7 +23,7 @@ classifiers = [
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
     'Programming Language :: Python :: 3 :: Only',
-    'Programming Language :: Python :: Implementation :: Free Threading :: 1 - Unstable',
+    'Programming Language :: Python :: Free Threading :: 3 - Stable',
     'Programming Language :: Python :: Implementation :: CPython',
     'Operating System :: Microsoft :: Windows',
     'Operating System :: POSIX',
@@ -39,9 +39,6 @@ dependencies = [
 ]
 
 [tool.cibuildwheel]
-enable = [
-  "cpython-freethreading",  # Build free-threaded (3.13t+) wheels
-]
 skip = [
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
   "*musllinux*aarch64*" # no Scipy wheels for this
@@ -105,6 +102,6 @@ faulthandler_exit_on_timeout = true
 markers = [
     "thread_unsafe: mark test as unsafe to run in parallel threads (pytest-run-parallel)",
 ]
-# pytest-run-parallel: fixtures and functions that are not thread-safe
-thread_unsafe_fixtures = ["capsys", "capfd"]
+# pytest-run-parallel: functions that are not thread-safe
+# (capsys/capfd are detected automatically by pytest-run-parallel)
 thread_unsafe_functions = ["numpy.random.seed"]
