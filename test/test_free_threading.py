@@ -165,18 +165,19 @@ class TestConcurrentIndependentInstances:
         """Threads use different solver backends (direct vs indirect)."""
         data, cone, expected = _make_simple_lp()
 
-        def worker(use_indirect):
+        def worker(linear_solver):
             solver = scs.SCS(
-                data, cone, use_indirect=use_indirect, verbose=False
+                data, cone, linear_solver=linear_solver, verbose=False
             )
             sol = solver.solve()
             assert sol["info"]["status_val"] == 1
             assert_almost_equal(sol["x"][0], expected, decimal=2)
             return sol["x"][0]
 
+        backends = [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
         with ThreadPoolExecutor(max_workers=NUM_THREADS) as pool:
             futures = [
-                pool.submit(worker, i % 2 == 0) for i in range(NUM_THREADS)
+                pool.submit(worker, backends[i % 2]) for i in range(NUM_THREADS)
             ]
             results = [f.result(timeout=30) for f in futures]
 
