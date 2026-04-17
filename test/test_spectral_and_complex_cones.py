@@ -51,20 +51,22 @@ def _cone_dims(cone):
     return m
 
 
-def _gen_feasible_qp(cone, n=None, p_scale=1.0):
+def _gen_feasible_qp(cone, n=None, p_scale=1.0, rng=None):
     """Generate a random feasible QP over the given cone.
 
     Uses P = p_scale * I (strong regularisation) and dense-ish A to
     guarantee boundedness and feasibility.
     """
+    if rng is None:
+        rng = np.random
     m = _cone_dims(cone)
     if n is None:
         n = m
     P = p_scale * sp.eye(n, format="csc")
-    A = sp.random(m, n, density=0.5, format="csc")
-    A.data = np.random.randn(A.nnz)
-    c = np.random.randn(n)
-    b = A @ np.random.randn(n) + np.abs(np.random.randn(m))
+    A = sp.random(m, n, density=0.5, format="csc", random_state=rng)
+    A.data = rng.randn(A.nnz)
+    c = rng.randn(n)
+    b = A @ rng.randn(n) + np.abs(rng.randn(m))
     return dict(P=P, A=A, b=b, c=c)
 
 
@@ -120,25 +122,25 @@ class TestComplexPSDCone:
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_complex_psd_feasibility(self, solver_opts):
-        np.random.seed(42)
+        rng = np.random.RandomState(42)
         cone = {"cs": [3]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_complex_psd_multiple(self, solver_opts):
-        np.random.seed(123)
+        rng = np.random.RandomState(123)
         cone = {"cs": [2, 3]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_mixed_real_complex_psd(self, solver_opts):
-        np.random.seed(456)
+        rng = np.random.RandomState(456)
         cone = dict(z=1, l=2, s=[3], cs=[3])
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
@@ -153,33 +155,33 @@ class TestEll1Cone:
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_ell1_simple(self, solver_opts):
-        np.random.seed(10)
+        rng = np.random.RandomState(10)
         cone = {"ell1": [4]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_ell1_multiple(self, solver_opts):
-        np.random.seed(20)
+        rng = np.random.RandomState(20)
         cone = {"ell1": [3, 5]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_ell1_mixed_with_standard_cones(self, solver_opts):
-        np.random.seed(30)
+        rng = np.random.RandomState(30)
         cone = dict(z=1, l=2, q=[3], ell1=[4])
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
     def test_ell1_norm_bound(self):
         """Verify s in ell1 cone satisfies s[0] >= ||s[1:]||_1."""
-        np.random.seed(35)
+        rng = np.random.RandomState(35)
         cone = {"ell1": [5]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, verbose=False, eps_abs=1e-9, eps_rel=1e-9)
         if sol["info"]["status_val"] == 1:
             s = sol["s"]
@@ -196,25 +198,25 @@ class TestNuclearNormCone:
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_nuclear_simple(self, solver_opts):
-        np.random.seed(40)
+        rng = np.random.RandomState(40)
         cone = {"nuc_m": [3], "nuc_n": [2]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_nuclear_multiple(self, solver_opts):
-        np.random.seed(50)
+        rng = np.random.RandomState(50)
         cone = {"nuc_m": [3, 4], "nuc_n": [2, 3]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_nuclear_mixed(self, solver_opts):
-        np.random.seed(60)
+        rng = np.random.RandomState(60)
         cone = dict(l=3, nuc_m=[3], nuc_n=[2])
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False)
         _assert_solved(sol)
 
@@ -227,10 +229,10 @@ class TestNuclearNormCone:
 
     def test_nuclear_norm_bound(self):
         """Verify s in nuclear norm cone satisfies ||X||_* <= t."""
-        np.random.seed(65)
+        rng = np.random.RandomState(65)
         rows, cols = 4, 3
         cone = {"nuc_m": [rows], "nuc_n": [cols]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, verbose=False, eps_abs=1e-9, eps_rel=1e-9)
         if sol["info"]["status_val"] == 1:
             s = sol["s"]
@@ -251,25 +253,25 @@ class TestLogdetCone:
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_logdet_simple(self, solver_opts):
-        np.random.seed(70)
+        rng = np.random.RandomState(70)
         cone = {"d": [3]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_logdet_multiple(self, solver_opts):
-        np.random.seed(80)
+        rng = np.random.RandomState(80)
         cone = {"d": [2, 3]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_logdet_mixed(self, solver_opts):
-        np.random.seed(90)
+        rng = np.random.RandomState(90)
         cone = dict(l=2, d=[2])
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
@@ -284,25 +286,25 @@ class TestSumLargestCone:
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_sum_largest_simple(self, solver_opts):
-        np.random.seed(100)
+        rng = np.random.RandomState(100)
         cone = {"sl_n": [4], "sl_k": [2]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_sum_largest_multiple(self, solver_opts):
-        np.random.seed(110)
+        rng = np.random.RandomState(110)
         cone = {"sl_n": [3, 4], "sl_k": [1, 2]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_sum_largest_mixed(self, solver_opts):
-        np.random.seed(120)
+        rng = np.random.RandomState(120)
         cone = dict(z=1, l=2, sl_n=[3], sl_k=[1])
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
@@ -325,7 +327,7 @@ class TestAllConesCombined:
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_kitchen_sink(self, solver_opts):
         """Problem with every cone type present."""
-        np.random.seed(200)
+        rng = np.random.RandomState(200)
         cone = dict(
             z=1,
             l=2,
@@ -342,15 +344,15 @@ class TestAllConesCombined:
             sl_n=[3],
             sl_k=[1],
         )
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
     @pytest.mark.parametrize("solver_opts", _solver_configs)
     def test_spectral_and_complex_psd(self, solver_opts):
-        np.random.seed(210)
+        rng = np.random.RandomState(210)
         cone = dict(cs=[3], ell1=[5], nuc_m=[4], nuc_n=[3])
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, **solver_opts, verbose=False, max_iters=5000)
         _assert_solved(sol)
 
@@ -364,37 +366,37 @@ class TestAllConesCombined:
 class TestEdgeCases:
 
     def test_ell1_dim_one(self):
-        np.random.seed(300)
+        rng = np.random.RandomState(300)
         cone = {"ell1": [1]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, verbose=False)
         _assert_solved(sol)
 
     def test_nuclear_square(self):
-        np.random.seed(310)
+        rng = np.random.RandomState(310)
         cone = {"nuc_m": [3], "nuc_n": [3]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, verbose=False)
         _assert_solved(sol)
 
     def test_logdet_dim_one(self):
-        np.random.seed(320)
+        rng = np.random.RandomState(320)
         cone = {"d": [1]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
     def test_sum_largest_k_one(self):
-        np.random.seed(330)
+        rng = np.random.RandomState(330)
         cone = {"sl_n": [3], "sl_k": [1]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         sol = scs.solve(data, cone, verbose=False, max_iters=10000)
         _assert_solved(sol)
 
     def test_warm_start_with_spectral(self):
-        np.random.seed(340)
+        rng = np.random.RandomState(340)
         cone = {"ell1": [4]}
-        data = _gen_feasible_qp(cone)
+        data = _gen_feasible_qp(cone, rng=rng)
         solver = scs.SCS(data, cone, verbose=False, max_iters=500)
         sol1 = solver.solve()
         sol2 = solver.solve(warm_start=True)

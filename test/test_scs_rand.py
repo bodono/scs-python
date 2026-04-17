@@ -52,7 +52,6 @@ def check_unbounded(sol):
     assert_(sol["info"]["status"], "unbounded")
 
 
-np.random.seed(0)
 num_feas = 50
 num_unb = 10
 num_infeas = 10
@@ -92,8 +91,9 @@ if _dense_available:
 
 @pytest.mark.parametrize("solver_opts", _solver_configs)
 def test_feasible(solver_opts):
+    rng = np.random.RandomState(1000)
     for i in range(num_feas):
-        data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
+        data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1, rng=rng)
         solver = scs.SCS(data, K, **solver_opts, **opts)
         sol = solver.solve()
         assert_almost_equal(np.dot(data["c"], sol["x"]), p_star, decimal=2)
@@ -102,8 +102,9 @@ def test_feasible(solver_opts):
 
 @pytest.mark.parametrize("solver_opts", _solver_configs)
 def test_infeasible(solver_opts):
+    rng = np.random.RandomState(1001)
     for i in range(num_infeas):
-        data = tools.gen_infeasible(K, n=m // 2)
+        data = tools.gen_infeasible(K, n=m // 2, rng=rng)
         solver = scs.SCS(data, K, **solver_opts, **opts)
         sol = solver.solve()
         check_infeasible(sol)
@@ -117,8 +118,9 @@ if _dense_available:
 
 @pytest.mark.parametrize("solver_opts", _unbounded_configs)
 def test_unbounded(solver_opts):
+    rng = np.random.RandomState(1002)
     for i in range(num_unb):
-        data = tools.gen_unbounded(K, n=m // 2)
+        data = tools.gen_unbounded(K, n=m // 2, rng=rng)
         solver = scs.SCS(data, K, **solver_opts, **opts)
         sol = solver.solve()
         check_unbounded(sol)

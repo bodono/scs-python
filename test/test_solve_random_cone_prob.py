@@ -29,8 +29,6 @@ try:
 except ImportError:
     pass
 
-np.random.seed(1)
-
 # cone:
 K = {
     "z": 10,
@@ -47,7 +45,8 @@ params = {"verbose": True, "eps_abs": 1e-7, "eps_rel": 1e-7, "eps_infeas": 1e-7}
 
 @pytest.mark.parametrize("linear_solver", solvers)
 def test_solve_feasible(linear_solver):
-    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
+    rng = np.random.RandomState(3000)
+    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1, rng=rng)
     solver = scs.SCS(data, K, linear_solver=linear_solver, **params)
     sol = solver.solve()
     x = sol["x"]
@@ -68,7 +67,8 @@ def test_solve_feasible(linear_solver):
 
 @pytest.mark.parametrize("linear_solver", solvers)
 def test_solve_infeasible(linear_solver):
-    data = tools.gen_infeasible(K, n=m // 2)
+    rng = np.random.RandomState(3001)
+    data = tools.gen_infeasible(K, n=m // 2, rng=rng)
     solver = scs.SCS(data, K, linear_solver=linear_solver, **params)
     sol = solver.solve()
     y = sol["y"]
@@ -80,7 +80,8 @@ def test_solve_infeasible(linear_solver):
 # TODO: indirect solver has trouble in this test, so disable for now
 @pytest.mark.parametrize("linear_solver", [scs.LinearSolver.QDLDL])
 def test_solve_unbounded(linear_solver):
-    data = tools.gen_unbounded(K, n=m // 2)
+    rng = np.random.RandomState(3002)
+    data = tools.gen_unbounded(K, n=m // 2, rng=rng)
     solver = scs.SCS(data, K, linear_solver=linear_solver, **params)
     sol = solver.solve()
     x = sol["x"]

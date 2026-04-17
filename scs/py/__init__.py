@@ -95,6 +95,11 @@ class SCS(object):
     @param data     Dictionary containing keys `P`, `A`, `b`, `c`.
     @param cone     Dictionary containing cone information.
     @param settings Settings as kwargs, see docs.
+
+    Thread safety: construction is assumed to be thread-local. Calling
+    `__init__` on a live SCS instance from another thread (i.e. while
+    `solve` or `update` may be running on it) is undefined behavior.
+    Use a fresh `SCS(...)` instance instead.
     """
     self._settings = settings
     if not data or not cone:

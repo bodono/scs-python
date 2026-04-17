@@ -6,15 +6,17 @@ from scipy import sparse
 #############################################
 
 
-def gen_feasible(K, n, density):
+def gen_feasible(K, n, density, rng=None):
+    if rng is None:
+        rng = np.random
     m = get_scs_cone_dims(K)
-    z = np.random.randn(m)
+    z = rng.randn(m)
     y = proj_dual_cone(z, K)  # y = s - z;
     s = y - z  # s = proj_cone(z,K)
 
-    A = sparse.rand(m, n, density, format="csc")
-    A.data = np.random.randn(A.nnz)
-    x = np.random.randn(n)
+    A = sparse.rand(m, n, density, format="csc", random_state=rng)
+    A.data = rng.randn(A.nnz)
+    x = rng.randn(n)
     c = -np.transpose(A).dot(y)
     b = A.dot(x) + s
 
@@ -22,36 +24,40 @@ def gen_feasible(K, n, density):
     return data, np.dot(c, x)
 
 
-def gen_infeasible(K, n):
+def gen_infeasible(K, n, rng=None):
+    if rng is None:
+        rng = np.random
     m = get_scs_cone_dims(K)
 
-    z = np.random.randn(m)
+    z = rng.randn(m)
     y = proj_dual_cone(z, K)  # y = s - z;
-    A = np.random.randn(m, n)
+    A = rng.randn(m, n)
     A = (
         A - np.outer(y, np.transpose(A).dot(y)) / np.linalg.norm(y) ** 2
     )  # dense...
 
-    b = np.random.randn(m)
+    b = rng.randn(m)
     b = -b / np.dot(b, y)
 
-    data = {"A": sparse.csc_matrix(A), "b": b, "c": np.random.randn(n)}
+    data = {"A": sparse.csc_matrix(A), "b": b, "c": rng.randn(n)}
     return data
 
 
-def gen_unbounded(K, n):
+def gen_unbounded(K, n, rng=None):
+    if rng is None:
+        rng = np.random
     m = get_scs_cone_dims(K)
 
-    z = np.random.randn(m)
+    z = rng.randn(m)
     s = proj_cone(z, K)
-    A = np.random.randn(m, n)
-    x = np.random.randn(n)
+    A = rng.randn(m, n)
+    x = rng.randn(n)
     A = A - np.outer(s + A.dot(x), x) / np.linalg.norm(x) ** 2
     # dense...
-    c = np.random.randn(n)
+    c = rng.randn(n)
     c = -c / np.dot(c, x)
 
-    data = {"A": sparse.csc_matrix(A), "b": np.random.randn(m), "c": c}
+    data = {"A": sparse.csc_matrix(A), "b": rng.randn(m), "c": c}
     return data
 
 

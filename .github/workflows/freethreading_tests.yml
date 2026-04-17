@@ -1,0 +1,128 @@
+name: Free-threading tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  test_freethreading:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13t", "3.14t"]
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up free-threaded Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install OpenBLAS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas-dev
+
+      - name: Create venv and install dependencies
+        run: |
+          uv venv --python ${{ matrix.python-version }} .venv
+          source .venv/bin/activate
+          uv pip install numpy scipy pytest pytest-run-parallel
+
+      - name: Build and install scs
+        run: |
+          source .venv/bin/activate
+          uv pip install -v .
+
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          python -m pytest test/ -v
+
+      - name: Run tests in parallel threads (race detection)
+        run: |
+          source .venv/bin/activate
+          python -m pytest test/ -v --parallel-threads=4 --iterations=3
+
+  test_sanitizers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sanitizer: tsan
+            cpython_configure_flag: "--with-thread-sanitizer"
+            cflags: "-fsanitize=thread -g"
+          - sanitizer: asan
+            cpython_configure_flag: "--with-address-sanitizer"
+            cflags: "-fsanitize=address -g"
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libopenblas-dev libssl-dev zlib1g-dev \
+            libbz2-dev libreadline-dev libsqlite3-dev libncurses5-dev \
+            libncursesw5-dev xz-utils libffi-dev liblzma-dev
+
+      - name: Cache CPython ${{ matrix.sanitizer }} build
+        id: cache-cpython
+        uses: actions/cache@v4
+        with:
+          path: cpython-${{ matrix.sanitizer }}
+          key: cpython-${{ matrix.sanitizer }}-3.14-${{ runner.os }}-v1
+
+      - name: Build CPython 3.14t with ${{ matrix.sanitizer }}
+        if: steps.cache-cpython.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/python/cpython.git -b 3.14 cpython-src
+          cd cpython-src
+          CC=clang CXX=clang++ ./configure --disable-gil ${{ matrix.cpython_configure_flag }} \
+            --prefix $GITHUB_WORKSPACE/cpython-${{ matrix.sanitizer }}
+          make -j$(nproc)
+          make install
+
+      - name: Create venv and install dependencies
+        run: |
+          $GITHUB_WORKSPACE/cpython-${{ matrix.sanitizer }}/bin/python3.14t -m venv .san-venv
+          source .san-venv/bin/activate
+          pip install numpy scipy pytest meson-python meson ninja
+
+      - name: Set sanitizer runtime options
+        run: |
+          if [ "${{ matrix.sanitizer }}" = "tsan" ]; then
+            echo "TSAN_OPTIONS=halt_on_error=1 allocator_may_return_null=1 suppressions=${{ github.workspace }}/test/tsan-suppressions.txt" >> $GITHUB_ENV
+            echo "OPENBLAS_NUM_THREADS=1" >> $GITHUB_ENV
+          elif [ "${{ matrix.sanitizer }}" = "asan" ]; then
+            echo "ASAN_OPTIONS=halt_on_error=1 allocator_may_return_null=1" >> $GITHUB_ENV
+            echo "LSAN_OPTIONS=suppressions=${{ github.workspace }}/test/lsan-suppressions.txt" >> $GITHUB_ENV
+          fi
+
+      - name: Build and install scs
+        run: |
+          source .san-venv/bin/activate
+          pip install -v . --no-build-isolation
+        env:
+          CC: clang
+          CFLAGS: ${{ matrix.cflags }}
+
+      - name: Run tests under ${{ matrix.sanitizer }}
+        run: |
+          source .san-venv/bin/activate
+          python -m pytest test/ -v -s
+
+      - name: Run threading stress tests under ${{ matrix.sanitizer }}
+        run: |
+          source .san-venv/bin/activate
+          python -m pytest test/test_free_threading.py test/test_thread_safety.py -v -s

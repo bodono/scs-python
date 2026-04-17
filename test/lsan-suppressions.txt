@@ -1,0 +1,35 @@
+# Leak Sanitizer suppressions for scs-python
+#
+# CPython does not free all memory at exit (interned strings, singletons,
+# pymalloc arenas, etc.). These are not real leaks.
+
+# CPython memory allocator internals
+leak:_PyMem
+leak:_PyObject
+leak:PyMem
+leak:PyObject_Malloc
+leak:PyObject_Realloc
+leak:PyObject_Calloc
+
+# CPython interpreter/module init
+leak:_Py_InitializeMain
+leak:Py_InitializeFromConfig
+leak:PyModule
+leak:PyImport
+leak:_PyImport
+leak:PyType_Ready
+leak:type_new
+leak:_PyType
+
+# CPython interned strings and caches
+leak:PyUnicode
+leak:_PyUnicode
+leak:intern_string_constants
+leak:PyCode_New
+
+# NumPy/SciPy internal allocations
+leak:numpy
+leak:scipy
+
+# Meson build probes (run during pip install)
+leak:meson

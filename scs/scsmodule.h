@@ -64,6 +64,10 @@ static PyObject *moduleinit(void) {
     return NULL;
   }
 
+#ifdef Py_GIL_DISABLED
+  PyUnstable_Module_SetGIL(m, Py_MOD_GIL_NOT_USED);
+#endif
+
   /* Initialize SCS_Type */
   SCS_Type.tp_new = PyType_GenericNew;
   if (PyType_Ready(&SCS_Type) < 0)

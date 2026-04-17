@@ -23,6 +23,7 @@ classifiers = [
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
     'Programming Language :: Python :: 3 :: Only',
+    'Programming Language :: Python :: Free Threading :: 3 - Stable',
     'Programming Language :: Python :: Implementation :: CPython',
     'Operating System :: Microsoft :: Windows',
     'Operating System :: POSIX',
@@ -96,3 +97,11 @@ before-all = [
 testpaths = [
     "test",
 ]
+faulthandler_timeout = 600
+faulthandler_exit_on_timeout = true
+markers = [
+    "thread_unsafe: mark test as unsafe to run in parallel threads (pytest-run-parallel)",
+]
+# pytest-run-parallel: functions that are not thread-safe
+# (capsys/capfd are detected automatically by pytest-run-parallel)
+thread_unsafe_functions = ["numpy.random.seed"]

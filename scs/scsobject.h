@@ -5,7 +5,8 @@
 
 /* SCS Object type */
 typedef struct {
-  PyObject_HEAD ScsWork *work; /* Workspace */
+  PyObject_HEAD
+  ScsWork *work; /* Workspace */
   ScsSolution *sol;            /* Solution, keep around for warm-starts */
   scs_int m, n;
   PyThread_type_lock lock;     /* Per-instance lock protecting work/sol */
@@ -88,11 +89,17 @@ static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
                              PyObject *opts) {
   *v = defVal;
   if (opts) {
-    PyObject *obj = PyDict_GetItemString(opts, key);
+    PyObject *obj = NULL;
+    int rc = PyDict_GetItemStringRef(opts, key, &obj);
+    if (rc < 0) {
+      return printErr(key);
+    }
     if (obj) {
       if (parse_pos_scs_int(obj, v) < 0) {
+        Py_DECREF(obj);
         return printErr(key);
       }
+      Py_DECREF(obj);
     }
   }
   return 0;
@@ -116,26 +123,37 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
   /* get cone['key'] */
   scs_int i, n = 0;
   scs_int *q = NULL;
-  PyObject *obj = PyDict_GetItemString(cone, key);
+  PyObject *obj = NULL;
+  int rc = PyDict_GetItemStringRef(cone, key, &obj);
+  if (rc < 0) {
+    return printErr(key);
+  }
   if (obj) {
     if (PyList_Check(obj)) {
       n = (scs_int)PyList_Size(obj);
       q = (scs_int *)scs_calloc(n, sizeof(scs_int));
       for (i = 0; i < n; ++i) {
-        PyObject *qi = PyList_GetItem(obj, i);
-        if (parse_pos_scs_int(qi, &(q[i])) < 0) {
+        PyObject *qi = PyList_GetItemRef(obj, i);
+        if (!qi || parse_pos_scs_int(qi, &(q[i])) < 0) {
+          Py_XDECREF(qi);
+          scs_free(q);
+          Py_DECREF(obj);
           return printErr(key);
         }
+        Py_DECREF(qi);
       }
     } else if (PyInt_Check(obj) || PyLong_Check(obj)) {
       n = 1;
       q = (scs_int *)scs_malloc(sizeof(scs_int));
       if (parse_pos_scs_int(obj, q) < 0) {
+        scs_free(q);
+        Py_DECREF(obj);
         return printErr(key);
       }
     } else if (PyArray_Check(obj)) {
       PyArrayObject *pobj = (PyArrayObject *)obj;
       if (!PyArray_ISINTEGER(pobj) || PyArray_NDIM(pobj) != 1) {
+        Py_DECREF(obj);
         return printErr(key);
       }
       n = (scs_int)PyArray_Size((PyObject *)obj);
@@ -144,12 +162,16 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
       memcpy(q, (scs_int *)PyArray_DATA(px0), n * sizeof(scs_int));
       Py_DECREF(px0);
     } else {
+      Py_DECREF(obj);
       return printErr(key);
     }
     if (PyErr_Occurred()) {
       /* potentially could have been triggered before */
+      scs_free(q);
+      Py_DECREF(obj);
       return printErr(key);
     }
+    Py_DECREF(obj);
   }
   *vsize = n;
   *varr = q;
@@ -161,14 +183,24 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
   /* get cone['key'] */
   scs_int i, n = 0;
   scs_float *q = NULL;
-  PyObject *obj = PyDict_GetItemString(cone, key);
+  PyObject *obj = NULL;
+  int rc = PyDict_GetItemStringRef(cone, key, &obj);
+  if (rc < 0) {
+    return printErr(key);
+  }
   if (obj) {
     if (PyList_Check(obj)) {
       n = (scs_int)PyList_Size(obj);
       q = (scs_float *)scs_calloc(n, sizeof(scs_float));
       for (i = 0; i < n; ++i) {
-        PyObject *qi = PyList_GetItem(obj, i);
+        PyObject *qi = PyList_GetItemRef(obj, i);
+        if (!qi) {
+          scs_free(q);
+          Py_DECREF(obj);
+          return printErr(key);
+        }
         q[i] = (scs_float)PyFloat_AsDouble(qi);
+        Py_DECREF(qi);
       }
     } else if (PyInt_Check(obj) || PyLong_Check(obj) || PyFloat_Check(obj)) {
       n = 1;
@@ -177,6 +209,7 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
     } else if (PyArray_Check(obj)) {
       PyArrayObject *pobj = (PyArrayObject *)obj;
       if (!PyArray_ISFLOAT(pobj) || PyArray_NDIM(pobj) != 1) {
+        Py_DECREF(obj);
         return printErr(key);
       }
       n = (scs_int)PyArray_Size((PyObject *)obj);
@@ -185,12 +218,16 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
       memcpy(q, (scs_float *)PyArray_DATA(px0), n * sizeof(scs_float));
       Py_DECREF(px0);
     } else {
+      Py_DECREF(obj);
       return printErr(key);
     }
     if (PyErr_Occurred()) {
       /* potentially could have been triggered before */
+      scs_free(q);
+      Py_DECREF(obj);
       return printErr(key);
     }
+    Py_DECREF(obj);
   }
   *vsize = n;
   *varr = q;
@@ -674,10 +711,6 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   npy_intp veclen[1];
   int scs_float_type = scs_get_float_type();
 
-  if (!self->work) {
-    return none_with_error("Workspace not initialized!");
-  }
-
   PyArrayObject *warm_x, *warm_y, *warm_s;
   PyObject *warm_start;
 
@@ -697,9 +730,20 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   /* Acquire per-instance lock. Release the GIL first to avoid deadlock:
    * another thread may hold this lock inside scs_solve (with GIL released),
    * so we must not hold the GIL while waiting for the lock. */
+  int lock_ok;
   Py_BEGIN_ALLOW_THREADS;
-  PyThread_acquire_lock(self->lock, WAIT_LOCK);
+  lock_ok = (PyThread_acquire_lock(self->lock, WAIT_LOCK) == PY_LOCK_ACQUIRED);
   Py_END_ALLOW_THREADS;
+
+  if (!lock_ok) {
+    return none_with_error("Failed to acquire instance lock");
+  }
+
+  /* Check workspace under lock to avoid TOCTOU race with SCS_finish */
+  if (!self->work) {
+    PyThread_release_lock(self->lock);
+    return none_with_error("Workspace not initialized!");
+  }
 
   if (_warm_start) {
     /* If any of these of missing, we use the values in sol */
@@ -734,7 +778,9 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   Py_END_ALLOW_THREADS;
 
   /* Copy results out of sol while still holding the lock, because another
-   * thread's solve could overwrite sol as soon as we release. */
+   * thread's solve could overwrite sol as soon as we release.
+   * Note: unlike SCS_update, we release the lock after Py_END_ALLOW_THREADS
+   * because we need to read from sol (shared state) under lock protection. */
   veclen[0] = self->n;
   _x = scs_malloc(self->n * sizeof(scs_float));
   memcpy(_x, sol->x, self->n * sizeof(scs_float));
@@ -828,11 +874,6 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   PyArrayObject *b_new, *c_new;
   scs_float *b = NULL, *c = NULL;
 
-  /* Check that the workspace is already initialized */
-  if (!self->work) {
-    return none_with_error("Workspace not initialized!");
-  }
-
   /* b, c can be None, so don't check is PyArray_Type */
   if (!PyArg_ParseTuple(args, "OO", &b_new, &c_new)) {
     return none_with_error("Error parsing inputs");
@@ -863,8 +904,32 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   }
 
   /* Acquire per-instance lock (release GIL first to avoid deadlock) */
+  int lock_ok;
   Py_BEGIN_ALLOW_THREADS;
-  PyThread_acquire_lock(self->lock, WAIT_LOCK);
+  lock_ok = (PyThread_acquire_lock(self->lock, WAIT_LOCK) == PY_LOCK_ACQUIRED);
+  Py_END_ALLOW_THREADS;
+
+  if (!lock_ok) {
+    if (b) { Py_DECREF(b_new); }
+    if (c) { Py_DECREF(c_new); }
+    return none_with_error("Failed to acquire instance lock");
+  }
+
+  /* Check workspace under lock to avoid TOCTOU race with SCS_finish */
+  if (!self->work) {
+    PyThread_release_lock(self->lock);
+    if (b) { Py_DECREF(b_new); }
+    if (c) { Py_DECREF(c_new); }
+    return none_with_error("Workspace not initialized!");
+  }
+
+  /* Release the GIL, run the update, then release the instance lock before
+   * re-acquiring the GIL. This avoids holding the instance lock while
+   * waiting for the GIL, which could deadlock if another GIL-holding thread
+   * is waiting on this lock. SCS_solve uses a different order (release lock
+   * after Py_END_ALLOW_THREADS) because it must copy results out of sol
+   * while still holding the lock. */
+  Py_BEGIN_ALLOW_THREADS;
   scs_update(self->work, b, c);
   PyThread_release_lock(self->lock);
   Py_END_ALLOW_THREADS;
@@ -883,7 +948,10 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
 /* Deallocate SCS object */
 static scs_int SCS_finish(SCS *self) {
   if (self->work) {
-    /* Acquire lock to ensure no concurrent solve/update is in progress. */
+    /* Acquire lock to ensure no concurrent solve/update is in progress.
+     * We don't check the return value here because this is the dealloc
+     * path — the object must be cleaned up regardless of lock status,
+     * and there is no Python caller to return an error to. */
     if (self->lock) {
       PyThread_acquire_lock(self->lock, WAIT_LOCK);
     }

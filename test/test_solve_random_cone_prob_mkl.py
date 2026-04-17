@@ -27,8 +27,6 @@ except ImportError:
     # musllinux x86_64 ships openblas, not MKL
     pytest.skip("MKL module not installed", allow_module_level=True)
 
-np.random.seed(1)
-
 # cone:
 K = {
     "z": 10,
@@ -53,7 +51,8 @@ def test_mkl_module_links_intel_openmp():
 
 
 def test_solve_feasible():
-    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1)
+    rng = np.random.RandomState(3000)
+    data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1, rng=rng)
     solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.MKL, **params)
     sol = solver.solve()
     x = sol["x"]
@@ -72,7 +71,8 @@ def test_solve_feasible():
 
 
 def test_solve_infeasible():
-    data = tools.gen_infeasible(K, n=m // 2)
+    rng = np.random.RandomState(3001)
+    data = tools.gen_infeasible(K, n=m // 2, rng=rng)
     solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.MKL, **params)
     sol = solver.solve()
     y = sol["y"]
@@ -82,7 +82,8 @@ def test_solve_infeasible():
 
 
 def test_solve_unbounded():
-    data = tools.gen_unbounded(K, n=m // 2)
+    rng = np.random.RandomState(3002)
+    data = tools.gen_unbounded(K, n=m // 2, rng=rng)
     solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.MKL, **params)
     sol = solver.solve()
     x = sol["x"]
