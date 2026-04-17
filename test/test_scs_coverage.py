@@ -2897,6 +2897,7 @@ def test_linear_solver_auto_string():
 # ===========================================================================
 
 
+@pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
 def test_resolve_auto_falls_back_to_qdldl():
     """AUTO should fall back to QDLDL when platform-preferred module is missing."""
     from unittest.mock import patch
@@ -2910,6 +2911,7 @@ def test_resolve_auto_falls_back_to_qdldl():
     assert module is _scs_direct
 
 
+@pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
 def test_resolve_auto_darwin_tries_accelerate():
     """On macOS, AUTO should try _scs_accelerate first."""
     from unittest.mock import patch, MagicMock
@@ -2929,6 +2931,7 @@ def test_resolve_auto_darwin_tries_accelerate():
     assert module is fake_accel
 
 
+@pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
 def test_resolve_auto_linux_tries_mkl():
     """On Linux, AUTO should try _scs_mkl first."""
     from unittest.mock import patch, MagicMock
@@ -2948,6 +2951,7 @@ def test_resolve_auto_linux_tries_mkl():
     assert module is fake_mkl
 
 
+@pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
 def test_resolve_auto_windows_tries_mkl():
     """On Windows, AUTO should try _scs_mkl first."""
     from unittest.mock import patch, MagicMock
@@ -2967,6 +2971,7 @@ def test_resolve_auto_windows_tries_mkl():
     assert module is fake_mkl
 
 
+@pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
 def test_resolve_auto_darwin_fallback_when_no_accelerate():
     """On macOS, AUTO should fall back to QDLDL when Accelerate is missing."""
     from unittest.mock import patch
@@ -2982,6 +2987,7 @@ def test_resolve_auto_darwin_fallback_when_no_accelerate():
     assert module is _scs_direct
 
 
+@pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
 def test_resolve_auto_linux_fallback_when_no_mkl():
     """On Linux, AUTO should fall back to QDLDL when MKL is missing."""
     from unittest.mock import patch
