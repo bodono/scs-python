@@ -78,7 +78,7 @@ jobs:
 
       - name: Cache CPython ${{ matrix.sanitizer }} build
         id: cache-cpython
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: cpython-${{ matrix.sanitizer }}
           key: cpython-${{ matrix.sanitizer }}-3.14-${{ runner.os }}-v1
