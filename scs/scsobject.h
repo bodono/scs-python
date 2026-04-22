@@ -73,16 +73,29 @@ static int printErr(char *key) {
   return -1;
 }
 
-/* returns -1 for failure */
+/* returns 1 on success, -1 on failure. A failure leaves *out unchanged.
+ * Rejects non-ints, overflow (Python int too large for scs_int), and
+ * negative values. PyInt_Check is aliased to PyLong_Check in Python 3,
+ * so a single PyLong_Check covers both. */
 static int parse_pos_scs_int(PyObject *in, scs_int *out) {
-  if (PyInt_Check(in)) {
-    *out = (scs_int)PyInt_AsLong(in);
-  } else if (PyLong_Check(in)) {
-    *out = (scs_int)PyLong_AsLong(in);
-  } else {
+  if (!PyLong_Check(in)) {
     return -1;
   }
-  return *out >= 0 ? 1 : -1;
+  long long v = PyLong_AsLongLong(in);
+  if (v == -1 && PyErr_Occurred()) {
+    /* overflow or other error — clear so we can fall back cleanly */
+    PyErr_Clear();
+    return -1;
+  }
+  if (v < 0) {
+    return -1;
+  }
+  /* Round-trip check catches silent downcast on 32-bit scs_int builds. */
+  if ((long long)(scs_int)v != v) {
+    return -1;
+  }
+  *out = (scs_int)v;
+  return 1;
 }
 
 static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
@@ -142,7 +155,7 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
         }
         Py_DECREF(qi);
       }
-    } else if (PyInt_Check(obj) || PyLong_Check(obj)) {
+    } else if (PyLong_Check(obj)) {
       n = 1;
       q = (scs_int *)scs_malloc(sizeof(scs_int));
       if (parse_pos_scs_int(obj, q) < 0) {
@@ -199,13 +212,25 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
           Py_DECREF(obj);
           return printErr(key);
         }
-        q[i] = (scs_float)PyFloat_AsDouble(qi);
+        double v = PyFloat_AsDouble(qi);
         Py_DECREF(qi);
+        if (v == -1.0 && PyErr_Occurred()) {
+          scs_free(q);
+          Py_DECREF(obj);
+          return printErr(key);
+        }
+        q[i] = (scs_float)v;
       }
-    } else if (PyInt_Check(obj) || PyLong_Check(obj) || PyFloat_Check(obj)) {
+    } else if (PyLong_Check(obj) || PyFloat_Check(obj)) {
       n = 1;
       q = (scs_float *)scs_malloc(sizeof(scs_float));
-      q[0] = (scs_float)PyFloat_AsDouble(obj);
+      double v = PyFloat_AsDouble(obj);
+      if (v == -1.0 && PyErr_Occurred()) {
+        scs_free(q);
+        Py_DECREF(obj);
+        return printErr(key);
+      }
+      q[0] = (scs_float)v;
     } else if (PyArray_Check(obj)) {
       PyArrayObject *pobj = (PyArrayObject *)obj;
       if (!PyArray_ISFLOAT(pobj) || PyArray_NDIM(pobj) != 1) {
@@ -636,11 +661,9 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("max_iters must be positive");
   }
-  if (stgs->acceleration_lookback < 0) {
-    /* hack - use type-I AA when lookback is < 0 */
-    /* free_py_scs_data(d, k, stgs, &ps); */
-    /* return finish_with_error("acceleration_lookback must be positive"); */
-  }
+  /* acceleration_lookback: positive selects type-I AA, negative selects
+   * type-II; the magnitude is used as the memory size. Zero disables
+   * acceleration. Passed through unchanged — see scs.c's aa_init call. */
   if (stgs->acceleration_interval < 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("acceleration_interval must be positive");
@@ -822,7 +845,7 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   char *outarg_string = "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
                         "s:f,s:f,s:f,s:f,s:f,s:i,s:i,s:s}";
 #else
-  char *outarg_string = "{s:i,s:i,s:i,s:f,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
+  char *outarg_string = "{s:i,s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
                         "s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:s}";
 #endif
 #endif
@@ -945,8 +968,11 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   Py_RETURN_NONE;
 }
 
-/* Deallocate SCS object */
-static scs_int SCS_finish(SCS *self) {
+/* Deallocate SCS object. Signature must match tp_dealloc
+ * (void (*)(PyObject *)). Using the type's tp_free slot (rather than
+ * PyObject_Free directly) is the standard C-API pattern and works
+ * correctly for subclasses. */
+static void SCS_finish(SCS *self) {
   if (self->work) {
     /* Acquire lock to ensure no concurrent solve/update is in progress.
      * We don't check the return value here because this is the dealloc
@@ -970,12 +996,10 @@ static scs_int SCS_finish(SCS *self) {
     scs_free(self->sol->y);
     scs_free(self->sol->s);
     scs_free(self->sol);
+    self->sol = NULL;
   }
 
-  /* Del python object */
-  PyObject_Free(self);
-
-  return 0;
+  Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyMethodDef scs_obj_methods[] = {
@@ -1023,7 +1047,7 @@ static PyTypeObject SCS_Type = {
     0,                                        /* tp_dictoffset */
     (initproc)SCS_init,                       /* tp_init */
     0,                                        /* tp_alloc */
-    0,                                        /* tp_new */
+    PyType_GenericNew,                        /* tp_new */
 };
 
 #endif
