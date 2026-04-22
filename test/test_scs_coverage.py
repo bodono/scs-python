@@ -2337,18 +2337,18 @@ def test_warm_start_s_wrong_dim_raises():
 
 
 def test_update_b_integer_array_raises():
-    """update() with an integer b array should raise ValueError."""
+    """update() with an integer b array should raise TypeError (dtype mismatch)."""
     solver = scs.SCS(_make_data(), _CONE, verbose=False)
     solver.solve()
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         solver.update(b=np.array([1, 2], dtype=np.int64))
 
 
 def test_update_c_integer_array_raises():
-    """update() with an integer c array should raise ValueError."""
+    """update() with an integer c array should raise TypeError (dtype mismatch)."""
     solver = scs.SCS(_make_data(), _CONE, verbose=False)
     solver.solve()
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         solver.update(c=np.array([1], dtype=np.int64))
 
 

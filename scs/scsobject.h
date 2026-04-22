@@ -26,7 +26,7 @@ struct ScsPyData {
 
 /* Note, Python3.x may require special handling for the scs_int and scs_float
  * types. */
-int scs_get_int_type(void) {
+static int scs_get_int_type(void) {
   switch (sizeof(scs_int)) {
   case 1:
     return NPY_INT8;
@@ -41,7 +41,7 @@ int scs_get_int_type(void) {
   }
 }
 
-int scs_get_float_type(void) {
+static int scs_get_float_type(void) {
   switch (sizeof(scs_float)) {
   case 2:
     return NPY_FLOAT16;
@@ -57,7 +57,7 @@ int scs_get_float_type(void) {
 /* Returns a new strong reference (caller must Py_DECREF), or NULL with a
  * Python exception set on failure (OOM or cast error). The overhead is
  * small unless the input array has been reordered or its dtype differs. */
-PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
+static PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
   PyArrayObject *tmp_arr = PyArray_GETCONTIGUOUS(array);
   if (!tmp_arr) {
     return NULL;
@@ -67,8 +67,15 @@ PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
   return new_owner;  /* NULL on Cast failure; exception already set */
 }
 
+/* Set a Python exception describing a cone-field parsing failure, then
+ * return -1. The outer caller (SCS_init) can then just propagate -1 —
+ * finish_with_error is no-clobber, so the specific message we set here
+ * survives up to the user. */
 static int printErr(char *key) {
-  PySys_WriteStderr("Error parsing '%s'\n", key);
+  if (!PyErr_Occurred()) {
+    PyErr_Format(PyExc_ValueError,
+                 "Invalid value for cone field '%s'", key);
+  }
   return -1;
 }
 
@@ -117,11 +124,14 @@ static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
   return 0;
 }
 
-/* If warm start x0 is set, copy it to input location x */
+/* If warm start x0 is set, copy it to input location x. Sets a Python
+ * exception and returns -1 on failure. */
 static scs_int get_warm_start(scs_float *x, scs_int l, PyArrayObject *x0) {
   if (!PyArray_ISFLOAT(x0) || PyArray_NDIM(x0) != 1 ||
       PyArray_DIM(x0, 0) != (npy_intp)l) {
-    PySys_WriteStderr("Error parsing warm-start input\n");
+    PyErr_Format(PyExc_ValueError,
+                 "Warm-start must be a 1-D float array of length %ld",
+                 (long)l);
     return -1;
   }
   PyArrayObject *px0 = scs_get_contiguous(x0, scs_get_float_type());
@@ -382,13 +392,36 @@ static void free_py_scs_data(ScsData *d, ScsCone *k, ScsSettings *stgs,
   }
 }
 
+/* The finish_with_* / none_with_* helpers do NOT clobber a pending
+ * exception. This matters when a lower-level helper (e.g. a cone parser
+ * or scs_get_contiguous) has already set a specific TypeError or
+ * MemoryError; we want that specific error to reach the user, not a
+ * generic caller-level message. */
 static int finish_with_error(char *str) {
-  PyErr_SetString(PyExc_ValueError, str);
+  if (!PyErr_Occurred()) {
+    PyErr_SetString(PyExc_ValueError, str);
+  }
   return -1;
 }
 
-PyObject *none_with_error(char *str) {
-  PyErr_SetString(PyExc_ValueError, str);
+static int finish_with_type_error(char *str) {
+  if (!PyErr_Occurred()) {
+    PyErr_SetString(PyExc_TypeError, str);
+  }
+  return -1;
+}
+
+static PyObject *none_with_error(char *str) {
+  if (!PyErr_Occurred()) {
+    PyErr_SetString(PyExc_ValueError, str);
+  }
+  return (PyObject *)NULL;
+}
+
+static PyObject *none_with_type_error(char *str) {
+  if (!PyErr_Occurred()) {
+    PyErr_SetString(PyExc_TypeError, str);
+  }
   return (PyObject *)NULL;
 }
 
@@ -520,15 +553,15 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   /* set A */
   if (!PyArray_ISFLOAT(Ax) || PyArray_NDIM(Ax) != 1) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("Ax must be a numpy array of floats");
+    return finish_with_type_error("Ax must be a 1-D numpy array of floats");
   }
   if (!PyArray_ISINTEGER(Ai) || PyArray_NDIM(Ai) != 1) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("Ai must be a numpy array of ints");
+    return finish_with_type_error("Ai must be a 1-D numpy array of ints");
   }
   if (!PyArray_ISINTEGER(Ap) || PyArray_NDIM(Ap) != 1) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("Ap must be a numpy array of ints");
+    return finish_with_type_error("Ap must be a 1-D numpy array of ints");
   }
   ps.Ax = scs_get_contiguous(Ax, scs_float_type);
   ps.Ai = scs_get_contiguous(Ai, scs_int_type);
@@ -556,15 +589,15 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
       !Py_IsNone((PyObject *)Pp)) {
     if (!PyArray_ISFLOAT(Px) || PyArray_NDIM(Px) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
-      return finish_with_error("Px must be a numpy array of floats");
+      return finish_with_type_error("Px must be a 1-D numpy array of floats");
     }
     if (!PyArray_ISINTEGER(Pi) || PyArray_NDIM(Pi) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
-      return finish_with_error("Pi must be a numpy array of ints");
+      return finish_with_type_error("Pi must be a 1-D numpy array of ints");
     }
     if (!PyArray_ISINTEGER(Pp) || PyArray_NDIM(Pp) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
-      return finish_with_error("Pp must be a numpy array of ints");
+      return finish_with_type_error("Pp must be a 1-D numpy array of ints");
     }
     ps.Px = scs_get_contiguous(Px, scs_float_type);
     ps.Pi = scs_get_contiguous(Pi, scs_int_type);
@@ -592,8 +625,8 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   /* set c */
   if (!PyArray_ISFLOAT(c) || PyArray_NDIM(c) != 1) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error(
-        "c must be a dense numpy array with one dimension");
+    return finish_with_type_error(
+        "c must be a 1-D numpy array of floats");
   }
   if (PyArray_DIM(c, 0) != (npy_intp)d->n) {
     free_py_scs_data(d, k, stgs, &ps);
@@ -608,8 +641,8 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   /* set b */
   if (!PyArray_ISFLOAT(b) || PyArray_NDIM(b) != 1) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error(
-        "b must be a dense numpy array with one dimension");
+    return finish_with_type_error(
+        "b must be a 1-D numpy array of floats");
   }
   if (PyArray_DIM(b, 0) != (npy_intp)d->m) {
     free_py_scs_data(d, k, stgs, &ps);
@@ -986,7 +1019,7 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   return return_dict;
 }
 
-PyObject *SCS_update(SCS *self, PyObject *args) {
+static PyObject *SCS_update(SCS *self, PyObject *args) {
   /* data structures for arguments */
 
   /* get the typenum for the primitive scs_float type */
@@ -1006,8 +1039,8 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   /* set c */
   if (!Py_IsNone((PyObject *)c_in)) {
     if (!PyArray_ISFLOAT(c_in) || PyArray_NDIM(c_in) != 1) {
-      return none_with_error(
-          "c_new must be a dense numpy array with one dimension");
+      return none_with_type_error(
+          "c_new must be a 1-D numpy array of floats");
     }
     if (PyArray_DIM(c_in, 0) != (npy_intp)self->n) {
       return none_with_error("c_new has incompatible dimension with A");
@@ -1022,8 +1055,8 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   if (!Py_IsNone((PyObject *)b_in)) {
     if (!PyArray_ISFLOAT(b_in) || PyArray_NDIM(b_in) != 1) {
       Py_XDECREF(c_contig);
-      return none_with_error(
-          "b must be a dense numpy array with one dimension");
+      return none_with_type_error(
+          "b_new must be a 1-D numpy array of floats");
     }
     if (PyArray_DIM(b_in, 0) != (npy_intp)self->m) {
       Py_XDECREF(c_contig);
