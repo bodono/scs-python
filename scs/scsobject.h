@@ -422,8 +422,11 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
           &(stgs->acceleration_interval),
           &(stgs->write_data_filename),
           &(stgs->log_csv_filename))) {
+    /* PyArg_ParseTupleAndKeywords already set an informative TypeError
+     * (e.g. "argument 14 must be int, not str"). Overwriting it with a
+     * generic ValueError would hide which input was rejected. */
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("Error parsing inputs\n");
+    return -1;
   }
   /* clang-format on */
 
@@ -721,7 +724,8 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
                         &warm_x,
                         &warm_y,
                         &warm_s)) {
-    return none_with_error("Error parsing inputs");
+    /* PyArg_ParseTuple already set an informative TypeError; propagate it. */
+    return (PyObject *)NULL;
   }
   /* clang-format on */
 
@@ -876,7 +880,8 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
 
   /* b, c can be None, so don't check is PyArray_Type */
   if (!PyArg_ParseTuple(args, "OO", &b_new, &c_new)) {
-    return none_with_error("Error parsing inputs");
+    /* PyArg_ParseTuple already set an informative TypeError; propagate it. */
+    return (PyObject *)NULL;
   }
   /* set c */
   if (!Py_IsNone((PyObject *)c_new)) {

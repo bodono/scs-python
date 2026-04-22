@@ -108,3 +108,26 @@ def test_warm_start(solver_opts):
 
     with pytest.raises(ValueError):
         sol = solver.solve(x=np.array([1.0, 2.0]))
+
+
+@pytest.mark.parametrize(
+    "bad_kwarg,expected_in_msg",
+    [
+        ({"max_iters": "not_an_int"}, "integer"),
+        ({"scale": "not_a_float"}, "real number"),
+        ({"eps_abs": object()}, "real number"),
+        ({"time_limit_secs": []}, "real number"),
+        ({"acceleration_lookback": 1.5}, "integer"),
+    ],
+)
+def test_init_type_error_is_informative(bad_kwarg, expected_in_msg):
+    """Bad-typed settings should surface the native TypeError from
+    PyArg_ParseTupleAndKeywords naming the expected type, not the old
+    catch-all 'Error parsing inputs' ValueError."""
+    with pytest.raises(TypeError) as exc_info:
+        scs.SCS(data, cone, verbose=False, **bad_kwarg)
+    msg = str(exc_info.value)
+    assert expected_in_msg in msg, (
+        f"expected {expected_in_msg!r} in error message, got: {msg!r}"
+    )
+    assert "Error parsing inputs" not in msg
