@@ -1024,8 +1024,10 @@ def test_scale_zero_raises():
 
 
 def test_max_iters_non_integer_raises():
-    """Non-integer max_iters should raise ValueError."""
-    with pytest.raises(ValueError):
+    """Non-integer max_iters should raise TypeError with a message naming
+    the expected type — propagated from PyArg_ParseTupleAndKeywords
+    rather than clobbered by a generic ValueError."""
+    with pytest.raises(TypeError, match="integer"):
         scs.SCS(_make_data(), _CONE, max_iters=1.5)
 
 

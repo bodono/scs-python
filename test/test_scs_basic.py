@@ -105,7 +105,9 @@ def test_failures():
 
     # python 2.6 and before just cast float to int
     if platform.python_version_tuple() >= ("2", "7", "0"):
-        with pytest.raises(ValueError):
+        # Native TypeError surfaced from PyArg_ParseTupleAndKeywords
+        # ("'float' object cannot be interpreted as an integer").
+        with pytest.raises(TypeError):
             scs.solve(data, {"q": [], "l": 2}, max_iters=1.1)
 
     with pytest.raises(ValueError):
