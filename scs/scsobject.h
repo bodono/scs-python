@@ -958,27 +958,51 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   PyThread_release_lock(self->lock);
 
   /* Build numpy arrays from the copied data (no longer under lock since
-   * these are thread-local copies) */
+   * these are thread-local copies). If PyArray_SimpleNewFromData fails
+   * (OOM), it sets a Python exception but does NOT take ownership of the
+   * buffer — so we must free the raw buffer ourselves and Py_DECREF any
+   * arrays already built (which own their buffers via NPY_ARRAY_OWNDATA). */
   veclen[0] = self->n;
   x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _x);
+  if (!x) {
+    scs_free(_x);
+    scs_free(_y);
+    scs_free(_s);
+    return NULL;
+  }
   PyArray_ENABLEFLAGS((PyArrayObject *)x, NPY_ARRAY_OWNDATA);
 
   veclen[0] = self->m;
   y = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _y);
+  if (!y) {
+    scs_free(_y);
+    scs_free(_s);
+    Py_DECREF(x);
+    return NULL;
+  }
   PyArray_ENABLEFLAGS((PyArrayObject *)y, NPY_ARRAY_OWNDATA);
 
   veclen[0] = self->m;
   s = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _s);
+  if (!s) {
+    scs_free(_s);
+    Py_DECREF(x);
+    Py_DECREF(y);
+    return NULL;
+  }
   PyArray_ENABLEFLAGS((PyArrayObject *)s, NPY_ARRAY_OWNDATA);
 
 /* output arguments */
+/* Use 'L' (long long) for scs_int under DLONG to match scs_int's typedef
+ * (long long); 'l' (long) would truncate to 32 bits on LLP64 Windows.
+ * Mirrors the argparse_string choice in SCS_init. */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *outarg_string = "{s:l,s:l,s:l,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
-                        "s:f,s:f,s:f,s:f,s:f,s:l,s:l,s:s}";
+  char *outarg_string = "{s:L,s:L,s:L,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
+                        "s:f,s:f,s:f,s:f,s:f,s:L,s:L,s:s}";
 #else
-  char *outarg_string = "{s:l,s:l,s:l,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
-                        "s:d,s:d,s:d,s:d,s:d,s:l,s:l,s:s}";
+  char *outarg_string = "{s:L,s:L,s:L,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
+                        "s:d,s:d,s:d,s:d,s:d,s:L,s:L,s:s}";
 #endif
 #else
 #ifdef SFLOAT
