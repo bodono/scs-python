@@ -135,8 +135,11 @@ class SCS(object):
     m = len(b)
     n = len(c)
 
+    # sorted_indices() returns a new matrix; sort_indices() would mutate
+    # the caller's A in place (surprising, and a data race under the
+    # free-threaded build if another thread reads the same matrix).
     if not A.has_sorted_indices:
-      A.sort_indices()
+      A = A.sorted_indices()
     Adata, Aindices, Acolptr = A.data, A.indices, A.indptr
     if A.shape != (m, n):
       raise ValueError("A shape not compatible with b,c")
@@ -155,8 +158,9 @@ class SCS(object):
               "matrix; may take a while."
           )
           P = P.tocsc()
+        # sorted_indices() returns a new matrix; see A above.
         if not P.has_sorted_indices:
-          P.sort_indices()
+          P = P.sorted_indices()
         # extract upper triangular component only
         if _has_lower_tri(P):
           P = sparse.triu(P, format="csc")

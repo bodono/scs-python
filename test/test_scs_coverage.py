@@ -174,6 +174,48 @@ def test_sparse_c_raises_valueerror():
         scs.SCS({"A": _A, "b": _b, "c": c_sparse}, _CONE, verbose=False)
 
 
+def test_unsorted_A_indices_are_not_mutated():
+    """Passing A with unsorted CSC indices must not mutate the caller's
+    object. Previously we called A.sort_indices() in place."""
+    data = np.array([1.0, -1.0])
+    indices = np.array([1, 0], dtype=np.int64)  # unsorted within column
+    indptr = np.array([0, 2], dtype=np.int64)
+    A = sp.csc_matrix((data, indices, indptr), shape=(2, 1))
+    assert not A.has_sorted_indices
+    original_indices = A.indices.copy()
+    solver = scs.SCS(
+        {"A": A, "b": _b, "c": _c}, _CONE, verbose=False
+    )
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+    # Caller's A must be untouched
+    assert not A.has_sorted_indices
+    assert np.array_equal(A.indices, original_indices)
+
+
+def test_unsorted_P_indices_are_not_mutated():
+    """Passing P with unsorted CSC indices must not mutate the caller's P."""
+    # 1x1 P so the only concern is indices ordering; use 2x2 so we can
+    # actually have unsorted within a column.
+    # n must equal len(c), so build a 2-variable problem.
+    A2 = sp.csc_matrix(np.array([[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0],
+                                  [0.0, -1.0]]))
+    b2 = np.array([1.0, 0.0, 1.0, 0.0])
+    c2 = np.array([-1.0, -1.0])
+    # P with unsorted indices within col 0
+    P_data = np.array([2.0, 1.0])
+    P_idx = np.array([1, 0], dtype=np.int64)  # col 0: rows (1, 0) — unsorted
+    P_ptr = np.array([0, 2, 2], dtype=np.int64)
+    P = sp.csc_matrix((P_data, P_idx, P_ptr), shape=(2, 2))
+    assert not P.has_sorted_indices
+    original_P_indices = P.indices.copy()
+    scs.SCS(
+        {"A": A2, "b": b2, "c": c2, "P": P}, {"l": 4}, verbose=False
+    ).solve()
+    assert not P.has_sorted_indices
+    assert np.array_equal(P.indices, original_P_indices)
+
+
 # ===========================================================================
 # 4. P-matrix handling
 # ===========================================================================
