@@ -1075,7 +1075,7 @@ def test_max_iters_zero_raises():
 
 def test_scale_zero_raises():
     """scale=0 is invalid and should raise ValueError at __init__."""
-    with pytest.raises(ValueError, match="scale must be positive"):
+    with pytest.raises(ValueError, match="scale must be"):
         scs.SCS(_make_data(), _CONE, scale=0.0, verbose=False)
 
 
@@ -1093,7 +1093,7 @@ def test_alpha_two_raises():
 
 def test_rho_x_zero_raises():
     """rho_x=0 is invalid — the primal regularizer must be positive."""
-    with pytest.raises(ValueError, match="rho_x must be positive"):
+    with pytest.raises(ValueError, match="rho_x must be"):
         scs.SCS(_make_data(), _CONE, rho_x=0.0, verbose=False)
 
 
@@ -2327,6 +2327,42 @@ def test_negative_acceleration_interval_raises():
 def test_negative_max_iters_raises():
     with pytest.raises(ValueError, match="max_iters"):
         scs.SCS(_make_data(), _CONE, max_iters=-10, verbose=False)
+
+
+# NaN must be rejected on every float setting. Without explicit isnan
+# guards, `x <= 0` / `x < 0` / `x >= 2` all return false for NaN, the
+# setting slips through and the solver produces NaN iterates.
+@pytest.mark.parametrize(
+    "field",
+    ["scale", "rho_x", "alpha", "eps_abs", "eps_rel", "eps_infeas",
+     "time_limit_secs"],
+)
+def test_nan_setting_rejected(field):
+    with pytest.raises(ValueError, match=field):
+        scs.SCS(_make_data(), _CONE, verbose=False,
+                **{field: float("nan")})
+
+
+# +inf on scale / rho_x / alpha must be rejected (they must be finite).
+# scale=+inf otherwise triggers a misleading "ScsWork allocation error!"
+# from the linear-solver factorization; rho_x=+inf produces NaN iterates.
+@pytest.mark.parametrize("field", ["scale", "rho_x", "alpha"])
+def test_posinf_setting_rejected(field):
+    with pytest.raises(ValueError, match=field):
+        scs.SCS(_make_data(), _CONE, verbose=False,
+                **{field: float("inf")})
+
+
+# +inf on eps_* and time_limit_secs is semantically meaningful (disables
+# that stopping criterion / time limit) and must still be accepted.
+@pytest.mark.parametrize(
+    "field", ["eps_abs", "eps_rel", "eps_infeas", "time_limit_secs"]
+)
+def test_posinf_setting_accepted(field):
+    solver = scs.SCS(_make_data(), _CONE, verbose=False, max_iters=50,
+                     **{field: float("inf")})
+    sol = solver.solve()
+    assert sol["info"]["status_val"] != 0  # some terminal status reached
 
 
 # ===========================================================================
