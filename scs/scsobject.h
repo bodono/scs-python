@@ -206,6 +206,18 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
       }
       memcpy(q, (scs_int *)PyArray_DATA(px0), n * sizeof(scs_int));
       Py_DECREF(px0);
+      /* Match the list/scalar branches (which use parse_pos_scs_int):
+       * cone dimensions must be non-negative. Without this check a
+       * user-supplied numpy array with negative entries would slip
+       * through Python-side validation and surface later as a generic
+       * "ScsWork allocation error!" from SCS core. */
+      for (i = 0; i < n; ++i) {
+        if (q[i] < 0) {
+          scs_free(q);
+          Py_DECREF(obj);
+          return printErr(key);
+        }
+      }
     } else {
       Py_DECREF(obj);
       return printErr(key);
