@@ -2456,6 +2456,47 @@ def test_cone_q_as_single_int():
 
 
 # ===========================================================================
+# Cone-field validation parity across list / scalar / numpy-array branches
+# ===========================================================================
+# The list branch uses parse_pos_scs_int (rejects negatives). The scalar
+# branch uses get_pos_int_param (rejects negatives). The numpy-array branch
+# previously memcpy'd straight into scs_int*, letting negatives slip
+# through Python-side validation and surface as a misleading
+# "ScsWork allocation error!" from SCS core.
+
+
+@pytest.mark.parametrize(
+    "bad_q",
+    [
+        [-1],
+        -1,
+        np.array([-1], dtype=np.int64),
+        np.array([2, -3], dtype=np.int64),
+    ],
+    ids=["list", "scalar", "np_single_neg", "np_mixed_neg"],
+)
+def test_cone_q_negative_rejected(bad_q):
+    A = sp.csc_matrix(np.eye(3))
+    b = np.array([0.0, 1.0, 1.0])
+    c = np.array([-1.0, 0.0, 0.0])
+    with pytest.raises(ValueError, match="Invalid value for cone field 'q'"):
+        scs.SCS({"A": A, "b": b, "c": c}, {"q": bad_q}, verbose=False)
+
+
+@pytest.mark.parametrize(
+    "bad_s",
+    [[-1], -1, np.array([-1], dtype=np.int64)],
+    ids=["list", "scalar", "np"],
+)
+def test_cone_s_negative_rejected(bad_s):
+    A = sp.csc_matrix(np.eye(3))
+    b = np.array([0.0, 1.0, 1.0])
+    c = np.array([-1.0, 0.0, 0.0])
+    with pytest.raises(ValueError, match="Invalid value for cone field 's'"):
+        scs.SCS({"A": A, "b": b, "c": c}, {"s": bad_s}, verbose=False)
+
+
+# ===========================================================================
 # 65. Warm-start with wrong-dimension vectors
 # ===========================================================================
 
