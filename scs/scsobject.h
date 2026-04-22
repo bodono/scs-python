@@ -537,12 +537,12 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   }
   /* clang-format on */
 
-  if (d->m < 0) {
+  if (d->m <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("m must be a positive integer");
   }
 
-  if (d->n < 0) {
+  if (d->n <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("n must be a positive integer");
   }
@@ -664,11 +664,16 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error("Failed to parse cone field z");
   }
   if (f_tmp > 0) {
-    scs_printf("SCS deprecation warning: The 'f' field in the cone struct \n"
-               "has been replaced by 'z' to better reflect the Zero cone. \n"
-               "Please replace usage of 'f' with 'z'. If both 'f' and 'z' \n"
-               "are set then we sum the two fields to get the final zero \n"
-               "cone size.\n");
+    /* PyErr_WarnEx returns -1 if the warning was promoted to an exception
+     * (e.g. warnings.filterwarnings("error")); in that case the exception
+     * is already set, so we just need to clean up and return -1. */
+    if (PyErr_WarnEx(PyExc_DeprecationWarning,
+                     "The 'f' cone field is deprecated; use 'z' (Zero cone) "
+                     "instead. If both 'f' and 'z' are set they are summed.",
+                     1) < 0) {
+      free_py_scs_data(d, k, stgs, &ps);
+      return -1;
+    }
     k->z += f_tmp;
   }
   if (get_pos_int_param("l", &(k->l), 0, cone) < 0) {
@@ -768,14 +773,18 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                              ? (scs_int)PyObject_IsTrue(adaptive_scale)
                              : ADAPTIVE_SCALE;
 
-  if (stgs->max_iters < 0) {
+  /* Ranges below match SCS's own validate() in scs_source/src/scs.c.
+   * Duplicated here so users get a Python exception naming the offending
+   * setting, rather than SCS's scs_printf + generic "ScsWork allocation
+   * error" fallback. */
+  if (stgs->max_iters <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("max_iters must be positive");
   }
   /* acceleration_lookback: positive selects type-I AA, negative selects
    * type-II; the magnitude is used as the memory size. Zero disables
    * acceleration. Passed through unchanged — see scs.c's aa_init call. */
-  if (stgs->acceleration_interval < 0) {
+  if (stgs->acceleration_interval <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("acceleration_interval must be positive");
   }
@@ -789,21 +798,21 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   }
   if (stgs->eps_abs < 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_abs must be positive");
+    return finish_with_error("eps_abs must be nonnegative");
   }
   if (stgs->eps_rel < 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_rel must be positive");
+    return finish_with_error("eps_rel must be nonnegative");
   }
   if (stgs->eps_infeas < 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_infeas must be positive");
+    return finish_with_error("eps_infeas must be nonnegative");
   }
-  if (stgs->alpha < 0) {
+  if (stgs->alpha <= 0 || stgs->alpha >= 2) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("alpha must be positive");
+    return finish_with_error("alpha must be in (0, 2)");
   }
-  if (stgs->rho_x < 0) {
+  if (stgs->rho_x <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("rho_x must be positive");
   }
