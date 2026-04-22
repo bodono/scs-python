@@ -54,18 +54,17 @@ int scs_get_float_type(void) {
   }
 }
 
+/* Returns a new strong reference (caller must Py_DECREF), or NULL with a
+ * Python exception set on failure (OOM or cast error). The overhead is
+ * small unless the input array has been reordered or its dtype differs. */
 PyArrayObject *scs_get_contiguous(PyArrayObject *array, int typenum) {
-  /* gets the pointer to the block of contiguous C memory */
-  /* the overhead should be small unless the numpy array has been */
-  /* reordered in some way or the data type doesn't quite match */
-  /* the "new_owner" pointer has to have Py_DECREF called on it; it owns */
-  /* the "new" array object created by PyArray_Cast */
-  PyArrayObject *tmp_arr;
-  PyArrayObject *new_owner;
-  tmp_arr = PyArray_GETCONTIGUOUS(array);
-  new_owner = (PyArrayObject *)PyArray_Cast(tmp_arr, typenum);
+  PyArrayObject *tmp_arr = PyArray_GETCONTIGUOUS(array);
+  if (!tmp_arr) {
+    return NULL;
+  }
+  PyArrayObject *new_owner = (PyArrayObject *)PyArray_Cast(tmp_arr, typenum);
   Py_DECREF(tmp_arr);
-  return new_owner;
+  return new_owner;  /* NULL on Cast failure; exception already set */
 }
 
 static int printErr(char *key) {
@@ -121,11 +120,14 @@ static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
 /* If warm start x0 is set, copy it to input location x */
 static scs_int get_warm_start(scs_float *x, scs_int l, PyArrayObject *x0) {
   if (!PyArray_ISFLOAT(x0) || PyArray_NDIM(x0) != 1 ||
-      PyArray_DIM(x0, 0) != l) {
+      PyArray_DIM(x0, 0) != (npy_intp)l) {
     PySys_WriteStderr("Error parsing warm-start input\n");
     return -1;
   }
   PyArrayObject *px0 = scs_get_contiguous(x0, scs_get_float_type());
+  if (!px0) {
+    return -1;
+  }
   memcpy(x, (scs_float *)PyArray_DATA(px0), l * sizeof(scs_float));
   Py_DECREF(px0);
   return 0;
@@ -145,6 +147,11 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
     if (PyList_Check(obj)) {
       n = (scs_int)PyList_Size(obj);
       q = (scs_int *)scs_calloc(n, sizeof(scs_int));
+      if (n > 0 && !q) {
+        Py_DECREF(obj);
+        PyErr_NoMemory();
+        return -1;
+      }
       for (i = 0; i < n; ++i) {
         PyObject *qi = PyList_GetItemRef(obj, i);
         if (!qi || parse_pos_scs_int(qi, &(q[i])) < 0) {
@@ -158,6 +165,11 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
     } else if (PyLong_Check(obj)) {
       n = 1;
       q = (scs_int *)scs_malloc(sizeof(scs_int));
+      if (!q) {
+        Py_DECREF(obj);
+        PyErr_NoMemory();
+        return -1;
+      }
       if (parse_pos_scs_int(obj, q) < 0) {
         scs_free(q);
         Py_DECREF(obj);
@@ -171,7 +183,17 @@ static int get_cone_arr_dim(char *key, scs_int **varr, scs_int *vsize,
       }
       n = (scs_int)PyArray_Size((PyObject *)obj);
       q = (scs_int *)scs_calloc(n, sizeof(scs_int));
+      if (n > 0 && !q) {
+        Py_DECREF(obj);
+        PyErr_NoMemory();
+        return -1;
+      }
       PyArrayObject *px0 = scs_get_contiguous(pobj, scs_get_int_type());
+      if (!px0) {
+        scs_free(q);
+        Py_DECREF(obj);
+        return -1;
+      }
       memcpy(q, (scs_int *)PyArray_DATA(px0), n * sizeof(scs_int));
       Py_DECREF(px0);
     } else {
@@ -205,6 +227,11 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
     if (PyList_Check(obj)) {
       n = (scs_int)PyList_Size(obj);
       q = (scs_float *)scs_calloc(n, sizeof(scs_float));
+      if (n > 0 && !q) {
+        Py_DECREF(obj);
+        PyErr_NoMemory();
+        return -1;
+      }
       for (i = 0; i < n; ++i) {
         PyObject *qi = PyList_GetItemRef(obj, i);
         if (!qi) {
@@ -224,6 +251,11 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
     } else if (PyLong_Check(obj) || PyFloat_Check(obj)) {
       n = 1;
       q = (scs_float *)scs_malloc(sizeof(scs_float));
+      if (!q) {
+        Py_DECREF(obj);
+        PyErr_NoMemory();
+        return -1;
+      }
       double v = PyFloat_AsDouble(obj);
       if (v == -1.0 && PyErr_Occurred()) {
         scs_free(q);
@@ -239,7 +271,17 @@ static int get_cone_float_arr(char *key, scs_float **varr, scs_int *vsize,
       }
       n = (scs_int)PyArray_Size((PyObject *)obj);
       q = (scs_float *)scs_calloc(n, sizeof(scs_float));
+      if (n > 0 && !q) {
+        Py_DECREF(obj);
+        PyErr_NoMemory();
+        return -1;
+      }
       PyArrayObject *px0 = scs_get_contiguous(pobj, scs_get_float_type());
+      if (!px0) {
+        scs_free(q);
+        Py_DECREF(obj);
+        return -1;
+      }
       memcpy(q, (scs_float *)PyArray_DATA(px0), n * sizeof(scs_float));
       Py_DECREF(px0);
     } else {
@@ -366,6 +408,13 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   ScsData *d = (ScsData *)scs_calloc(1, sizeof(ScsData));
   ScsCone *k = (ScsCone *)scs_calloc(1, sizeof(ScsCone));
   ScsSettings *stgs = (ScsSettings *)scs_calloc(1, sizeof(ScsSettings));
+  if (!d || !k || !stgs) {
+    scs_free(d);
+    scs_free(k);
+    scs_free(stgs);
+    PyErr_NoMemory();
+    return -1;
+  }
 
   ScsMatrix *A, *P;
   char *kwlist[] = {"shape",
@@ -481,8 +530,17 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   ps.Ax = scs_get_contiguous(Ax, scs_float_type);
   ps.Ai = scs_get_contiguous(Ai, scs_int_type);
   ps.Ap = scs_get_contiguous(Ap, scs_int_type);
+  if (!ps.Ax || !ps.Ai || !ps.Ap) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return -1;  /* numpy set the exception */
+  }
 
   A = (ScsMatrix *)scs_malloc(sizeof(ScsMatrix));
+  if (!A) {
+    free_py_scs_data(d, k, stgs, &ps);
+    PyErr_NoMemory();
+    return -1;
+  }
   A->n = d->n;
   A->m = d->m;
   A->x = (scs_float *)PyArray_DATA(ps.Ax);
@@ -508,8 +566,17 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     ps.Px = scs_get_contiguous(Px, scs_float_type);
     ps.Pi = scs_get_contiguous(Pi, scs_int_type);
     ps.Pp = scs_get_contiguous(Pp, scs_int_type);
+    if (!ps.Px || !ps.Pi || !ps.Pp) {
+      free_py_scs_data(d, k, stgs, &ps);
+      return -1;  /* numpy set the exception */
+    }
 
     P = (ScsMatrix *)scs_malloc(sizeof(ScsMatrix));
+    if (!P) {
+      free_py_scs_data(d, k, stgs, &ps);
+      PyErr_NoMemory();
+      return -1;
+    }
     P->n = d->n;
     P->m = d->n;
     P->x = (scs_float *)PyArray_DATA(ps.Px);
@@ -525,11 +592,15 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error(
         "c must be a dense numpy array with one dimension");
   }
-  if (PyArray_DIM(c, 0) != d->n) {
+  if (PyArray_DIM(c, 0) != (npy_intp)d->n) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("c has incompatible dimension with A");
   }
   ps.c = scs_get_contiguous(c, scs_float_type);
+  if (!ps.c) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return -1;
+  }
   d->c = (scs_float *)PyArray_DATA(ps.c);
   /* set b */
   if (!PyArray_ISFLOAT(b) || PyArray_NDIM(b) != 1) {
@@ -537,11 +608,15 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     return finish_with_error(
         "b must be a dense numpy array with one dimension");
   }
-  if (PyArray_DIM(b, 0) != d->m) {
+  if (PyArray_DIM(b, 0) != (npy_intp)d->m) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("b has incompatible dimension with A");
   }
   ps.b = scs_get_contiguous(b, scs_float_type);
+  if (!ps.b) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return -1;
+  }
   d->b = (scs_float *)PyArray_DATA(ps.b);
 
   if (get_pos_int_param("f", &(f_tmp), 0, cone) < 0) {
@@ -698,11 +773,26 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   }
   stgs->warm_start = WARM_START; /* False by default */
 
-  /* Initialize solution struct */
+  /* Initialize solution struct. These allocations feed into the lifetime
+   * of self — SCS_finish unconditionally scs_free's them. Accept a
+   * zero-length calloc returning NULL only when the corresponding
+   * dimension is zero. */
   self->sol = (ScsSolution *)scs_calloc(1, sizeof(ScsSolution));
+  if (!self->sol) {
+    free_py_scs_data(d, k, stgs, &ps);
+    PyErr_NoMemory();
+    return -1;
+  }
   self->sol->x = (scs_float *)scs_calloc(self->n, sizeof(scs_float));
   self->sol->y = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
   self->sol->s = (scs_float *)scs_calloc(self->m, sizeof(scs_float));
+  if ((self->n > 0 && !self->sol->x) ||
+      (self->m > 0 && (!self->sol->y || !self->sol->s))) {
+    free_py_scs_data(d, k, stgs, &ps);
+    /* SCS_finish (via tp_dealloc) will free whichever of x/y/s succeeded. */
+    PyErr_NoMemory();
+    return -1;
+  }
 
   /* Allocate per-instance lock to protect work/sol from concurrent access.
    * Needed because Py_BEGIN_ALLOW_THREADS releases the GIL during scs_solve,
@@ -804,15 +894,19 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
    * thread's solve could overwrite sol as soon as we release.
    * Note: unlike SCS_update, we release the lock after Py_END_ALLOW_THREADS
    * because we need to read from sol (shared state) under lock protection. */
-  veclen[0] = self->n;
   _x = scs_malloc(self->n * sizeof(scs_float));
-  memcpy(_x, sol->x, self->n * sizeof(scs_float));
-
-  veclen[0] = self->m;
   _y = scs_malloc(self->m * sizeof(scs_float));
-  memcpy(_y, sol->y, self->m * sizeof(scs_float));
-
   _s = scs_malloc(self->m * sizeof(scs_float));
+  if ((self->n > 0 && !_x) || (self->m > 0 && (!_y || !_s))) {
+    scs_free(_x);
+    scs_free(_y);
+    scs_free(_s);
+    PyThread_release_lock(self->lock);
+    PyErr_NoMemory();
+    return NULL;
+  }
+  memcpy(_x, sol->x, self->n * sizeof(scs_float));
+  memcpy(_y, sol->y, self->m * sizeof(scs_float));
   memcpy(_s, sol->s, self->m * sizeof(scs_float));
 
   PyThread_release_lock(self->lock);
@@ -894,36 +988,48 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   /* get the typenum for the primitive scs_float type */
   int scs_float_type = scs_get_float_type();
 
-  PyArrayObject *b_new, *c_new;
+  PyArrayObject *b_in, *c_in;
+  /* Contiguous copies we own (strong refs) or NULL when the corresponding
+   * input was None or we haven't made a copy yet. */
+  PyArrayObject *b_contig = NULL, *c_contig = NULL;
   scs_float *b = NULL, *c = NULL;
 
   /* b, c can be None, so don't check is PyArray_Type */
-  if (!PyArg_ParseTuple(args, "OO", &b_new, &c_new)) {
+  if (!PyArg_ParseTuple(args, "OO", &b_in, &c_in)) {
     return none_with_error("Error parsing inputs");
   }
   /* set c */
-  if (!Py_IsNone((PyObject *)c_new)) {
-    if (!PyArray_ISFLOAT(c_new) || PyArray_NDIM(c_new) != 1) {
+  if (!Py_IsNone((PyObject *)c_in)) {
+    if (!PyArray_ISFLOAT(c_in) || PyArray_NDIM(c_in) != 1) {
       return none_with_error(
           "c_new must be a dense numpy array with one dimension");
     }
-    if ((scs_int)PyArray_DIM(c_new, 0) != self->n) {
+    if (PyArray_DIM(c_in, 0) != (npy_intp)self->n) {
       return none_with_error("c_new has incompatible dimension with A");
     }
-    c_new = scs_get_contiguous(c_new, scs_float_type);
-    c = (scs_float *)PyArray_DATA(c_new);
+    c_contig = scs_get_contiguous(c_in, scs_float_type);
+    if (!c_contig) {
+      return NULL;  /* numpy set the exception */
+    }
+    c = (scs_float *)PyArray_DATA(c_contig);
   }
   /* set b */
-  if (!Py_IsNone((PyObject *)b_new)) {
-    if (!PyArray_ISFLOAT(b_new) || PyArray_NDIM(b_new) != 1) {
+  if (!Py_IsNone((PyObject *)b_in)) {
+    if (!PyArray_ISFLOAT(b_in) || PyArray_NDIM(b_in) != 1) {
+      Py_XDECREF(c_contig);
       return none_with_error(
           "b must be a dense numpy array with one dimension");
     }
-    if (PyArray_DIM(b_new, 0) != self->m) {
+    if (PyArray_DIM(b_in, 0) != (npy_intp)self->m) {
+      Py_XDECREF(c_contig);
       return none_with_error("b_new has incompatible dimension with A");
     }
-    b_new = scs_get_contiguous(b_new, scs_float_type);
-    b = (scs_float *)PyArray_DATA(b_new);
+    b_contig = scs_get_contiguous(b_in, scs_float_type);
+    if (!b_contig) {
+      Py_XDECREF(c_contig);
+      return NULL;
+    }
+    b = (scs_float *)PyArray_DATA(b_contig);
   }
 
   /* Acquire per-instance lock (release GIL first to avoid deadlock) */
@@ -933,16 +1039,16 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   Py_END_ALLOW_THREADS;
 
   if (!lock_ok) {
-    if (b) { Py_DECREF(b_new); }
-    if (c) { Py_DECREF(c_new); }
+    Py_XDECREF(b_contig);
+    Py_XDECREF(c_contig);
     return none_with_error("Failed to acquire instance lock");
   }
 
   /* Check workspace under lock to avoid TOCTOU race with SCS_finish */
   if (!self->work) {
     PyThread_release_lock(self->lock);
-    if (b) { Py_DECREF(b_new); }
-    if (c) { Py_DECREF(c_new); }
+    Py_XDECREF(b_contig);
+    Py_XDECREF(c_contig);
     return none_with_error("Workspace not initialized!");
   }
 
@@ -957,13 +1063,8 @@ PyObject *SCS_update(SCS *self, PyObject *args) {
   PyThread_release_lock(self->lock);
   Py_END_ALLOW_THREADS;
 
-  /* Only DECREF the contiguous copies we created; skip borrowed Py_None refs */
-  if (b) {
-    Py_DECREF(b_new);
-  }
-  if (c) {
-    Py_DECREF(c_new);
-  }
+  Py_XDECREF(b_contig);
+  Py_XDECREF(c_contig);
 
   Py_RETURN_NONE;
 }
