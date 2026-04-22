@@ -1084,6 +1084,62 @@ def test_update_none_is_noop():
     assert_almost_equal(sol2["x"][0], sol1["x"][0], decimal=3)
 
 
+@pytest.mark.parametrize("bad", ["not_an_array", 42, [1.0, 2.0], {"x": 1}])
+def test_update_b_non_array_raises_typeerror(bad):
+    """Passing a non-None, non-array object for b must raise TypeError, not
+    crash. PyArray_ISFLOAT/NDIM are UB on non-array objects."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    with pytest.raises(TypeError, match="numpy array"):
+        solver.update(b=bad)
+
+
+@pytest.mark.parametrize("bad", ["not_an_array", 42, [1.0], {"x": 1}])
+def test_update_c_non_array_raises_typeerror(bad):
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    with pytest.raises(TypeError, match="numpy array"):
+        solver.update(c=bad)
+
+
+@pytest.mark.parametrize(
+    "kw", ["x", "y", "s"]
+)
+@pytest.mark.parametrize("bad", ["not_an_array", 42, [1.0]])
+def test_warm_start_non_array_raises(kw, bad):
+    """Non-None, non-array warm-start arg must raise, not crash."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    solver.solve()
+    with pytest.raises((TypeError, ValueError)):
+        solver.solve(warm_start=True, **{kw: bad})
+
+
+@pytest.mark.parametrize("slot", ["Px", "Pi", "Pp"])
+def test_raw_c_init_non_array_P_raises(slot):
+    """Bypass the Python wrapper and hand _scs.SCS a non-None, non-array
+    object for Px/Pi/Pp. Must raise TypeError, not crash."""
+    from scs import _scs_direct
+
+    Adata = np.array([1.0, -1.0])
+    Aindices = np.array([0, 1], dtype=np.int64)
+    Acolptr = np.array([0, 2], dtype=np.int64)
+    b = np.array([1.0, 0.0])
+    c = np.array([-1.0])
+    P = {"Px": None, "Pi": None, "Pp": None}
+    P[slot] = "not_an_array"
+    # Give the other two valid 1-D arrays so only `slot` is bad
+    if slot != "Px":
+        P["Px"] = np.array([1.0])
+    if slot != "Pi":
+        P["Pi"] = np.array([0], dtype=np.int64)
+    if slot != "Pp":
+        P["Pp"] = np.array([0, 1], dtype=np.int64)
+    with pytest.raises(TypeError, match="numpy array"):
+        _scs_direct.SCS(
+            (2, 1), Adata, Aindices, Acolptr,
+            P["Px"], P["Pi"], P["Pp"],
+            b, c, {"l": 2}, verbose=False,
+        )
+
+
 # ===========================================================================
 # 25. Sequential updates: each solve reflects the new problem
 # ===========================================================================

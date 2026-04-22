@@ -127,8 +127,10 @@ static int get_pos_int_param(char *key, scs_int *v, scs_int defVal,
 /* If warm start x0 is set, copy it to input location x. Sets a Python
  * exception and returns -1 on failure. */
 static scs_int get_warm_start(scs_float *x, scs_int l, PyArrayObject *x0) {
-  if (!PyArray_ISFLOAT(x0) || PyArray_NDIM(x0) != 1 ||
-      PyArray_DIM(x0, 0) != (npy_intp)l) {
+  /* PyArray_Check first: PyArray_ISFLOAT/NDIM/DIM read numpy-specific
+   * struct fields, so on a non-array object they'd dereference garbage. */
+  if (!PyArray_Check((PyObject *)x0) || !PyArray_ISFLOAT(x0) ||
+      PyArray_NDIM(x0) != 1 || PyArray_DIM(x0, 0) != (npy_intp)l) {
     PyErr_Format(PyExc_ValueError,
                  "Warm-start must be a 1-D float array of length %ld",
                  (long)l);
@@ -587,15 +589,21 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   /* set P if passed in */
   if (!Py_IsNone((PyObject *)Px) && !Py_IsNone((PyObject *)Pi) &&
       !Py_IsNone((PyObject *)Pp)) {
-    if (!PyArray_ISFLOAT(Px) || PyArray_NDIM(Px) != 1) {
+    /* Px/Pi/Pp are parsed with 'O' (to allow None), so we must guard
+     * PyArray_ISFLOAT/ISINTEGER with PyArray_Check — those macros read
+     * PyArrayObject-specific fields and are UB on non-array objects. */
+    if (!PyArray_Check((PyObject *)Px) || !PyArray_ISFLOAT(Px) ||
+        PyArray_NDIM(Px) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
       return finish_with_type_error("Px must be a 1-D numpy array of floats");
     }
-    if (!PyArray_ISINTEGER(Pi) || PyArray_NDIM(Pi) != 1) {
+    if (!PyArray_Check((PyObject *)Pi) || !PyArray_ISINTEGER(Pi) ||
+        PyArray_NDIM(Pi) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
       return finish_with_type_error("Pi must be a 1-D numpy array of ints");
     }
-    if (!PyArray_ISINTEGER(Pp) || PyArray_NDIM(Pp) != 1) {
+    if (!PyArray_Check((PyObject *)Pp) || !PyArray_ISINTEGER(Pp) ||
+        PyArray_NDIM(Pp) != 1) {
       free_py_scs_data(d, k, stgs, &ps);
       return finish_with_type_error("Pp must be a 1-D numpy array of ints");
     }
@@ -1043,11 +1051,14 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
 
   return_dict = Py_BuildValue("{s:O,s:O,s:O,s:O}", "x", x, "y", y, "s", s,
                               "info", info_dict);
-  /* give up ownership to the return dictionary */
+  /* Give up ownership to the return dictionary. x/y/s are non-NULL
+   * (NULL-checked above). info_dict can be NULL if Py_BuildValue OOM'd,
+   * in which case return_dict is also NULL (we propagate it) — use
+   * Py_XDECREF to avoid dereferencing NULL in that path. */
   Py_DECREF(x);
   Py_DECREF(y);
   Py_DECREF(s);
-  Py_DECREF(info_dict);
+  Py_XDECREF(info_dict);
 
   return return_dict;
 }
@@ -1071,7 +1082,10 @@ static PyObject *SCS_update(SCS *self, PyObject *args) {
   }
   /* set c */
   if (!Py_IsNone((PyObject *)c_in)) {
-    if (!PyArray_ISFLOAT(c_in) || PyArray_NDIM(c_in) != 1) {
+    /* Parsed with 'O' (to allow None): must PyArray_Check before using
+     * PyArray_ISFLOAT/NDIM/DIM, which are UB on non-array objects. */
+    if (!PyArray_Check((PyObject *)c_in) || !PyArray_ISFLOAT(c_in) ||
+        PyArray_NDIM(c_in) != 1) {
       return none_with_type_error(
           "c_new must be a 1-D numpy array of floats");
     }
@@ -1086,7 +1100,10 @@ static PyObject *SCS_update(SCS *self, PyObject *args) {
   }
   /* set b */
   if (!Py_IsNone((PyObject *)b_in)) {
-    if (!PyArray_ISFLOAT(b_in) || PyArray_NDIM(b_in) != 1) {
+    /* Parsed with 'O' (to allow None): must PyArray_Check before using
+     * PyArray_ISFLOAT/NDIM/DIM, which are UB on non-array objects. */
+    if (!PyArray_Check((PyObject *)b_in) || !PyArray_ISFLOAT(b_in) ||
+        PyArray_NDIM(b_in) != 1) {
       Py_XDECREF(c_contig);
       return none_with_type_error(
           "b_new must be a 1-D numpy array of floats");
