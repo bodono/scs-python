@@ -154,24 +154,38 @@ def test_csr_P_warns_and_solves():
 # ===========================================================================
 # 3. Sparse b / c behavior
 # ===========================================================================
-# The Python layer calls b.todense() / c.todense() which returns a 2-D
-# numpy.matrix; the C extension then rejects it because it expects a 1-D
-# array.  These tests document that current behaviour and will need updating
-# if the conversion is fixed to call np.asarray(...).flatten() instead.
+# Sparse b / c are flattened to 1-D dense arrays by the Python wrapper and
+# should solve identically to the dense version.
 
 
-def test_sparse_b_raises_valueerror():
-    """Sparse b is converted to a 2-D matrix that the C layer rejects."""
+def test_sparse_b_solves():
+    """Sparse b is flattened to 1-D and solves correctly."""
     b_sparse = sp.csc_matrix(_b.reshape(-1, 1))
-    with pytest.raises((ValueError, TypeError)):
-        scs.SCS({"A": _A, "b": b_sparse, "c": _c}, _CONE, verbose=False)
+    solver = scs.SCS({"A": _A, "b": b_sparse, "c": _c}, _CONE, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+    assert_almost_equal(sol["x"][0], 1.0, decimal=2)
 
 
-def test_sparse_c_raises_valueerror():
-    """Sparse c is converted to a 2-D matrix that the C layer rejects."""
+def test_sparse_c_solves():
+    """Sparse c is flattened to 1-D and solves correctly."""
     c_sparse = sp.csc_matrix(_c.reshape(-1, 1))
-    with pytest.raises((ValueError, TypeError)):
-        scs.SCS({"A": _A, "b": _b, "c": c_sparse}, _CONE, verbose=False)
+    solver = scs.SCS({"A": _A, "b": _b, "c": c_sparse}, _CONE, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+    assert_almost_equal(sol["x"][0], 1.0, decimal=2)
+
+
+def test_sparse_b_and_c_solves():
+    """Both b and c sparse still solves correctly."""
+    b_sparse = sp.csc_matrix(_b.reshape(-1, 1))
+    c_sparse = sp.csc_matrix(_c.reshape(-1, 1))
+    solver = scs.SCS(
+        {"A": _A, "b": b_sparse, "c": c_sparse}, _CONE, verbose=False
+    )
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+    assert_almost_equal(sol["x"][0], 1.0, decimal=2)
 
 
 # ===========================================================================

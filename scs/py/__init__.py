@@ -126,11 +126,13 @@ class SCS(object):
       )
       A = A.tocsc()
 
+    # .todense() returns a 2-D np.matrix; the C layer requires ndim==1.
+    # Flatten to a 1-D ndarray so a sparse b or c is actually accepted.
     if sparse.issparse(b):
-      b = b.todense()
+      b = np.asarray(b.todense()).ravel()
 
     if sparse.issparse(c):
-      c = c.todense()
+      c = np.asarray(c.todense()).ravel()
 
     m = len(b)
     n = len(c)
