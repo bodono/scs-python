@@ -793,10 +793,14 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                              ? (scs_int)PyObject_IsTrue(adaptive_scale)
                              : ADAPTIVE_SCALE;
 
-  /* Ranges below match SCS's own validate() in scs_source/src/scs.c.
-   * Duplicated here so users get a Python exception naming the offending
-   * setting, rather than SCS's scs_printf + generic "ScsWork allocation
-   * error" fallback. */
+  /* Ranges below match SCS's own validate() in scs_source/src/scs.c, plus
+   * explicit isnan/isfinite guards that SCS's validate() lacks. Without
+   * those, NaN values slip through every `x <= 0` / `x < 0` / `x >= 2`
+   * check (IEEE NaN comparisons always return false) and the solver runs
+   * to completion producing NaN iterates; +inf on scale or rho_x either
+   * crashes the linear-system factorization with a misleading "ScsWork
+   * allocation error!" or silently produces NaN. Better to raise a
+   * Python exception naming the offending setting up front. */
   if (stgs->max_iters <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("max_iters must be positive");
@@ -808,33 +812,36 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("acceleration_interval must be positive");
   }
-  if (stgs->scale <= 0) {
+  if (!isfinite((double)stgs->scale) || stgs->scale <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("scale must be positive");
+    return finish_with_error("scale must be a positive finite number");
   }
-  if (stgs->time_limit_secs < 0) {
+  /* time_limit_secs: 0 disables the limit, +inf is equivalent, both allowed. */
+  if (isnan((double)stgs->time_limit_secs) || stgs->time_limit_secs < 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("time_limit_secs must be nonnegative");
   }
-  if (stgs->eps_abs < 0) {
+  /* eps_*: +inf is allowed (effectively disables that stopping criterion);
+   * NaN is not — it would make every tolerance comparison false. */
+  if (isnan((double)stgs->eps_abs) || stgs->eps_abs < 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("eps_abs must be nonnegative");
   }
-  if (stgs->eps_rel < 0) {
+  if (isnan((double)stgs->eps_rel) || stgs->eps_rel < 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("eps_rel must be nonnegative");
   }
-  if (stgs->eps_infeas < 0) {
+  if (isnan((double)stgs->eps_infeas) || stgs->eps_infeas < 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("eps_infeas must be nonnegative");
   }
-  if (stgs->alpha <= 0 || stgs->alpha >= 2) {
+  if (!isfinite((double)stgs->alpha) || stgs->alpha <= 0 || stgs->alpha >= 2) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("alpha must be in (0, 2)");
   }
-  if (stgs->rho_x <= 0) {
+  if (!isfinite((double)stgs->rho_x) || stgs->rho_x <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("rho_x must be positive");
+    return finish_with_error("rho_x must be a positive finite number");
   }
   stgs->warm_start = WARM_START; /* False by default */
 
