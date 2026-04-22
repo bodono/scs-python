@@ -2566,6 +2566,30 @@ def test_info_status_is_str():
     assert isinstance(sol["info"]["status"], str)
 
 
+def test_info_scale_sanity():
+    """Sanity check on info['scale'].
+
+    Also documents a subtle issue: an earlier outarg_string had a stray
+    's:f' in position 4 for the !DLONG && !SFLOAT build. That's strictly
+    UB (va_arg type mismatch — caller pushed double, format says float),
+    but clang on x86-64 / ARM64 happens to read the full 8 bytes anyway,
+    so the bug is invisible to this kind of runtime test on mainstream
+    platforms. The fix lives in scsobject.h; this test just asserts
+    scale is sane so any catastrophic regression (NaN, sign flip) is
+    caught."""
+    solver = scs.SCS(
+        _make_data(), _CONE,
+        verbose=False,
+        adaptive_scale=False,
+        scale=0.5,
+    )
+    sol = solver.solve()
+    reported = sol["info"]["scale"]
+    assert isinstance(reported, float)
+    assert np.isfinite(reported)
+    assert reported > 0
+
+
 # ===========================================================================
 # 78. Solve returns copies (not aliased internal buffers)
 # ===========================================================================
