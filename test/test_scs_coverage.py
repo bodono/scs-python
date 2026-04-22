@@ -1012,15 +1012,39 @@ def test_soc_known_solution():
 
 
 def test_max_iters_zero_raises():
-    """max_iters=0 is invalid and should raise ValueError."""
-    with pytest.raises(ValueError):
-        scs.SCS(_make_data(), _CONE, max_iters=0, verbose=False).solve()
+    """max_iters=0 is invalid and should raise ValueError at __init__."""
+    with pytest.raises(ValueError, match="max_iters must be positive"):
+        scs.SCS(_make_data(), _CONE, max_iters=0, verbose=False)
 
 
 def test_scale_zero_raises():
-    """scale=0 is invalid and should raise ValueError."""
-    with pytest.raises(ValueError):
-        scs.SCS(_make_data(), _CONE, scale=0.0, verbose=False).solve()
+    """scale=0 is invalid and should raise ValueError at __init__."""
+    with pytest.raises(ValueError, match="scale must be positive"):
+        scs.SCS(_make_data(), _CONE, scale=0.0, verbose=False)
+
+
+def test_alpha_zero_raises():
+    """alpha=0 is outside the valid (0, 2) range for Douglas-Rachford."""
+    with pytest.raises(ValueError, match=r"alpha must be in \(0, 2\)"):
+        scs.SCS(_make_data(), _CONE, alpha=0.0, verbose=False)
+
+
+def test_alpha_two_raises():
+    """alpha=2 is outside the valid (0, 2) range."""
+    with pytest.raises(ValueError, match=r"alpha must be in \(0, 2\)"):
+        scs.SCS(_make_data(), _CONE, alpha=2.0, verbose=False)
+
+
+def test_rho_x_zero_raises():
+    """rho_x=0 is invalid — the primal regularizer must be positive."""
+    with pytest.raises(ValueError, match="rho_x must be positive"):
+        scs.SCS(_make_data(), _CONE, rho_x=0.0, verbose=False)
+
+
+def test_acceleration_interval_zero_raises():
+    """acceleration_interval=0 would mean AA never fires; invalid."""
+    with pytest.raises(ValueError, match="acceleration_interval must be positive"):
+        scs.SCS(_make_data(), _CONE, acceleration_interval=0, verbose=False)
 
 
 def test_max_iters_non_integer_raises():
@@ -2238,15 +2262,31 @@ def test_select_module_pops_linear_solver():
 
 
 def test_deprecated_f_cone_field():
-    """The deprecated 'f' field should be treated as zero cone."""
+    """The deprecated 'f' field should be treated as zero cone and emit
+    a DeprecationWarning that Python users can filter/capture."""
     # min c'x s.t. Ax = b  (equality via zero cone)
     A = sp.csc_matrix(np.array([[1.0], [-1.0]]))
     b = np.array([1.0, 0.0])
     c = np.array([-1.0])
     data = {"A": A, "b": b, "c": c}
     # f=1 is the old name for z=1; remaining 1 row is nonneg
-    sol = scs.solve(data, {"f": 1, "l": 1}, verbose=False)
+    with pytest.warns(DeprecationWarning, match="'f' cone field"):
+        sol = scs.solve(data, {"f": 1, "l": 1}, verbose=False)
     assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+def test_f_cone_deprecation_can_be_promoted_to_error():
+    """filterwarnings('error', DeprecationWarning) should turn the
+    'f'-cone warning into an exception the user can catch."""
+    import warnings
+    A = sp.csc_matrix(np.array([[1.0], [-1.0]]))
+    b = np.array([1.0, 0.0])
+    c = np.array([-1.0])
+    data = {"A": A, "b": b, "c": c}
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        with pytest.raises(DeprecationWarning, match="'f' cone field"):
+            scs.solve(data, {"f": 1, "l": 1}, verbose=False)
 
 
 def test_f_and_z_both_set_sum():
@@ -2256,7 +2296,8 @@ def test_f_and_z_both_set_sum():
     c = np.array([-1.0])
     data = {"A": A, "b": b, "c": c}
     # f=1 + z=0 should give z=1 total; 1 remaining row is nonneg
-    sol = scs.solve(data, {"f": 1, "z": 0, "l": 1}, verbose=False)
+    with pytest.warns(DeprecationWarning):
+        sol = scs.solve(data, {"f": 1, "z": 0, "l": 1}, verbose=False)
     assert sol["info"]["status"] in ("solved", "solved_inaccurate")
 
 
