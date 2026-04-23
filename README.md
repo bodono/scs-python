@@ -37,8 +37,8 @@ solver = scs.SCS(data, cone)
 solver = scs.SCS(data, cone, linear_solver=scs.LinearSolver.QDLDL)
 ```
 
-Available values: `AUTO`, `QDLDL`, `INDIRECT`, `MKL`, `ACCELERATE`, `DENSE`,
-`GPU`, `CUDSS`.
+Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
+`CPU_DENSE`, `GPU_INDIRECT`, `CUDSS`.
 
 The pre-built wheels (`pip install scs`) include MKL on x86_64 Linux and
 Windows, and Apple Accelerate on macOS. When installing from source, additional
