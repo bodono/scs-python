@@ -298,7 +298,7 @@ def test_dense_tries_import():
     """linear_solver=DENSE should attempt to import _scs_dense."""
     try:
         scs.SCS(_make_data(), _CONE,
-                linear_solver=scs.LinearSolver.DENSE, verbose=False)
+                linear_solver=scs.LinearSolver.CPU_DENSE, verbose=False)
     except ImportError:
         pass  # Expected: _scs_dense not built
 
@@ -362,7 +362,7 @@ def test_solution_keys():
 # ===========================================================================
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.CPU_INDIRECT])
 def test_tight_tolerances(linear_solver):
     """Tighter eps should still produce a correct solution."""
     solver = scs.SCS(
@@ -377,7 +377,7 @@ def test_tight_tolerances(linear_solver):
     assert_almost_equal(sol["x"][0], 1.0, decimal=3)
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.CPU_INDIRECT])
 def test_loose_tolerances(linear_solver):
     """Very loose tolerances should still converge quickly."""
     solver = scs.SCS(
@@ -710,7 +710,7 @@ def test_legacy_solve_partial_warmstart():
 def test_indirect_solver_with_tight_tolerances():
     solver = scs.SCS(
         _make_data(), _CONE,
-        linear_solver=scs.LinearSolver.INDIRECT,
+        linear_solver=scs.LinearSolver.CPU_INDIRECT,
         eps_abs=1e-8,
         eps_rel=1e-8,
         verbose=False,
@@ -723,7 +723,7 @@ def test_indirect_solver_with_tight_tolerances():
 def test_indirect_solver_acceleration_off():
     solver = scs.SCS(
         _make_data(), _CONE,
-        linear_solver=scs.LinearSolver.INDIRECT,
+        linear_solver=scs.LinearSolver.CPU_INDIRECT,
         acceleration_lookback=0,
         verbose=False,
     )
@@ -742,7 +742,7 @@ def _make_qp_data():
     return {"A": _A.copy(), "b": _b.copy(), "c": np.array([-1.0]), "P": P}
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.CPU_INDIRECT])
 def test_qp_with_settings(linear_solver):
     solver = scs.SCS(
         _make_qp_data(), _CONE,
@@ -929,7 +929,7 @@ def test_exp_cone_primal_known_solution():
     assert_almost_equal(sol["x"][0], np.e, decimal=4)
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.CPU_INDIRECT])
 def test_exp_cone_both_solvers(linear_solver):
     """Exp cone problem solved with both direct and indirect backends."""
     A_exp = sp.csc_matrix(np.array([
@@ -1374,7 +1374,7 @@ def test_sdp_2x2_known_solution():
     assert_almost_equal(sol["x"][0], -1.0, decimal=4)
 
 
-@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT])
+@pytest.mark.parametrize("linear_solver", [scs.LinearSolver.AUTO, scs.LinearSolver.QDLDL, scs.LinearSolver.CPU_INDIRECT])
 def test_sdp_both_solvers(linear_solver):
     """SDP solved with both direct and indirect backends."""
     sq2 = np.sqrt(2.0)
@@ -2027,7 +2027,7 @@ def test_direct_indirect_same_answer_lp():
     sol_d = scs.SCS(_make_data(), _CONE,
                     linear_solver=scs.LinearSolver.QDLDL, **opts).solve()
     sol_i = scs.SCS(_make_data(), _CONE,
-                    linear_solver=scs.LinearSolver.INDIRECT, **opts).solve()
+                    linear_solver=scs.LinearSolver.CPU_INDIRECT, **opts).solve()
     assert sol_d["info"]["status"] in ("solved", "solved_inaccurate")
     assert sol_i["info"]["status"] in ("solved", "solved_inaccurate")
     assert_almost_equal(sol_d["x"][0], sol_i["x"][0], decimal=4)
@@ -2040,7 +2040,7 @@ def test_direct_indirect_same_answer_qp():
     sol_d = scs.SCS({"A": _A, "b": _b, "c": _c, "P": P}, _CONE,
                     linear_solver=scs.LinearSolver.QDLDL, **opts).solve()
     sol_i = scs.SCS({"A": _A, "b": _b, "c": _c, "P": P}, _CONE,
-                    linear_solver=scs.LinearSolver.INDIRECT, **opts).solve()
+                    linear_solver=scs.LinearSolver.CPU_INDIRECT, **opts).solve()
     assert_almost_equal(sol_d["x"][0], sol_i["x"][0], decimal=3)
 
 
@@ -2383,7 +2383,7 @@ def test_gpu_tries_import():
     """linear_solver=GPU should attempt to import _scs_gpu."""
     try:
         scs.SCS(_make_data(), _CONE,
-                linear_solver=scs.LinearSolver.GPU, verbose=False)
+                linear_solver=scs.LinearSolver.GPU_INDIRECT, verbose=False)
     except ImportError:
         pass  # Expected: _scs_gpu not built
 
@@ -3084,7 +3084,7 @@ def test_linear_solver_qdldl():
 def test_linear_solver_indirect():
     """linear_solver=INDIRECT should use the CG (indirect) solver."""
     solver = scs.SCS(_make_data(), _CONE,
-                     linear_solver=scs.LinearSolver.INDIRECT, verbose=False)
+                     linear_solver=scs.LinearSolver.CPU_INDIRECT, verbose=False)
     sol = solver.solve()
     assert sol["info"]["status"] == "solved"
 
@@ -3111,7 +3111,7 @@ def test_linear_solver_dense_tries_import():
     """linear_solver=DENSE should attempt to import _scs_dense."""
     try:
         scs.SCS(_make_data(), _CONE,
-                linear_solver=scs.LinearSolver.DENSE, verbose=False)
+                linear_solver=scs.LinearSolver.CPU_DENSE, verbose=False)
     except ImportError:
         pass  # Expected: _scs_dense not built
 

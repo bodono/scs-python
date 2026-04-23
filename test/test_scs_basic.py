@@ -45,11 +45,11 @@ FAIL = "failure"  # scs code for failure
 _solver_configs = [
     scs.LinearSolver.AUTO,
     scs.LinearSolver.QDLDL,
-    scs.LinearSolver.INDIRECT,
+    scs.LinearSolver.CPU_INDIRECT,
 ]
 try:
     from scs import _scs_dense
-    _solver_configs.append(scs.LinearSolver.DENSE)
+    _solver_configs.append(scs.LinearSolver.CPU_DENSE)
 except ImportError:
     pass
 
@@ -79,10 +79,10 @@ if platform.python_version_tuple() < ("3", "0", "0"):
         [
             ({"q": [], "l": long(2)}, scs.LinearSolver.AUTO, 1),
             ({"q": [], "l": long(2)}, scs.LinearSolver.QDLDL, 1),
-            ({"q": [], "l": long(2)}, scs.LinearSolver.INDIRECT, 1),
+            ({"q": [], "l": long(2)}, scs.LinearSolver.CPU_INDIRECT, 1),
             ({"q": [long(2)], "l": 0}, scs.LinearSolver.AUTO, 0.5),
             ({"q": [long(2)], "l": 0}, scs.LinearSolver.QDLDL, 0.5),
-            ({"q": [long(2)], "l": 0}, scs.LinearSolver.INDIRECT, 0.5),
+            ({"q": [long(2)], "l": 0}, scs.LinearSolver.CPU_INDIRECT, 0.5),
         ],
     )
     def test_problems_with_longs(cone, linear_solver, expected):
