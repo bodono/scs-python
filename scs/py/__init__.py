@@ -29,11 +29,11 @@ class LinearSolver(enum.Enum):
   """Linear system solver backend for SCS."""
   AUTO = "auto"
   QDLDL = "qdldl"
-  INDIRECT = "indirect"
+  CPU_INDIRECT = "cpu_indirect"
   MKL = "mkl"
   ACCELERATE = "accelerate"
-  DENSE = "dense"
-  GPU = "gpu"
+  CPU_DENSE = "cpu_dense"
+  GPU_INDIRECT = "gpu_indirect"
   CUDSS = "cudss"
 
 
@@ -60,11 +60,11 @@ def _resolve_auto():
 _SOLVER_DISPATCH = {
     LinearSolver.AUTO: _resolve_auto,
     LinearSolver.QDLDL: lambda: _scs_direct,
-    LinearSolver.INDIRECT: lambda: _load_module("_scs_indirect"),
+    LinearSolver.CPU_INDIRECT: lambda: _load_module("_scs_indirect"),
     LinearSolver.MKL: lambda: _load_module("_scs_mkl"),
     LinearSolver.ACCELERATE: lambda: _load_module("_scs_accelerate"),
-    LinearSolver.DENSE: lambda: _load_module("_scs_dense"),
-    LinearSolver.GPU: lambda: _load_module("_scs_gpu"),
+    LinearSolver.CPU_DENSE: lambda: _load_module("_scs_dense"),
+    LinearSolver.GPU_INDIRECT: lambda: _load_module("_scs_gpu"),
     LinearSolver.CUDSS: lambda: _load_module("_scs_cudss"),
 }
 

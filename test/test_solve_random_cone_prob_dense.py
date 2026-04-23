@@ -41,7 +41,7 @@ try:
     def test_solve_feasible():
         rng = np.random.RandomState(3000)
         data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1, rng=rng)
-        solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.DENSE, **params)
+        solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.CPU_DENSE, **params)
         sol = solver.solve()
         x = sol["x"]
         y = sol["y"]
@@ -61,7 +61,7 @@ try:
     def test_solve_infeasible():
         rng = np.random.RandomState(3001)
         data = tools.gen_infeasible(K, n=m // 2, rng=rng)
-        solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.DENSE, **params)
+        solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.CPU_DENSE, **params)
         sol = solver.solve()
         y = sol["y"]
         np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
@@ -71,7 +71,7 @@ try:
     def test_solve_unbounded():
         rng = np.random.RandomState(3002)
         data = tools.gen_unbounded(K, n=m // 2, rng=rng)
-        solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.DENSE, **params)
+        solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.CPU_DENSE, **params)
         sol = solver.solve()
         x = sol["x"]
         s = sol["s"]

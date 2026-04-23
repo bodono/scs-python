@@ -174,7 +174,7 @@ class TestConcurrentIndependentInstances:
             assert_almost_equal(sol["x"][0], expected, decimal=2)
             return sol["x"][0]
 
-        backends = [scs.LinearSolver.QDLDL, scs.LinearSolver.INDIRECT]
+        backends = [scs.LinearSolver.QDLDL, scs.LinearSolver.CPU_INDIRECT]
         with ThreadPoolExecutor(max_workers=NUM_THREADS) as pool:
             futures = [
                 pool.submit(worker, backends[i % 2]) for i in range(NUM_THREADS)
