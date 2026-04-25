@@ -86,6 +86,7 @@ solver = scs.SCS(data, cone, verbose=False)
 sol = solver.solve()
 
 print(sol["info"]["status"])  # 'solved'
+print(sol["info"]["aa_stats"])  # Anderson acceleration diagnostics
 print(sol["x"])               # primal solution
 ```
 
