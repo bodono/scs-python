@@ -955,7 +955,7 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   /* else: SCS will overwite sol if _warm_start is false */
   /* so we don't need to set to zeros here */
 
-  PyObject *x, *y, *s, *return_dict, *info_dict;
+  PyObject *x, *y, *s, *return_dict, *info_dict, *aa_stats_dict;
   scs_float *_x, *_y, *_s;
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
@@ -1027,17 +1027,21 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
 #ifdef SFLOAT
   char *outarg_string = "{s:L,s:L,s:L,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
                         "s:f,s:f,s:f,s:f,s:f,s:L,s:L,s:s}";
+  char *aa_stats_string = "{s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:f,s:f}";
 #else
   char *outarg_string = "{s:L,s:L,s:L,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
                         "s:d,s:d,s:d,s:d,s:d,s:L,s:L,s:s}";
+  char *aa_stats_string = "{s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:d,s:d}";
 #endif
 #else
 #ifdef SFLOAT
   char *outarg_string = "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
                         "s:f,s:f,s:f,s:f,s:f,s:i,s:i,s:s}";
+  char *aa_stats_string = "{s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:f,s:f}";
 #else
   char *outarg_string = "{s:i,s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
                         "s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:s}";
+  char *aa_stats_string = "{s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:d,s:d}";
 #endif
 #endif
 
@@ -1066,18 +1070,39 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
       "rejected_accel_steps", (scs_int)info.rejected_accel_steps,
       "accepted_accel_steps", (scs_int)info.accepted_accel_steps,
       "status", info.status);
+  aa_stats_dict = Py_BuildValue(
+      aa_stats_string,
+      "iter", (scs_int)info.aa_stats.iter,
+      "n_accept", (scs_int)info.aa_stats.n_accept,
+      "n_reject_lapack", (scs_int)info.aa_stats.n_reject_lapack,
+      "n_reject_rank0", (scs_int)info.aa_stats.n_reject_rank0,
+      "n_reject_nonfinite", (scs_int)info.aa_stats.n_reject_nonfinite,
+      "n_reject_weight_cap", (scs_int)info.aa_stats.n_reject_weight_cap,
+      "n_safeguard_reject", (scs_int)info.aa_stats.n_safeguard_reject,
+      "last_rank", (scs_int)info.aa_stats.last_rank,
+      "last_aa_norm", (scs_float)info.aa_stats.last_aa_norm,
+      "last_regularization", (scs_float)info.aa_stats.last_regularization);
   /* clang-format on */
+
+  if (!info_dict || !aa_stats_dict ||
+      PyDict_SetItemString(info_dict, "aa_stats", aa_stats_dict) < 0) {
+    Py_DECREF(x);
+    Py_DECREF(y);
+    Py_DECREF(s);
+    Py_XDECREF(info_dict);
+    Py_XDECREF(aa_stats_dict);
+    return NULL;
+  }
 
   return_dict = Py_BuildValue("{s:O,s:O,s:O,s:O}", "x", x, "y", y, "s", s,
                               "info", info_dict);
-  /* Give up ownership to the return dictionary. x/y/s are non-NULL
-   * (NULL-checked above). info_dict can be NULL if Py_BuildValue OOM'd,
-   * in which case return_dict is also NULL (we propagate it) — use
-   * Py_XDECREF to avoid dereferencing NULL in that path. */
+  /* Give up ownership to the return dictionary. x/y/s/info_dict are non-NULL
+   * here, and Py_BuildValue borrowed each with "O". */
   Py_DECREF(x);
   Py_DECREF(y);
   Py_DECREF(s);
-  Py_XDECREF(info_dict);
+  Py_DECREF(info_dict);
+  Py_DECREF(aa_stats_dict);
 
   return return_dict;
 }

@@ -332,6 +332,20 @@ _EXPECTED_INFO_KEYS = {
     "setup_time", "solve_time",
     "scale",
     "accepted_accel_steps", "rejected_accel_steps",
+    "aa_stats",
+}
+
+_EXPECTED_AA_STATS_KEYS = {
+    "iter",
+    "n_accept",
+    "n_reject_lapack",
+    "n_reject_rank0",
+    "n_reject_nonfinite",
+    "n_reject_weight_cap",
+    "n_safeguard_reject",
+    "last_rank",
+    "last_aa_norm",
+    "last_regularization",
 }
 
 
@@ -341,6 +355,14 @@ def test_info_dict_has_expected_keys():
     info = sol["info"]
     for key in _EXPECTED_INFO_KEYS:
         assert key in info, f"Missing key '{key}' in sol['info']"
+
+
+def test_aa_stats_dict_has_expected_keys():
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    sol = solver.solve()
+    aa_stats = sol["info"]["aa_stats"]
+    for key in _EXPECTED_AA_STATS_KEYS:
+        assert key in aa_stats, f"Missing key '{key}' in sol['info']['aa_stats']"
 
 
 def test_info_status_val_matches_constant():
@@ -1244,6 +1266,7 @@ _ALL_INFO_KEYS = {
     "scale",
     "comp_slack",
     "accepted_accel_steps", "rejected_accel_steps",
+    "aa_stats",
 }
 
 
@@ -1292,6 +1315,19 @@ def test_accel_steps_nonnegative():
     sol = solver.solve()
     assert sol["info"]["accepted_accel_steps"] >= 0
     assert sol["info"]["rejected_accel_steps"] >= 0
+
+
+def test_aa_stats_no_acceleration():
+    """AA diagnostics should be present even when acceleration is disabled."""
+    solver = scs.SCS(
+        _make_data(), _CONE, acceleration_lookback=0, verbose=False
+    )
+    sol = solver.solve()
+    aa_stats = sol["info"]["aa_stats"]
+    for key in _EXPECTED_AA_STATS_KEYS - {"last_aa_norm", "last_regularization"}:
+        assert aa_stats[key] == 0
+    assert np.isnan(aa_stats["last_aa_norm"])
+    assert aa_stats["last_regularization"] == 0.0
 
 
 def test_pobj_matches_c_dot_x():
