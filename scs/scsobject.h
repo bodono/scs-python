@@ -487,6 +487,9 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                     "time_limit_secs",
                     "acceleration_lookback",
                     "acceleration_interval",
+                    "acceleration_type_1",
+                    "acceleration_regularization",
+                    "acceleration_relaxation",
                     "write_data_filename",
                     "log_csv_filename",
                     NULL};
@@ -496,15 +499,15 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
    on Windows where sizeof(long) < sizeof(long long) (LLP64 model). */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LfffffffLLzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LfffffffLLLffzz";
 #else
-  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LdddddddLLzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LdddddddLLLddzz";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffffiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffffiiiffzz";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddddiizz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddddiiiddzz";
 #endif
 #endif
 
@@ -541,6 +544,9 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
           &(stgs->time_limit_secs),
           &(stgs->acceleration_lookback),
           &(stgs->acceleration_interval),
+          &(stgs->acceleration_type_1),
+          &(stgs->acceleration_regularization),
+          &(stgs->acceleration_relaxation),
           &(stgs->write_data_filename),
           &(stgs->log_csv_filename))) {
     /* PyArg_ParseTupleAndKeywords already set an informative TypeError
@@ -805,12 +811,29 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("max_iters must be positive");
   }
-  /* acceleration_lookback: positive selects type-I AA, negative selects
-   * type-II; the magnitude is used as the memory size. Zero disables
-   * acceleration. Passed through unchanged — see scs.c's aa_init call. */
+  /* acceleration_lookback: nonnegative memory size for AA. 0 disables
+   * acceleration; the type (I or II) is selected by acceleration_type_1. */
+  if (stgs->acceleration_lookback < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error(
+        "acceleration_lookback must be nonnegative "
+        "(use acceleration_type_1=0 for type-II AA)");
+  }
   if (stgs->acceleration_interval <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("acceleration_interval must be positive");
+  }
+  if (!isfinite((double)stgs->acceleration_regularization) ||
+      stgs->acceleration_regularization < 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error(
+        "acceleration_regularization must be a nonnegative finite number");
+  }
+  if (!isfinite((double)stgs->acceleration_relaxation) ||
+      stgs->acceleration_relaxation < 0 ||
+      stgs->acceleration_relaxation > 2) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("acceleration_relaxation must be in [0, 2]");
   }
   if (!isfinite((double)stgs->scale) || stgs->scale <= 0) {
     free_py_scs_data(d, k, stgs, &ps);

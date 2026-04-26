@@ -2722,14 +2722,59 @@ def test_cold_start_after_warm():
 
 
 # ===========================================================================
-# 72. Acceleration lookback negative (type-I AA hack)
+# 72. Anderson acceleration tuning settings
 # ===========================================================================
 
 
-def test_negative_acceleration_lookback():
-    """Negative acceleration_lookback triggers type-I AA (intentional hack)."""
+def test_negative_acceleration_lookback_rejected():
+    """Negative lookback used to mean type-II; now it must be rejected."""
+    with pytest.raises(ValueError, match="acceleration_lookback must be nonnegative"):
+        scs.SCS(_make_data(), _CONE,
+                acceleration_lookback=-10, verbose=False)
+
+
+def test_acceleration_type_1_explicit():
+    """acceleration_type_1=0 selects type-II AA; should still solve."""
+    solver = scs.SCS(
+        _make_data(), _CONE,
+        acceleration_lookback=10,
+        acceleration_type_1=0,
+        acceleration_regularization=1e-12,
+        verbose=False,
+    )
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+@pytest.mark.parametrize("relaxation", [0.0, 0.5, 1.0, 1.5, 2.0])
+def test_acceleration_relaxation_in_range(relaxation):
+    solver = scs.SCS(
+        _make_data(), _CONE,
+        acceleration_relaxation=relaxation,
+        verbose=False,
+    )
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+@pytest.mark.parametrize("bad", [-0.1, 2.1, float("nan"), float("inf")])
+def test_acceleration_relaxation_out_of_range_rejected(bad):
+    with pytest.raises(ValueError, match="acceleration_relaxation"):
+        scs.SCS(_make_data(), _CONE,
+                acceleration_relaxation=bad, verbose=False)
+
+
+@pytest.mark.parametrize("bad", [-1e-12, float("nan"), float("inf")])
+def test_acceleration_regularization_invalid_rejected(bad):
+    with pytest.raises(ValueError, match="acceleration_regularization"):
+        scs.SCS(_make_data(), _CONE,
+                acceleration_regularization=bad, verbose=False)
+
+
+def test_acceleration_regularization_zero_allowed():
+    """Zero regularization is permitted (matches aa.h: 0 disables it)."""
     solver = scs.SCS(_make_data(), _CONE,
-                     acceleration_lookback=-10, verbose=False)
+                     acceleration_regularization=0.0, verbose=False)
     sol = solver.solve()
     assert sol["info"]["status"] in ("solved", "solved_inaccurate")
 
