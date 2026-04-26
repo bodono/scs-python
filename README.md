@@ -90,6 +90,29 @@ print(sol["info"]["aa_stats"])  # Anderson acceleration diagnostics
 print(sol["x"])               # primal solution
 ```
 
+### Anderson acceleration tuning
+
+SCS applies Anderson acceleration (AA) on top of ADMM. The defaults work
+well for most problems, but the following settings can be tuned:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `acceleration_lookback` | `10` | AA memory size; `0` disables AA. |
+| `acceleration_interval` | `10` | Apply AA every N ADMM iterations. |
+| `acceleration_type_1` | `1` | `1` = type-I AA, `0` = type-II AA. |
+| `acceleration_regularization` | `1e-8` | Tikhonov regularization for the AA least-squares solve. Tuned for type-I; type-II typically prefers `1e-12`. |
+| `acceleration_relaxation` | `1.0` | Relaxation factor in `[0, 2]`; `1.0` is vanilla AA. |
+
+```python
+# Type-II AA with tighter regularization
+solver = scs.SCS(data, cone,
+                 acceleration_type_1=0,
+                 acceleration_regularization=1e-12)
+```
+
+See the [acceleration docs](https://www.cvxgrp.org/scs/algorithm/acceleration.html)
+for the underlying algorithm.
+
 ### Cone types
 
 The `cone` dict supports the following keys:
