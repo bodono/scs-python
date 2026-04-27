@@ -26,7 +26,7 @@ pip install .
 
 SCS supports several linear solver backends. The default is `AUTO`, which
 selects the best available solver for the platform:
-- **macOS**: Apple Accelerate if available, otherwise QDLDL
+- **macOS**: QDLDL (Apple Accelerate is available via `LinearSolver.ACCELERATE`)
 - **Linux / Windows**: MKL Pardiso if available, otherwise QDLDL
 
 ```python
