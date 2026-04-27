@@ -3249,23 +3249,20 @@ def test_resolve_auto_falls_back_to_qdldl():
 
 
 @pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
-def test_resolve_auto_darwin_tries_accelerate():
-    """On macOS, AUTO should try _scs_accelerate first."""
-    from unittest.mock import patch, MagicMock
-    from scs import _resolve_auto
+def test_resolve_auto_darwin_prefers_qdldl():
+    """On macOS, AUTO should return QDLDL without attempting Accelerate."""
+    from unittest.mock import patch
+    from scs import _resolve_auto, _scs_direct
 
-    fake_accel = MagicMock()
-
-    def mock_load(name):
-        if name == "_scs_accelerate":
-            return fake_accel
+    def fail_import(name):
         raise ImportError(f"mocked: {name}")
 
     with patch("scs.sys") as mock_sys:
         mock_sys.platform = "darwin"
-        with patch("scs._load_module", side_effect=mock_load):
+        with patch("scs._load_module", side_effect=fail_import) as mock_load:
             module = _resolve_auto()
-    assert module is fake_accel
+    assert module is _scs_direct
+    mock_load.assert_not_called()
 
 
 @pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
@@ -3306,22 +3303,6 @@ def test_resolve_auto_windows_tries_mkl():
         with patch("scs._load_module", side_effect=mock_load):
             module = _resolve_auto()
     assert module is fake_mkl
-
-
-@pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")
-def test_resolve_auto_darwin_fallback_when_no_accelerate():
-    """On macOS, AUTO should fall back to QDLDL when Accelerate is missing."""
-    from unittest.mock import patch
-    from scs import _resolve_auto, _scs_direct
-
-    def fail_import(name):
-        raise ImportError(f"mocked: {name}")
-
-    with patch("scs.sys") as mock_sys:
-        mock_sys.platform = "darwin"
-        with patch("scs._load_module", side_effect=fail_import):
-            module = _resolve_auto()
-    assert module is _scs_direct
 
 
 @pytest.mark.thread_unsafe(reason="patches module-level scs._load_module / scs.sys")

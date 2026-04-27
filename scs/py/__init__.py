@@ -45,15 +45,12 @@ def _load_module(name):
 def _resolve_auto():
   """Auto-detect the best available direct solver for this platform."""
   if sys.platform == "darwin":
-    try:
-      return _load_module("_scs_accelerate")
-    except ImportError:
-      pass
-  else:
-    try:
-      return _load_module("_scs_mkl")
-    except ImportError:
-      pass
+    # Prefer the bundled QDLDL on macOS over Apple Accelerate.
+    return _scs_direct
+  try:
+    return _load_module("_scs_mkl")
+  except ImportError:
+    pass
   return _scs_direct
 
 
