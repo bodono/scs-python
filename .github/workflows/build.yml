@@ -192,7 +192,7 @@ jobs:
 
       - name: Install conda on Windows
         if: runner.os == 'Windows'
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
           channels: https://software.repos.intel.com/python/conda/, conda-forge
