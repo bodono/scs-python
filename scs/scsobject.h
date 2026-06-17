@@ -490,6 +490,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                     "acceleration_type_1",
                     "acceleration_regularization",
                     "acceleration_relaxation",
+                    "acceleration_trust_factor",
                     "write_data_filename",
                     "log_csv_filename",
                     NULL};
@@ -499,15 +500,15 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
    on Windows where sizeof(long) < sizeof(long long) (LLP64 model). */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LfffffffLLLffzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LfffffffLLLfffzz";
 #else
-  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LdddddddLLLddzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LdddddddLLLdddzz";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffffiiiffzz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffffiiifffzz";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddddiiiddzz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddddiiidddzz";
 #endif
 #endif
 
@@ -547,6 +548,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
           &(stgs->acceleration_type_1),
           &(stgs->acceleration_regularization),
           &(stgs->acceleration_relaxation),
+          &(stgs->acceleration_trust_factor),
           &(stgs->write_data_filename),
           &(stgs->log_csv_filename))) {
     /* PyArg_ParseTupleAndKeywords already set an informative TypeError
@@ -834,6 +836,16 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
       stgs->acceleration_relaxation > 2) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("acceleration_relaxation must be in [0, 2]");
+  }
+  /* acceleration_trust_factor: INFINITY (default) disables; positive
+   * finite values turn on the trust-region + adaptive-r mode in aa.
+   * NaN and non-positive values are rejected. */
+  if (isnan((double)stgs->acceleration_trust_factor) ||
+      stgs->acceleration_trust_factor <= 0) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error(
+        "acceleration_trust_factor must be positive (math.inf for no cap, "
+        "the default)");
   }
   if (!isfinite((double)stgs->scale) || stgs->scale <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
