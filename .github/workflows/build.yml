@@ -202,7 +202,7 @@ jobs:
         run: conda install -y -c https://software.repos.intel.com/python/conda/ -c conda-forge mkl mkl-devel intel-openmp pkgconfig
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.4.1
+        uses: pypa/cibuildwheel@v4.1.0
         env:
           # Explicitly set the architecture based on the matrix
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
