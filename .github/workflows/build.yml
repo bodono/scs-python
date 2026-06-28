@@ -188,7 +188,7 @@ jobs:
 
       - name: Set up MSVC for Windows
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: egor-tensin/vs-shell@v2
 
       - name: Install conda on Windows
         if: runner.os == 'Windows'
