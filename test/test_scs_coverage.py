@@ -2779,6 +2779,32 @@ def test_acceleration_regularization_zero_allowed():
     assert sol["info"]["status"] in ("solved", "solved_inaccurate")
 
 
+def test_acceleration_trust_factor_default_inf():
+    """Default acceleration_trust_factor is +inf (no cap, current behavior)."""
+    solver = scs.SCS(_make_data(), _CONE, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+@pytest.mark.parametrize("trust_factor", [0.5, 1.0, 2.0, 10.0, float("inf")])
+def test_acceleration_trust_factor_in_range(trust_factor):
+    """Positive finite values enable trust-region + adaptive r; inf disables."""
+    solver = scs.SCS(
+        _make_data(), _CONE,
+        acceleration_trust_factor=trust_factor,
+        verbose=False,
+    )
+    sol = solver.solve()
+    assert sol["info"]["status"] in ("solved", "solved_inaccurate")
+
+
+@pytest.mark.parametrize("bad", [-1.0, 0.0, float("nan")])
+def test_acceleration_trust_factor_invalid_rejected(bad):
+    with pytest.raises(ValueError, match="acceleration_trust_factor"):
+        scs.SCS(_make_data(), _CONE,
+                acceleration_trust_factor=bad, verbose=False)
+
+
 # ===========================================================================
 # 73. Power cone with different exponents
 # ===========================================================================
