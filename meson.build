@@ -288,6 +288,16 @@ endif
 if get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
   _deps += cuda_dep
+  cublas_dep = cc.find_library('cublas', required: false)
+  if not cublas_dep.found()
+    cublas_dep = dependency('cublas', required: true)
+  endif
+  _deps += cublas_dep
+  cusparse_dep = cc.find_library('cusparse', required: false)
+  if not cusparse_dep.found()
+    cusparse_dep = dependency('cusparse', required: true)
+  endif
+  _deps += cusparse_dep
   if get_option('gpu_atrans')
     gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
   endif
