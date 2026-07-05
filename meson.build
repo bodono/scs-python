@@ -300,8 +300,8 @@ if get_option('use_gpu')
     # In Meson, sources with a `.cu` extension are compiled with nvcc by default.
     # To compile `.c` files with nvcc, they must be explicitly targeted.
     # It is strongly recommended to rename CUDA-C files to `.cu`.
-    fs.glob('scs_source/linsys/gpu/*.c'),
-    fs.glob('scs_source/linsys/gpu/indirect/*.c'),
+    'scs_source/linsys/gpu/gpu.c',
+    'scs_source/linsys/gpu/indirect/private.c',
     c_args: gpu_c_args,
     dependencies: _deps,
     include_directories: [
