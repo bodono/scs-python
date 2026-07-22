@@ -288,6 +288,16 @@ endif
 if get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
   _deps += cuda_dep
+  cublas_dep = cc.find_library('cublas', required: false)
+  if not cublas_dep.found()
+    cublas_dep = dependency('cublas', required: true)
+  endif
+  _deps += cublas_dep
+  cusparse_dep = cc.find_library('cusparse', required: false)
+  if not cusparse_dep.found()
+    cusparse_dep = dependency('cusparse', required: true)
+  endif
+  _deps += cusparse_dep
   if get_option('gpu_atrans')
     gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
   endif
@@ -300,8 +310,8 @@ if get_option('use_gpu')
     # In Meson, sources with a `.cu` extension are compiled with nvcc by default.
     # To compile `.c` files with nvcc, they must be explicitly targeted.
     # It is strongly recommended to rename CUDA-C files to `.cu`.
-    fs.glob('scs_source/linsys/gpu/*.c'),
-    fs.glob('scs_source/linsys/gpu/indirect/*.c'),
+    'scs_source/linsys/gpu/gpu.c',
+    'scs_source/linsys/gpu/indirect/private.c',
     c_args: gpu_c_args,
     dependencies: _deps,
     include_directories: [
