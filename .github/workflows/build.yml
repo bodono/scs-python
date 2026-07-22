@@ -136,7 +136,7 @@ jobs:
           export CUDA_PATH="$(pwd)/.pixi/envs/default"
           export CUDA_HOME="$CUDA_PATH"
           pixi r python -m pip install -v . --no-build-isolation \
-            -Csetup-args=-Duse_gpu=true
+            -Csetup-args=-Duse_gpu=true -Csetup-args=-Dint32=true
       - name: Check _scs_gpu is linked against cuBLAS and cuSPARSE
         # A shared library links successfully even with undefined symbols, so the
         # real regression test is that libcublas/libcusparse are recorded as
