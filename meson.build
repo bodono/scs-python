@@ -287,17 +287,18 @@ endif
 
 if get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
-  _deps += cuda_dep
   cublas_dep = cc.find_library('cublas', required: false)
   if not cublas_dep.found()
     cublas_dep = dependency('cublas', required: true)
   endif
-  _deps += cublas_dep
   cusparse_dep = cc.find_library('cusparse', required: false)
   if not cusparse_dep.found()
     cusparse_dep = dependency('cusparse', required: true)
   endif
-  _deps += cusparse_dep
+  # Scope the CUDA libraries to this target rather than mutating the shared
+  # `_deps`, so they don't leak into _scs_mkl / _scs_accelerate / _scs_cudss
+  # when use_gpu is combined with those backends.
+  gpu_deps = _deps + [cuda_dep, cublas_dep, cusparse_dep]
   if get_option('gpu_atrans')
     gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
   endif
@@ -310,10 +311,12 @@ if get_option('use_gpu')
     # In Meson, sources with a `.cu` extension are compiled with nvcc by default.
     # To compile `.c` files with nvcc, they must be explicitly targeted.
     # It is strongly recommended to rename CUDA-C files to `.cu`.
+    # Meson's fs module has no glob(), so these are listed explicitly; keep in
+    # sync with the .c files under scs_source/linsys/gpu{,/indirect}.
     'scs_source/linsys/gpu/gpu.c',
     'scs_source/linsys/gpu/indirect/private.c',
     c_args: gpu_c_args,
-    dependencies: _deps,
+    dependencies: gpu_deps,
     include_directories: [
       common_includes, 'scs_source/linsys/gpu/', 'scs_source/linsys/gpu/indirect'
     ],
@@ -382,9 +385,10 @@ if host_machine.system() == 'darwin'
 endif
 
 if get_option('link_cudss')
-  _deps += cuda_dep
   cudss_dep = dependency('cudss', required: true)
-  _deps += cudss_dep
+  # Scope the CUDA libraries to this target rather than mutating the shared
+  # `_deps` (see the use_gpu block above).
+  cudss_deps = _deps + [cuda_dep, cudss_dep]
   py.extension_module(
     '_scs_cudss',
     'scs/scspy.c',
@@ -394,7 +398,7 @@ if get_option('link_cudss')
     spectral_cone_sources,
     c_args: common_c_args + ['-DPY_CUDSS'],
     include_directories: common_includes + ['scs_source/linsys/cudss/direct'],
-    dependencies: _deps,
+    dependencies: cudss_deps,
     install_dir: scs_dir,
     install: true,
   )
