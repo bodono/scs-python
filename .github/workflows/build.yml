@@ -143,7 +143,16 @@ jobs:
         # NEEDED entries (the bug fixed in #221 was a missing link, seen only at
         # import time as `undefined symbol: cusparseDestroySpMat`).
         run: |
-          so=$(pixi r python -c "import scs, glob, os; print(glob.glob(os.path.join(os.path.dirname(scs.__file__), '_scs_gpu*.so'))[0])")
+          # Locate the installed extension via sysconfig rather than `import scs`,
+          # since importing from the repo root would pick up the local ./scs
+          # source directory instead of the installed package.
+          site=$(pixi r python -c "import sysconfig; print(sysconfig.get_path('platlib'))")
+          so=$(find "$site/scs" -name '_scs_gpu*.so' | head -1)
+          if [ -z "$so" ]; then
+            echo "ERROR: _scs_gpu*.so not found under $site/scs"
+            ls -la "$site/scs" || true
+            exit 1
+          fi
           echo "Inspecting $so"
           readelf -d "$so"
           readelf -d "$so" | grep -q 'libcublas' || { echo "ERROR: _scs_gpu not linked against cuBLAS"; exit 1; }
