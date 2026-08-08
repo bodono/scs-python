@@ -477,6 +477,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                     "verbose",
                     "normalize",
                     "adaptive_scale",
+                    "adaptive_diag_scale",
                     "max_iters",
                     "scale",
                     "eps_abs",
@@ -497,17 +498,19 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
 /* parse the arguments and ensure they are the correct type */
 /* Use 'L' (long long) for DLONG so that scs_int fields are parsed correctly
    on Windows where sizeof(long) < sizeof(long long) (LLP64 model). */
+/* adaptive_diag_scale is parsed as an integer (0/1); Python bools
+ * are accepted there too since bool subclasses int. */
 #ifdef DLONG
 #ifdef SFLOAT
-  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LfffffffLLLffzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LLfffffffLLLffzz";
 #else
-  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LdddddddLLLddzz";
+  char *argparse_string = "(LL)O!O!O!OOOO!O!O!|O!O!O!LLdddddddLLLddzz";
 #endif
 #else
 #ifdef SFLOAT
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!ifffffffiiiffzz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!iifffffffiiiffzz";
 #else
-  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!idddddddiiiddzz";
+  char *argparse_string = "(ii)O!O!O!OOOO!O!O!|O!O!O!iidddddddiiiddzz";
 #endif
 #endif
 
@@ -534,6 +537,7 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
           &PyBool_Type, &verbose,
           &PyBool_Type, &normalize,
           &PyBool_Type, &adaptive_scale,
+          &(stgs->adaptive_diag_scale),
           &(stgs->max_iters),
           &(stgs->scale),
           &(stgs->eps_abs),
@@ -865,6 +869,10 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   if (!isfinite((double)stgs->rho_x) || stgs->rho_x <= 0) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("rho_x must be a positive finite number");
+  }
+  if (stgs->adaptive_diag_scale < 0 || stgs->adaptive_diag_scale > 1) {
+    free_py_scs_data(d, k, stgs, &ps);
+    return finish_with_error("adaptive_diag_scale must be 0 (off) or 1 (on)");
   }
   stgs->warm_start = WARM_START; /* False by default */
 
