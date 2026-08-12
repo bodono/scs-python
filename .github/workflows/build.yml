@@ -240,6 +240,17 @@ jobs:
         with:
           submodules: true
 
+      - name: Set up Python for dependency checks
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Enable Python 3.15 builds when SciPy wheels are available
+        shell: bash
+        run: |
+          cibw_skip="$(python .github/scripts/scipy_wheel_gate.py)"
+          echo "CIBW_SKIP=$cibw_skip" >> "$GITHUB_ENV"
+
       - name: Set up MSVC for Windows
         if: runner.os == 'Windows'
         uses: egor-tensin/vs-shell@v2
@@ -256,7 +267,7 @@ jobs:
         run: conda install -y -c https://software.repos.intel.com/python/conda/ -c conda-forge mkl mkl-devel intel-openmp pkgconfig
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v4.1.1
+        uses: pypa/cibuildwheel@v4.2.0
         env:
           # Explicitly set the architecture based on the matrix
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
