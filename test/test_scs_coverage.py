@@ -2394,11 +2394,28 @@ def test_posinf_setting_rejected(field):
 @pytest.mark.parametrize(
     "field", ["eps_abs", "eps_rel", "eps_infeas", "time_limit_secs"]
 )
-def test_posinf_setting_accepted(field):
-    solver = scs.SCS(_make_data(), _CONE, verbose=False, max_iters=50,
-                     **{field: float("inf")})
+def test_posinf_setting_rejected(field):
+    # Upstream scs validates these fields with !isfinite (finite nonnegative
+    # required); inf is not a supported "no limit" sentinel. Use 0 to disable
+    # time_limit_secs / an eps component instead.
+    with pytest.raises(ValueError):
+        scs.SCS(_make_data(), _CONE, verbose=False, max_iters=50,
+                **{field: float("inf")})
+
+
+@pytest.mark.parametrize("level", [0, 1, False, True])
+def test_adaptive_diag_scale_accepted(level):
+    solver = scs.SCS(_make_data(), _CONE, verbose=False, max_iters=200,
+                     adaptive_diag_scale=level)
     sol = solver.solve()
     assert sol["info"]["status_val"] != 0  # some terminal status reached
+
+
+@pytest.mark.parametrize("level", [-1, 2, 3])
+def test_adaptive_diag_scale_rejected(level):
+    with pytest.raises(ValueError, match="adaptive_diag_scale"):
+        scs.SCS(_make_data(), _CONE, verbose=False,
+                adaptive_diag_scale=level)
 
 
 # ===========================================================================
