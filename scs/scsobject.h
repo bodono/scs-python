@@ -979,68 +979,49 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
   /* so we don't need to set to zeros here */
 
   PyObject *x, *y, *s, *return_dict, *info_dict, *aa_stats_dict;
-  scs_float *_x, *_y, *_s;
   /* release the GIL */
   Py_BEGIN_ALLOW_THREADS;
   /* Solve! */
   scs_solve(self->work, sol, &info, _warm_start);
   Py_END_ALLOW_THREADS;
 
-  /* Copy results out of sol while still holding the lock, because another
-   * thread's solve could overwrite sol as soon as we release.
-   * Note: unlike SCS_update, we release the lock after Py_END_ALLOW_THREADS
-   * because we need to read from sol (shared state) under lock protection. */
-  _x = scs_malloc(self->n * sizeof(scs_float));
-  _y = scs_malloc(self->m * sizeof(scs_float));
-  _s = scs_malloc(self->m * sizeof(scs_float));
-  if ((self->n > 0 && !_x) || (self->m > 0 && (!_y || !_s))) {
-    scs_free(_x);
-    scs_free(_y);
-    scs_free(_s);
-    PyThread_release_lock(self->lock);
-    PyErr_NoMemory();
-    return NULL;
-  }
-  memcpy(_x, sol->x, self->n * sizeof(scs_float));
-  memcpy(_y, sol->y, self->m * sizeof(scs_float));
-  memcpy(_s, sol->s, self->m * sizeof(scs_float));
-
-  PyThread_release_lock(self->lock);
-
-  /* Build numpy arrays from the copied data (no longer under lock since
-   * these are thread-local copies). If PyArray_SimpleNewFromData fails
-   * (OOM), it sets a Python exception but does NOT take ownership of the
-   * buffer — so we must free the raw buffer ourselves and Py_DECREF any
-   * arrays already built (which own their buffers via NPY_ARRAY_OWNDATA). */
+  /* Allocate NumPy-owned result arrays while still holding the instance lock,
+   * then copy from sol before another thread can overwrite it. Do not wrap
+   * scs_malloc/PyMem_RawMalloc buffers with NPY_ARRAY_OWNDATA: NumPy frees
+   * owned data with its own allocator, which is incompatible with CPython
+   * 3.15t's mimalloc-backed raw allocator. */
   veclen[0] = self->n;
-  x = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _x);
+  x = PyArray_SimpleNew(1, veclen, scs_float_type);
   if (!x) {
-    scs_free(_x);
-    scs_free(_y);
-    scs_free(_s);
+    PyThread_release_lock(self->lock);
     return NULL;
   }
-  PyArray_ENABLEFLAGS((PyArrayObject *)x, NPY_ARRAY_OWNDATA);
 
   veclen[0] = self->m;
-  y = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _y);
+  y = PyArray_SimpleNew(1, veclen, scs_float_type);
   if (!y) {
-    scs_free(_y);
-    scs_free(_s);
     Py_DECREF(x);
+    PyThread_release_lock(self->lock);
     return NULL;
   }
-  PyArray_ENABLEFLAGS((PyArrayObject *)y, NPY_ARRAY_OWNDATA);
 
   veclen[0] = self->m;
-  s = PyArray_SimpleNewFromData(1, veclen, scs_float_type, _s);
+  s = PyArray_SimpleNew(1, veclen, scs_float_type);
   if (!s) {
-    scs_free(_s);
     Py_DECREF(x);
     Py_DECREF(y);
+    PyThread_release_lock(self->lock);
     return NULL;
   }
-  PyArray_ENABLEFLAGS((PyArrayObject *)s, NPY_ARRAY_OWNDATA);
+
+  memcpy(PyArray_DATA((PyArrayObject *)x), sol->x,
+         self->n * sizeof(scs_float));
+  memcpy(PyArray_DATA((PyArrayObject *)y), sol->y,
+         self->m * sizeof(scs_float));
+  memcpy(PyArray_DATA((PyArrayObject *)s), sol->s,
+         self->m * sizeof(scs_float));
+
+  PyThread_release_lock(self->lock);
 
 /* output arguments */
 /* Use 'L' (long long) for scs_int under DLONG to match scs_int's typedef

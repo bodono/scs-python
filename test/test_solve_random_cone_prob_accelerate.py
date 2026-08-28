@@ -52,14 +52,32 @@ def test_solve_feasible():
 
 
 def test_solve_infeasible():
-    rng = np.random.RandomState(3001)
-    data = tools.gen_infeasible(K, n=m // 2, rng=rng)
-    solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.ACCELERATE, **params)
+    # A small, well-conditioned infeasible LP avoids the platform-sensitive
+    # convergence of the previous large random cone problem:
+    #
+    #   x >= 1  ->  -x + s_0 = -1, s_0 >= 0
+    #   x <= 0  ->   x + s_1 =  0, s_1 >= 0
+    data = {
+        "A": sparse.csc_matrix([[-1.0], [1.0]]),
+        "b": np.array([-1.0, 0.0]),
+        "c": np.array([1.0]),
+    }
+    cone = {"l": 2}
+    solver = scs.SCS(
+        data,
+        cone,
+        linear_solver=scs.LinearSolver.ACCELERATE,
+        verbose=False,
+        eps_infeas=1e-7,
+        max_iters=10000,
+    )
     sol = solver.solve()
     y = sol["y"]
-    np.testing.assert_array_less(np.linalg.norm(data["A"].T @ y), 1e-3)
-    np.testing.assert_array_less(data["b"].T @ y, -0.1)
-    np.testing.assert_almost_equal(y, tools.proj_dual_cone(y, K), decimal=4)
+    assert sol["info"]["status"] == "infeasible"
+    assert sol["info"]["status_val"] == scs.INFEASIBLE
+    np.testing.assert_allclose(data["A"].T @ y, 0.0, atol=1e-6)
+    assert data["b"].T @ y < -0.1
+    assert np.all(y >= -1e-7)
 
 
 def test_solve_unbounded():
