@@ -317,16 +317,27 @@ jobs:
           # much a packaging defect as a broken one (a vacuously green audit
           # hid exactly this class of failure).
           EXPECTED_EXTS = {
-              "manylinux_x86_64": {"_scs_direct", "_scs_indirect", "_scs_mkl"},
-              "aarch64": {"_scs_direct", "_scs_indirect"},
-              "musllinux": {"_scs_direct", "_scs_indirect"},
+              "manylinux_x86_64": {"_scs_direct", "_scs_indirect",
+                                   "_scs_dense", "_scs_mkl"},
+              "aarch64": {"_scs_direct", "_scs_indirect", "_scs_dense"},
+              "musllinux": {"_scs_direct", "_scs_indirect", "_scs_dense"},
           }
           WANT_MKL_NEEDED = ["libiomp5.so", "libmkl_core.so.3",
                              "libmkl_intel_lp64.so.3",
                              "libmkl_intel_thread.so.3", "libmkl_rt.so.3"]
           nmkl = 0
-          expected_nmkl = sum(1 for w in whls
-                              if platform_of(w) == "manylinux_x86_64")
+          group_counts = {}
+          for w in whls:
+              group_counts[platform_of(w)] = group_counts.get(platform_of(w), 0) + 1
+          for plat in EXPECTED_EXTS:
+              if group_counts.get(plat, 0) == 0:
+                  bad.append(("(all)", "-",
+                              f"no wheels downloaded for platform {plat}"))
+          expected_nmkl = group_counts.get("manylinux_x86_64", 0)
+          if expected_nmkl == 0:
+              bad.append(("(all)", "-",
+                          "no manylinux x86_64 wheels: the MKL audit would "
+                          "be vacuous"))
           for whl in whls:
               plat = platform_of(whl)
               with tempfile.TemporaryDirectory() as td:
@@ -346,15 +357,19 @@ jobs:
                                   f"extension inventory {sorted(exts)} != "
                                   f"expected {sorted(EXPECTED_EXTS[plat])}"))
                   # every wheel must vendor a BLAS for the default
-                  # backends; MKL must never be vendored anywhere
+                  # backends; Intel libraries must not ship anywhere in
+                  # the wheel, whatever directory they landed in
+                  all_names = [os.path.basename(so) for so in sos]
                   vendored = [os.path.basename(so) for so in sos
                               if ".libs" in so]
                   if not any(v.startswith("libopenblas") for v in vendored):
                       bad.append((os.path.basename(whl), "-",
                                   f"no vendored OpenBLAS: {vendored}"))
-                  if any(v.startswith(("libmkl", "libiomp")) for v in vendored):
+                  intel = [n for n in all_names
+                           if n.startswith(("libmkl", "libiomp"))]
+                  if intel:
                       bad.append((os.path.basename(whl), "-",
-                                  f"MKL vendored into wheel: {vendored}"))
+                                  f"Intel libraries shipped in wheel: {intel}"))
                   for so in sos:
                       proc = subprocess.run(["readelf", "-d", so],
                                             capture_output=True, text=True)
@@ -364,9 +379,14 @@ jobs:
                                       f"readelf failed: {proc.stderr.strip()}"))
                           continue
                       out = proc.stdout
-                      for m in re.finditer(
-                              r"\((?:RPATH|RUNPATH)\)[^\[]*\[([^\]]*)\]", out):
-                          for entry in m.group(1).split(":"):
+                      rpaths = re.findall(r"\(RPATH\)[^\[]*\[([^\]]*)\]", out)
+                      runpaths = re.findall(
+                          r"\(RUNPATH\)[^\[]*\[([^\]]*)\]", out)
+                      if rpaths:
+                          bad.append((os.path.basename(whl), rel,
+                                      f"legacy DT_RPATH present: {rpaths}"))
+                      for rp in runpaths:
+                          for entry in rp.split(":"):
                               if entry and not entry.startswith("$ORIGIN"):
                                   bad.append((os.path.basename(whl), rel,
                                               f"non-relative rpath entry "
@@ -380,12 +400,10 @@ jobs:
                           if mkl != WANT_MKL_NEEDED:
                               bad.append((os.path.basename(whl), rel,
                                           f"NEEDED drift: {' '.join(mkl)}"))
-                          rp = re.findall(
-                              r"\((?:RPATH|RUNPATH)\)[^\[]*\[([^\]]*)\]", out)
-                          if rp != ["$ORIGIN/../../../../lib"]:
+                          if runpaths != ["$ORIGIN/../../../../lib"]:
                               bad.append((os.path.basename(whl), rel,
-                                          f"_scs_mkl RUNPATH {rp} != "
-                                          f"['$ORIGIN/../../../../lib']"))
+                                          f"_scs_mkl DT_RUNPATH {runpaths} "
+                                          f"!= ['$ORIGIN/../../../../lib']"))
           if nmkl != expected_nmkl:
               bad.append(("(all)", "-",
                           f"found {nmkl} _scs_mkl extensions, expected "
