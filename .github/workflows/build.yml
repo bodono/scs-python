@@ -382,10 +382,13 @@ jobs:
                       rpaths = re.findall(r"\(RPATH\)[^\[]*\[([^\]]*)\]", out)
                       runpaths = re.findall(
                           r"\(RUNPATH\)[^\[]*\[([^\]]*)\]", out)
-                      if rpaths:
-                          bad.append((os.path.basename(whl), rel,
-                                      f"legacy DT_RPATH present: {rpaths}"))
-                      for rp in runpaths:
+                      # auditwheel deliberately writes DT_RPATH on grafted
+                      # objects (RPATH outranks LD_LIBRARY_PATH, isolating
+                      # the vendored libraries); both tag types are fine
+                      # in general as long as every entry is
+                      # $ORIGIN-relative. _scs_mkl, which we patch
+                      # ourselves, is held to the stricter shape below.
+                      for rp in rpaths + runpaths:
                           for entry in rp.split(":"):
                               if entry and not entry.startswith("$ORIGIN"):
                                   bad.append((os.path.basename(whl), rel,
@@ -400,6 +403,10 @@ jobs:
                           if mkl != WANT_MKL_NEEDED:
                               bad.append((os.path.basename(whl), rel,
                                           f"NEEDED drift: {' '.join(mkl)}"))
+                          if rpaths:
+                              bad.append((os.path.basename(whl), rel,
+                                          f"_scs_mkl must not carry legacy "
+                                          f"DT_RPATH: {rpaths}"))
                           if runpaths != ["$ORIGIN/../../../../lib"]:
                               bad.append((os.path.basename(whl), rel,
                                           f"_scs_mkl DT_RUNPATH {runpaths} "
