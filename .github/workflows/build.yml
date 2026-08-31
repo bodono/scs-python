@@ -343,7 +343,9 @@ jobs:
           path: dist/*.tar.gz
 
   upload_pypi:
-    needs: [build_wheels, build_sdist]
+    # wheel_smoke_clean_env gates publishing: wheels that only work in the
+    # build container must never reach PyPI again (see #423).
+    needs: [build_wheels, build_sdist, wheel_smoke_clean_env]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
