@@ -63,21 +63,24 @@ archs = [
 before-build = "pip install delvewheel"
 # This will probably become default in newer cibuildwheels versions
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
-config-settings = {setup-args = "-Dlink_mkl=true"}
 
 # Openblas installation for 3 different linux images
 
+# x86_64 Linux and Windows wheels link OpenBLAS. They were switched to
+# MKL in #187, which shipped 3.3.0 wheels whose vendored MKL was missing
+# its dlopen'd dispatch kernels (libmkl_def/avx2/avx512 -- invisible to
+# auditwheel/delvewheel, which only follow DT_NEEDED): on any machine
+# without MKL already on the loader path, the first solve aborted the
+# interpreter via MKL's own exit(2). See #423. The build-container test
+# could not catch it because LD_LIBRARY_PATH pointed at the container's
+# system oneAPI install. MKL wheels may return once kernel vendoring is
+# solved and gated by the clean-container wheel test.
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "dnf install -y dnf-plugins-core",
-  "dnf config-manager --add-repo https://yum.repos.intel.com/oneapi",
-  "rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB",
-  "dnf install -y intel-oneapi-mkl-devel",
+  "dnf install -y openblas-devel",
 ]
-environment = {PKG_CONFIG_PATH = "/opt/intel/oneapi/mkl/latest/lib/pkgconfig:/opt/intel/oneapi/compiler/latest/lib/pkgconfig:$PKG_CONFIG_PATH", LD_LIBRARY_PATH = "/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/mkl/latest/lib:/opt/intel/oneapi/compiler/latest/lib:$LD_LIBRARY_PATH"}
-config-settings = {setup-args = "-Dlink_mkl=true"}
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"

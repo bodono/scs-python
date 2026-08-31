@@ -249,11 +249,11 @@ jobs:
         uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
-          channels: https://software.repos.intel.com/python/conda/, conda-forge
+          channels: conda-forge, anaconda
 
-      - name: Install MKL from conda on Windows
+      - name: Install openblas from conda on Windows
         if: runner.os == 'Windows'
-        run: conda install -y -c https://software.repos.intel.com/python/conda/ -c conda-forge mkl mkl-devel intel-openmp pkgconfig
+        run: conda install -y openblas pkgconfig
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2.0
@@ -278,6 +278,53 @@ jobs:
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
+
+  wheel_smoke_clean_env:
+    # Regression gate for #423: install the built manylinux x86_64 wheel in a
+    # pristine container (no BLAS, no LD_LIBRARY_PATH, no site packages) and
+    # run a real solve on every backend the wheel ships. The 3.3.0 wheels
+    # passed cibuildwheel's in-container tests because the build container's
+    # environment satisfied MKL's dlopen'd dispatch kernels; only a clean
+    # environment exercises what the wheel actually vendors.
+    name: Clean-container wheel smoke test
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: cibw-wheels-ubuntu-latest-*
+          path: wheelhouse
+          merge-multiple: true
+
+      - name: Solve in pristine python:3.12-slim
+        run: |
+          cat > smoke.py <<'EOF'
+          import importlib.util, numpy as np, scipy.sparse as sp, scs
+          print("scs", scs.__version__)
+          # LP block plus a small PSD cone: the PSD projection goes through
+          # vendored BLAS/LAPACK, which is exactly what #423 failed to ship.
+          data = {
+              "A": sp.csc_matrix(np.vstack([np.array([[1.0, 1.0], [1.0, -1.0], [0.0, 1.0]]),
+                                            np.array([[-1.0, 0.0], [0.0, 0.0], [0.0, -1.0]])])),
+              "b": np.hstack([np.array([1.0, 0.5, 0.7]), np.zeros(3)]),
+              "c": np.array([1.0, 1.0]),
+          }
+          cone = {"z": 1, "l": 2, "s": [2]}
+          solvers = ["auto"] + [name for name, mod in
+                                [("qdldl", "_scs_direct"),
+                                 ("cpu_indirect", "_scs_indirect"),
+                                 ("mkl", "_scs_mkl")]
+                                if importlib.util.find_spec("scs." + mod)]
+          assert "qdldl" in solvers
+          for name in solvers:
+              sol = scs.SCS(data, cone, verbose=True, linear_solver=name).solve()
+              assert sol["info"]["status"] == "solved", (name, sol["info"]["status"])
+              print(name, "ok:", sol["info"].get("lin_sys_solver", "n/a"))
+          EOF
+          docker run --rm -v "$PWD:/work" -w /tmp python:3.12-slim bash -ec '
+            pip install --quiet numpy scipy
+            pip install --no-index --find-links /work/wheelhouse scs
+            python /work/smoke.py'
 
   build_sdist:
     name: Build source distribution

@@ -40,9 +40,10 @@ solver = scs.SCS(data, cone, linear_solver=scs.LinearSolver.QDLDL)
 Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
 `CPU_DENSE`, `GPU_INDIRECT`, `CUDSS`.
 
-The pre-built wheels (`pip install scs`) include MKL on x86_64 Linux and
-Windows, and Apple Accelerate on macOS. When installing from source, additional
-backends can be enabled with build-time flags:
+The pre-built wheels (`pip install scs`) link OpenBLAS on Linux and Windows,
+and Apple Accelerate on macOS; the MKL backend is available in source builds
+(e.g. in conda environments providing MKL). When installing from source,
+additional backends can be enabled with build-time flags:
 
 ```bash
 # MKL Pardiso direct solver
