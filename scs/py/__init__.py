@@ -44,14 +44,20 @@ def _preload_intel_mkl():
   without vendoring it: MKL loads its CPU dispatch kernels via dlopen, which
   wheel-repair tools cannot see, so a vendored MKL is incomplete and aborts
   the process at solve time (cvxgrp/scs#423). The ``scs[mkl]`` extra instead
-  installs Intel's own ``mkl`` and ``intel-openmp`` wheels, whose complete,
-  internally-consistent libraries land outside the default loader path
-  (``<prefix>/lib``). This preloads them so the extension's link-time
-  dependencies resolve; the dispatch kernels are then found by MKL's own
-  loader next to its libmkl_core. Returns True if anything was preloaded.
+  installs Intel's own ``mkl`` and ``intel-openmp`` wheels into
+  ``<prefix>/lib``.
 
-  Libraries are loaded RTLD_LOCAL so MKL's BLAS symbols cannot interpose on
-  other libraries in the process (e.g. NumPy's vendored OpenBLAS).
+  The primary lookup mechanism is a ``$ORIGIN``-relative RUNPATH baked into
+  the wheel's extension (site-packages/scs is four levels below the prefix
+  in every standard layout), which lets the loader resolve MKL's mutually
+  referencing component libraries as one group. This fallback covers
+  non-standard layouts where that relative path misses: it dlopens the
+  libraries RTLD_LAZY | RTLD_LOCAL so the extension's DT_NEEDED entries
+  resolve from the link map. LAZY is required -- the components cannot be
+  eagerly bound one at a time -- and ctypes.CDLL always forces RTLD_NOW,
+  so this calls dlopen(3) directly. RTLD_LOCAL keeps MKL's BLAS from
+  interposing on other libraries (e.g. NumPy's vendored OpenBLAS).
+  Returns True if anything was loaded.
   """
   if not sys.platform.startswith("linux"):
     return False
@@ -92,15 +98,15 @@ def _preload_intel_mkl():
       "libmkl_intel_ilp64.so*",
       "libmkl_rt.so*",
   )
+  dlopen = ctypes.CDLL(None).dlopen
+  dlopen.restype = ctypes.c_void_p
+  dlopen.argtypes = (ctypes.c_char_p, ctypes.c_int)
   loaded = False
   for pattern in patterns:
     for d in libdirs:
       for path in sorted(glob.glob(os.path.join(d, pattern))):
-        try:
-          ctypes.CDLL(path, mode=ctypes.RTLD_LOCAL)
+        if dlopen(os.fsencode(path), os.RTLD_LAZY | os.RTLD_LOCAL):
           loaded = True
-        except OSError:
-          pass
   return loaded
 
 

@@ -104,7 +104,7 @@ before-all = [
 ]
 environment = {PKG_CONFIG_PATH = "/opt/intel/oneapi/mkl/latest/lib/pkgconfig:/opt/intel/oneapi/compiler/latest/lib/pkgconfig:$PKG_CONFIG_PATH"}
 config-settings = {setup-args = "-Dmkl_backend=true"}
-repair-wheel-command = "LD_LIBRARY_PATH='/opt/intel/oneapi/mkl/latest/lib:/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/compiler/latest/lib' auditwheel repair --exclude 'libmkl_*' --exclude 'libiomp5*' -w {dest_dir} {wheel}"
+repair-wheel-command = "LD_LIBRARY_PATH='/opt/intel/oneapi/mkl/latest/lib:/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/compiler/latest/lib' auditwheel repair --exclude 'libmkl_*' --exclude 'libiomp5*' -w {dest_dir} {wheel} && bash /project/.github/scripts/add_mkl_rpath.sh {dest_dir}"
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
