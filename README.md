@@ -15,6 +15,21 @@ The full documentation is available [here](https://www.cvxgrp.org/scs/).
 pip install scs
 ```
 
+> [!IMPORTANT]
+> **On x86-64 Linux, install the MKL extra instead — recommended for nearly
+> everyone:**
+>
+> ```bash
+> pip install "scs[mkl]"
+> ```
+>
+> This enables the MKL Pardiso direct linear solver, which is faster than the
+> built-in solver for most problems — often dramatically so on larger ones —
+> and SCS uses it automatically when it is installed; no code or settings
+> changes are needed. The MKL runtime comes from Intel's official `mkl` wheels
+> (roughly an extra 240 MB on disk). A plain `pip install scs` works
+> everywhere and falls back to the built-in QDLDL solver.
+
 To install from source:
 ```bash
 git clone --recursive https://github.com/bodono/scs-python.git
@@ -42,20 +57,14 @@ Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
 
 The pre-built wheels (`pip install scs`) link OpenBLAS on Linux and Windows,
 and Apple Accelerate on macOS. On x86-64 Linux the MKL Pardiso backend is
-available as an extra:
-
-```bash
-pip install "scs[mkl]"
-```
-
-This pulls Intel's official `mkl` wheels, which provide the complete MKL
-runtime (SCS wheels deliberately do not vendor MKL: its CPU dispatch
-kernels are loaded via `dlopen`, invisible to wheel-repair tools, and an
-incompletely vendored MKL aborts the process at solve time). With the extra
-installed `AUTO` selects MKL; without it, `AUTO` falls back to QDLDL. The
-MKL backend is also available in source builds (e.g. conda environments
-providing MKL). When installing from source, additional backends can be
-enabled with build-time flags:
+available via `pip install "scs[mkl]"` (see [Installation](#installation) —
+recommended): Intel's official `mkl` wheels provide the complete MKL runtime,
+and `AUTO` selects MKL whenever it is importable. SCS wheels deliberately do
+not vendor MKL — its CPU dispatch kernels are loaded via `dlopen`, invisible
+to wheel-repair tools, and an incompletely vendored MKL aborts the process at
+solve time (cvxgrp/scs#423). The MKL backend is also available in source
+builds (e.g. conda environments providing MKL). When installing from source,
+additional backends can be enabled with build-time flags:
 
 ```bash
 # MKL Pardiso direct solver
