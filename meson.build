@@ -21,11 +21,24 @@ print(incdir)
 '''], check: true).stdout().strip()
 
 # Get BLAS
+#
+# link_mkl links every extension against MKL (conda/source builds, where the
+# environment provides a complete MKL). mkl_backend builds only the _scs_mkl
+# extension against MKL while every other extension uses the platform BLAS:
+# this is the wheel configuration -- MKL is not vendored into wheels because
+# its CPU dispatch kernels are loaded via dlopen, invisible to auditwheel
+# (cvxgrp/scs#423); instead the scs[mkl] extra supplies Intel's official
+# `mkl` wheels at runtime.
 blas_deps = []
+mkl_blas_deps = []
 mkl_pkg_name = ''
-if get_option('link_mkl')
+want_mkl = get_option('link_mkl') or get_option('mkl_backend')
+if want_mkl
     if get_option('use_blas64') and get_option('int32')
         error('MKL BLAS64 requires 64-bit SCS integers. Re-run Meson with -Dint32=false.')
+    endif
+    if get_option('mkl_backend') and not get_option('link_mkl') and get_option('use_blas64')
+        error('mkl_backend with use_blas64 is unsupported; use link_mkl for ILP64 MKL builds.')
     endif
     # Link against MKL component libraries. The integer width must match:
     #   use_blas64=false (default) -> LP64  (32-bit BLAS integers)
@@ -50,27 +63,34 @@ if get_option('link_mkl')
     if host_machine.system() == 'windows'
         # On Windows the conda MKL iomp .pc file has broken Cflags (raw path
         # without -I prefix). Use sequential MKL until Intel ships a fix.
-        blas_deps = [dependency(_mkl_seq, required : false)]
-        if blas_deps[0].found()
+        mkl_blas_deps = [dependency(_mkl_seq, required : false)]
+        if mkl_blas_deps[0].found()
             mkl_pkg_name = _mkl_seq
         endif
     else
-        blas_deps = [dependency(_mkl_iomp, required : false)]
-        if not blas_deps[0].found()
-            blas_deps = [dependency(_mkl_seq, required : false)]
-            if blas_deps[0].found()
+        mkl_blas_deps = [dependency(_mkl_iomp, required : false)]
+        if not mkl_blas_deps[0].found()
+            mkl_blas_deps = [dependency(_mkl_seq, required : false)]
+            if mkl_blas_deps[0].found()
                 mkl_pkg_name = _mkl_seq
             endif
         else
             mkl_pkg_name = _mkl_iomp
         endif
     endif
-    if not blas_deps[0].found()
-        blas_deps = [cc.find_library('mkl_rt', required : false)]
+    if not mkl_blas_deps[0].found()
+        mkl_blas_deps = [cc.find_library('mkl_rt', required : false)]
     endif
-    if not blas_deps[0].found()
-        blas_deps = [dependency('mkl-sdl', required : false)]
+    if not mkl_blas_deps[0].found()
+        mkl_blas_deps = [dependency('mkl-sdl', required : false)]
     endif
+    if not mkl_blas_deps[0].found() and not get_option('sdist_mode')
+        error('MKL was requested (link_mkl/mkl_backend) but was not found.')
+    endif
+endif
+
+if get_option('link_mkl')
+    blas_deps = mkl_blas_deps
 else
     if host_machine.system() == 'darwin'
         blas_deps = [dependency('Accelerate')]
@@ -131,11 +151,11 @@ if get_option('native_arch')
   endif
 endif
 
-_deps = [blas_deps]
-_deps += dependency('threads')
+_base_deps = [dependency('threads')]
 if get_option('use_openmp')
-  _deps += dependency('openmp')
+  _base_deps += dependency('openmp')
 endif
+_deps = [blas_deps] + _base_deps
 
 is_linux = host_machine.system() == 'linux'
 if is_linux
@@ -325,7 +345,7 @@ if get_option('use_gpu')
   )
 endif
 
-if get_option('link_mkl')
+if want_mkl
   # The MKL backend calls MKL_Set_Interface_Layer() for a runtime interface
   # check. This symbol is only exported by mkl_rt (the single dynamic library),
   # not by component libraries (mkl_intel_lp64 etc.) that pkg-config may link.
@@ -336,15 +356,15 @@ if get_option('link_mkl')
   endif
   if not mkl_rt_dep.found() and mkl_pkg_name != ''
     # Search next to the pkg-config-provided MKL component libraries.
-    _mkl_libdir = blas_deps[0].get_variable(pkgconfig: 'libdir', default_value: '')
+    _mkl_libdir = mkl_blas_deps[0].get_variable(pkgconfig: 'libdir', default_value: '')
     if _mkl_libdir != ''
       mkl_rt_dep = cc.find_library('mkl_rt', dirs: [_mkl_libdir], required : false)
     endif
   endif
   if not mkl_rt_dep.found()
-    error('link_mkl=true requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
+    error('link_mkl/mkl_backend requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
   endif
-  _mkl_deps = _deps + [mkl_rt_dep]
+  _mkl_deps = [mkl_blas_deps] + _base_deps + [mkl_rt_dep]
   py.extension_module(
     '_scs_mkl',
     'scs/scspy.c',

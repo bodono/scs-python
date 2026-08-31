@@ -41,9 +41,21 @@ Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
 `CPU_DENSE`, `GPU_INDIRECT`, `CUDSS`.
 
 The pre-built wheels (`pip install scs`) link OpenBLAS on Linux and Windows,
-and Apple Accelerate on macOS; the MKL backend is available in source builds
-(e.g. in conda environments providing MKL). When installing from source,
-additional backends can be enabled with build-time flags:
+and Apple Accelerate on macOS. On x86-64 Linux the MKL Pardiso backend is
+available as an extra:
+
+```bash
+pip install "scs[mkl]"
+```
+
+This pulls Intel's official `mkl` wheels, which provide the complete MKL
+runtime (SCS wheels deliberately do not vendor MKL: its CPU dispatch
+kernels are loaded via `dlopen`, invisible to wheel-repair tools, and an
+incompletely vendored MKL aborts the process at solve time). With the extra
+installed `AUTO` selects MKL; without it, `AUTO` falls back to QDLDL. The
+MKL backend is also available in source builds (e.g. conda environments
+providing MKL). When installing from source, additional backends can be
+enabled with build-time flags:
 
 ```bash
 # MKL Pardiso direct solver

@@ -282,13 +282,25 @@ jobs:
   wheel_smoke_clean_env:
     # Regression gate for #423: install the built manylinux x86_64 wheel in a
     # pristine container (no BLAS, no LD_LIBRARY_PATH, no site packages) and
-    # run a real solve on every backend the wheel ships. The 3.3.0 wheels
-    # passed cibuildwheel's in-container tests because the build container's
+    # run a real solve on every backend. The 3.3.0 wheels passed
+    # cibuildwheel's in-container tests because the build container's
     # environment satisfied MKL's dlopen'd dispatch kernels; only a clean
-    # environment exercises what the wheel actually vendors.
-    name: Clean-container wheel smoke test
+    # environment exercises what the wheel actually ships.
+    #
+    # Two variants:
+    #   default -- plain `pip install scs`: AUTO must resolve to QDLDL and the
+    #     unvendored _scs_mkl must fail with a clean ImportError, never crash.
+    #   mkl -- `pip install scs[mkl]`: MKL comes from Intel's official wheels;
+    #     AUTO must resolve to MKL and the mkl backend must solve. This also
+    #     enforces that the oneMKL generation the wheel links matches the
+    #     pinned `mkl` PyPI dependency range.
+    name: Clean-container wheel smoke test (${{ matrix.variant }})
     needs: build_wheels
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [default, mkl]
     steps:
       - uses: actions/download-artifact@v7
         with:
@@ -296,13 +308,15 @@ jobs:
           path: wheelhouse
           merge-multiple: true
 
-      - name: Solve in pristine python:3.12-slim
+      - name: Solve in pristine python:3.12-slim (${{ matrix.variant }})
         run: |
           cat > smoke.py <<'EOF'
-          import importlib.util, numpy as np, scipy.sparse as sp, scs
-          print("scs", scs.__version__)
+          import sys
+          import numpy as np, scipy.sparse as sp, scs
+          mode = sys.argv[1]
+          print("scs", scs.__version__, "mode", mode)
           # LP block plus a small PSD cone: the PSD projection goes through
-          # vendored BLAS/LAPACK, which is exactly what #423 failed to ship.
+          # the wheel's BLAS/LAPACK, the exact path #423 failed to ship.
           data = {
               "A": sp.csc_matrix(np.vstack([np.array([[1.0, 1.0], [1.0, -1.0], [0.0, 1.0]]),
                                             np.array([[-1.0, 0.0], [0.0, 0.0], [0.0, -1.0]])])),
@@ -310,21 +324,37 @@ jobs:
               "c": np.array([1.0, 1.0]),
           }
           cone = {"z": 1, "l": 2, "s": [2]}
-          solvers = ["auto"] + [name for name, mod in
-                                [("qdldl", "_scs_direct"),
-                                 ("cpu_indirect", "_scs_indirect"),
-                                 ("mkl", "_scs_mkl")]
-                                if importlib.util.find_spec("scs." + mod)]
-          assert "qdldl" in solvers
+          sol = scs.SCS(data, cone, verbose=True).solve()
+          assert sol["info"]["status"] == "solved", sol["info"]["status"]
+          auto_mod = scs._resolve_auto().__name__
+          print("auto resolves to", auto_mod)
+          solvers = ["qdldl", "cpu_indirect"]
+          if mode == "mkl":
+              assert auto_mod.endswith("_scs_mkl"), auto_mod
+              solvers.append("mkl")
+          else:
+              assert auto_mod.endswith("_scs_direct"), auto_mod
+              # The wheel ships _scs_mkl but its MKL comes from scs[mkl];
+              # without the extra it must fail cleanly, never crash.
+              try:
+                  scs.SCS(data, cone, linear_solver="mkl")
+                  raise SystemExit("unvendored _scs_mkl imported without scs[mkl]")
+              except ImportError:
+                  print("mkl backend unavailable without scs[mkl], as expected")
           for name in solvers:
               sol = scs.SCS(data, cone, verbose=True, linear_solver=name).solve()
               assert sol["info"]["status"] == "solved", (name, sol["info"]["status"])
               print(name, "ok:", sol["info"].get("lin_sys_solver", "n/a"))
           EOF
-          docker run --rm -v "$PWD:/work" -w /tmp python:3.12-slim bash -ec '
+          docker run --rm -v "$PWD:/work" -w /tmp -e VARIANT=${{ matrix.variant }} python:3.12-slim bash -ec '
             pip install --quiet numpy scipy
-            pip install --no-index --find-links /work/wheelhouse scs
-            python /work/smoke.py'
+            WHL=$(ls /work/wheelhouse/scs-*manylinux*x86_64.whl)
+            if [ "$VARIANT" = mkl ]; then
+              pip install --quiet "${WHL}[mkl]"
+            else
+              pip install --quiet "$WHL"
+            fi
+            python /work/smoke.py "$VARIANT"'
 
   build_sdist:
     name: Build source distribution
