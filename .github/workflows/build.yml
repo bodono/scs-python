@@ -348,7 +348,7 @@ jobs:
           EOF
           docker run --rm -v "$PWD:/work" -w /tmp -e VARIANT=${{ matrix.variant }} python:3.12-slim bash -ec '
             pip install --quiet numpy scipy
-            WHL=$(ls /work/wheelhouse/scs-*manylinux*x86_64.whl)
+            WHL=$(ls /work/wheelhouse/scs-*cp312-cp312-manylinux*x86_64.whl)
             if [ "$VARIANT" = mkl ]; then
               pip install --quiet "${WHL}[mkl]"
             else
