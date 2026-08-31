@@ -27,8 +27,14 @@ pip install scs
 > built-in solver for most problems — often dramatically so on larger ones —
 > and SCS uses it automatically when it is installed; no code or settings
 > changes are needed. The MKL runtime comes from Intel's official `mkl` wheels
-> (roughly an extra 240 MB on disk). A plain `pip install scs` works
-> everywhere and falls back to the built-in QDLDL solver.
+> (roughly a 300 MB download, about 1 GB on disk). A plain `pip install scs`
+> works everywhere and falls back to the built-in QDLDL solver.
+>
+> The extra is supported on the prebuilt manylinux x86-64 wheels (glibc
+> 2.28+) in standard prefix layouts (venv, conda, system, user site). It does
+> not work on musllinux/Alpine (Intel publishes no musl wheels), with
+> `pip install --target`, or with source/sdist builds (build against your own
+> MKL with `-Dlink_mkl=true` instead).
 
 To install from source:
 ```bash
@@ -84,7 +90,7 @@ pip install . -Csetup-args=-Duse_spectral_cones=true
 ```
 
 Notes:
-- Linux x86_64 wheels are built and tested against threaded MKL, and CI asserts a `libiomp5` dependency on the packaged `_scs_mkl` extension. Windows currently falls back to sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
+- Linux x86_64 wheels ship a `_scs_mkl` extension linked against threaded MKL (CI asserts its exact MKL/`libiomp5` linkage); the runtime comes from `scs[mkl]`. Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
 - `BLAS64` is a general SCS build mode for ILP64 BLAS/LAPACK libraries, not an MKL-only feature.
 - For the MKL Pardiso backend specifically, `BLAS64` must be paired with 64-bit SCS integers (`DLONG` / `int32=false`), and SCS now fails early if another library in the process has already fixed MKL to an incompatible LP64/ILP64 interface layer.
 

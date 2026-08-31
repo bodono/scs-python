@@ -279,6 +279,62 @@ jobs:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
+  wheel_audit:
+    # Static gate for #423-class defects across EVERY Linux wheel (all
+    # pythons, x86_64 + aarch64 + musllinux): no .so may carry an absolute
+    # RPATH/RUNPATH entry (a build-container path in a shipped wheel lets a
+    # matching system MKL shadow the scs[mkl] runtime), and _scs_mkl's
+    # MKL-related NEEDED set must be exactly what the mkl>=2026,<2027 pin
+    # provides (.so.3 ABI).
+    name: Audit wheel ELF metadata
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: cibw-wheels-ubuntu-*
+          path: wheelhouse
+          merge-multiple: true
+
+      - name: Audit RPATH and NEEDED across all Linux wheels
+        run: |
+          cat > audit.py <<'EOF'
+          import glob, os, re, subprocess, sys, tempfile, zipfile
+          bad = []
+          whls = sorted(glob.glob("wheelhouse/*.whl"))
+          assert whls, "no wheels downloaded"
+          nmkl = 0
+          for whl in whls:
+              with tempfile.TemporaryDirectory() as td:
+                  with zipfile.ZipFile(whl) as z:
+                      z.extractall(td)
+                  for so in glob.glob(os.path.join(td, "**", "*.so*"), recursive=True):
+                      out = subprocess.run(["readelf", "-d", so],
+                                           capture_output=True, text=True).stdout
+                      rel = os.path.relpath(so, td)
+                      for m in re.finditer(r"\((?:RPATH|RUNPATH)\)[^\[]*\[([^\]]*)\]", out):
+                          for entry in m.group(1).split(":"):
+                              if entry and not entry.startswith("$ORIGIN"):
+                                  bad.append((os.path.basename(whl), rel,
+                                              f"non-relative rpath entry '{entry}'"))
+                      if "_scs_mkl" in os.path.basename(so):
+                          nmkl += 1
+                          needed = re.findall(r"\(NEEDED\)[^\[]*\[([^\]]+)\]", out)
+                          mkl = sorted(n for n in needed
+                                       if n.startswith(("libmkl", "libiomp")))
+                          want = ["libiomp5.so", "libmkl_core.so.3",
+                                  "libmkl_intel_lp64.so.3",
+                                  "libmkl_intel_thread.so.3", "libmkl_rt.so.3"]
+                          if mkl != want:
+                              bad.append((os.path.basename(whl), rel,
+                                          f"NEEDED drift: {' '.join(mkl)}"))
+          print(f"audited {len(whls)} wheels, {nmkl} _scs_mkl extensions")
+          for whl, so, msg in bad:
+              print(f"BAD: {whl} :: {so} :: {msg}")
+          sys.exit(1 if bad else 0)
+          EOF
+          python3 audit.py
+
   wheel_smoke_clean_env:
     # Regression gate for #423: install the built manylinux x86_64 wheel in a
     # pristine container (no BLAS, no LD_LIBRARY_PATH, no site packages) and
@@ -287,20 +343,23 @@ jobs:
     # environment satisfied MKL's dlopen'd dispatch kernels; only a clean
     # environment exercises what the wheel actually ships.
     #
-    # Two variants:
+    # Variants:
     #   default -- plain `pip install scs`: AUTO must resolve to QDLDL and the
     #     unvendored _scs_mkl must fail with a clean ImportError, never crash.
     #   mkl -- `pip install scs[mkl]`: MKL comes from Intel's official wheels;
     #     AUTO must resolve to MKL and the mkl backend must solve. This also
     #     enforces that the oneMKL generation the wheel links matches the
     #     pinned `mkl` PyPI dependency range.
-    name: Clean-container wheel smoke test (${{ matrix.variant }})
+    # Pythons: oldest (3.9), newest stable (3.14), free-threaded (3.14t via
+    # uv, python-build-standalone). Remaining ABIs are covered by wheel_audit.
+    name: Clean-container wheel smoke test (${{ matrix.variant }}, ${{ matrix.python }})
     needs: build_wheels
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         variant: [default, mkl]
+        python: ["3.9", "3.14", "3.14t"]
     steps:
       - uses: actions/download-artifact@v7
         with:
@@ -308,13 +367,13 @@ jobs:
           path: wheelhouse
           merge-multiple: true
 
-      - name: Solve in pristine python:3.12-slim (${{ matrix.variant }})
+      - name: Solve in pristine container (${{ matrix.variant }}, ${{ matrix.python }})
         run: |
           cat > smoke.py <<'EOF'
           import importlib, os, sys, traceback
           import numpy as np, scipy.sparse as sp, scs
           mode = sys.argv[1]
-          print("scs", scs.__version__, "mode", mode)
+          print("scs", scs.__version__, "mode", mode, "python", sys.version)
           # LP block plus a small PSD cone: the PSD projection goes through
           # the wheel's BLAS/LAPACK, the exact path #423 failed to ship.
           data = {
@@ -325,21 +384,18 @@ jobs:
           }
           cone = {"z": 1, "l": 2, "s": [2]}
 
-          # Exercise the scs[mkl] loader shim explicitly, with diagnostics.
+          # Exercise the scs[mkl] loader path explicitly, with diagnostics.
           mkl_err = None
           try:
               scs._load_module("_scs_mkl")
           except ImportError as e:
               mkl_err = e
-              traceback.print_exc()
-              libdir = os.path.join(sys.prefix, "lib")
-              libs = sorted(f for f in os.listdir(libdir) if f.startswith(("libmkl", "libiomp")))
-              print(libdir, "->", libs[:8], "..." if len(libs) > 8 else "")
-              try:
-                  import importlib.metadata as md
-                  print("mkl dist:", md.version("mkl"), "intel-openmp dist:", md.version("intel-openmp"))
-              except Exception as e2:
-                  print("intel dists:", e2)
+              if mode == "mkl":
+                  traceback.print_exc()
+                  libdir = os.path.join(sys.prefix, "lib")
+                  libs = sorted(f for f in os.listdir(libdir)
+                                if f.startswith(("libmkl", "libiomp"))) if os.path.isdir(libdir) else []
+                  print(libdir, "->", libs[:8], "..." if len(libs) > 8 else "")
           if mode == "mkl":
               assert mkl_err is None, f"scs[mkl] installed but _scs_mkl failed: {mkl_err}"
           else:
@@ -363,16 +419,32 @@ jobs:
               print(name, "ok:", sol["info"].get("lin_sys_solver", "n/a"))
           print("ALL OK:", mode)
           EOF
-          docker run --rm -v "$PWD:/work" -w /tmp -e VARIANT=${{ matrix.variant }} python:3.12-slim bash -ec '
-            pip install --quiet numpy scipy
-            WHL=$(ls /work/wheelhouse/scs-*cp312-cp312-manylinux*x86_64.whl)
-            if [ "$VARIANT" = mkl ]; then
-              pip install "${WHL}[mkl]"
+          case "${{ matrix.python }}" in
+            3.9)   IMAGE=python:3.9-slim;  TAG=cp39-cp39 ;;
+            3.14)  IMAGE=python:3.14-slim; TAG=cp314-cp314 ;;
+            3.14t) IMAGE=ghcr.io/astral-sh/uv:debian-slim; TAG=cp314-cp314t ;;
+          esac
+          docker run --rm -v "$PWD:/work" -w /tmp \
+            -e VARIANT=${{ matrix.variant }} -e PY=${{ matrix.python }} -e TAG=$TAG \
+            "$IMAGE" bash -ec '
+            if command -v uv >/dev/null; then
+              uv python install "$PY"
+              uv venv -p "$PY" /venv
+              PIP="uv pip install --python /venv/bin/python"
+              PYBIN=/venv/bin/python
             else
-              pip install "$WHL"
+              PIP="pip install --quiet"
+              PYBIN=python
             fi
-            pip list | grep -i -E "scs|mkl|openmp" || true
-            python /work/smoke.py "$VARIANT"'
+            $PIP numpy scipy
+            WHL=$(ls /work/wheelhouse/scs-*-${TAG}-manylinux*x86_64.whl)
+            if [ "$VARIANT" = mkl ]; then
+              $PIP "${WHL}[mkl]"
+            else
+              $PIP "$WHL"
+            fi
+            $PYBIN -m pip list 2>/dev/null | grep -i -E "scs|mkl|openmp" || true
+            $PYBIN /work/smoke.py "$VARIANT"'
 
   build_sdist:
     name: Build source distribution
@@ -391,9 +463,10 @@ jobs:
           path: dist/*.tar.gz
 
   upload_pypi:
-    # wheel_smoke_clean_env gates publishing: wheels that only work in the
-    # build container must never reach PyPI again (see #423).
-    needs: [build_wheels, build_sdist, wheel_smoke_clean_env]
+    # The clean-container smoke tests and the ELF audit gate publishing:
+    # wheels that only work in the build container, carry build-machine
+    # paths, or drift their MKL linkage must never reach PyPI (see #423).
+    needs: [build_wheels, build_sdist, wheel_smoke_clean_env, wheel_audit]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
