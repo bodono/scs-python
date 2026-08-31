@@ -325,19 +325,23 @@ jobs:
           WANT_MKL_NEEDED = ["libiomp5.so", "libmkl_core.so.3",
                              "libmkl_intel_lp64.so.3",
                              "libmkl_intel_thread.so.3", "libmkl_rt.so.3"]
+          # Exact per-platform python/ABI tag coverage: deriving the
+          # expected count from whatever happened to download would let a
+          # single surviving wheel per platform pass while two dozen were
+          # missing. Update this set when python versions are added.
+          EXPECTED_TAGS = {"cp39", "cp310", "cp311", "cp312", "cp313",
+                           "cp314", "cp314t", "cp315", "cp315t"}
           nmkl = 0
-          group_counts = {}
+          group_tags = {plat: set() for plat in EXPECTED_EXTS}
           for w in whls:
-              group_counts[platform_of(w)] = group_counts.get(platform_of(w), 0) + 1
-          for plat in EXPECTED_EXTS:
-              if group_counts.get(plat, 0) == 0:
+              tag = os.path.basename(w).split("-")[3]
+              group_tags[platform_of(w)].add(tag)
+          for plat, tags in group_tags.items():
+              if tags != EXPECTED_TAGS:
                   bad.append(("(all)", "-",
-                              f"no wheels downloaded for platform {plat}"))
-          expected_nmkl = group_counts.get("manylinux_x86_64", 0)
-          if expected_nmkl == 0:
-              bad.append(("(all)", "-",
-                          "no manylinux x86_64 wheels: the MKL audit would "
-                          "be vacuous"))
+                              f"{plat} tag set {sorted(tags)} != expected "
+                              f"{sorted(EXPECTED_TAGS)}"))
+          expected_nmkl = len(EXPECTED_TAGS)
           for whl in whls:
               plat = platform_of(whl)
               with tempfile.TemporaryDirectory() as td:
