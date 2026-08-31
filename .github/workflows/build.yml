@@ -311,7 +311,7 @@ jobs:
       - name: Solve in pristine python:3.12-slim (${{ matrix.variant }})
         run: |
           cat > smoke.py <<'EOF'
-          import sys
+          import importlib, os, sys, traceback
           import numpy as np, scipy.sparse as sp, scs
           mode = sys.argv[1]
           print("scs", scs.__version__, "mode", mode)
@@ -324,36 +324,54 @@ jobs:
               "c": np.array([1.0, 1.0]),
           }
           cone = {"z": 1, "l": 2, "s": [2]}
-          sol = scs.SCS(data, cone, verbose=True).solve()
-          assert sol["info"]["status"] == "solved", sol["info"]["status"]
-          auto_mod = scs._resolve_auto().__name__
-          print("auto resolves to", auto_mod)
-          solvers = ["qdldl", "cpu_indirect"]
+
+          # Exercise the scs[mkl] loader shim explicitly, with diagnostics.
+          mkl_err = None
+          try:
+              scs._load_module("_scs_mkl")
+          except ImportError as e:
+              mkl_err = e
+              traceback.print_exc()
+              libdir = os.path.join(sys.prefix, "lib")
+              libs = sorted(f for f in os.listdir(libdir) if f.startswith(("libmkl", "libiomp")))
+              print(libdir, "->", libs[:8], "..." if len(libs) > 8 else "")
+              try:
+                  import importlib.metadata as md
+                  print("mkl dist:", md.version("mkl"), "intel-openmp dist:", md.version("intel-openmp"))
+              except Exception as e2:
+                  print("intel dists:", e2)
           if mode == "mkl":
-              assert auto_mod.endswith("_scs_mkl"), auto_mod
-              solvers.append("mkl")
+              assert mkl_err is None, f"scs[mkl] installed but _scs_mkl failed: {mkl_err}"
           else:
-              assert auto_mod.endswith("_scs_direct"), auto_mod
               # The wheel ships _scs_mkl but its MKL comes from scs[mkl];
               # without the extra it must fail cleanly, never crash.
-              try:
-                  scs.SCS(data, cone, linear_solver="mkl")
-                  raise SystemExit("unvendored _scs_mkl imported without scs[mkl]")
-              except ImportError:
-                  print("mkl backend unavailable without scs[mkl], as expected")
-          for name in solvers:
-              sol = scs.SCS(data, cone, verbose=True, linear_solver=name).solve()
+              assert mkl_err is not None, "unvendored _scs_mkl imported without scs[mkl]"
+              print("mkl backend unavailable without scs[mkl], as expected")
+
+          # The extensions share the PyModuleDef name "_scs" (single-phase
+          # init), so identify the AUTO backend by file, not __name__.
+          auto_file = os.path.basename(getattr(scs._resolve_auto(), "__file__", ""))
+          print("auto resolves to", auto_file)
+          want = "_scs_mkl" if mode == "mkl" else "_scs_direct"
+          assert auto_file.startswith(want), (auto_file, want)
+
+          solvers = ["qdldl", "cpu_indirect"] + (["mkl"] if mode == "mkl" else [])
+          for name in solvers + ["auto"]:
+              kw = {} if name == "auto" else {"linear_solver": name}
+              sol = scs.SCS(data, cone, verbose=True, **kw).solve()
               assert sol["info"]["status"] == "solved", (name, sol["info"]["status"])
               print(name, "ok:", sol["info"].get("lin_sys_solver", "n/a"))
+          print("ALL OK:", mode)
           EOF
           docker run --rm -v "$PWD:/work" -w /tmp -e VARIANT=${{ matrix.variant }} python:3.12-slim bash -ec '
             pip install --quiet numpy scipy
             WHL=$(ls /work/wheelhouse/scs-*cp312-cp312-manylinux*x86_64.whl)
             if [ "$VARIANT" = mkl ]; then
-              pip install --quiet "${WHL}[mkl]"
+              pip install "${WHL}[mkl]"
             else
-              pip install --quiet "$WHL"
+              pip install "$WHL"
             fi
+            pip list | grep -i -E "scs|mkl|openmp" || true
             python /work/smoke.py "$VARIANT"'
 
   build_sdist:
