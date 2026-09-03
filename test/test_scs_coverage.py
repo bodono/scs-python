@@ -2389,16 +2389,15 @@ def test_posinf_setting_rejected(field):
                 **{field: float("inf")})
 
 
-# +inf on eps_* and time_limit_secs is semantically meaningful (disables
-# that stopping criterion / time limit) and must still be accepted.
+# +inf on eps_* and time_limit_secs is rejected like every other
+# non-finite setting (the core validates with !isfinite; the wrapper mirrors
+# it with setting-specific messages). Use time_limit_secs=0 to disable the
+# limit and a large finite eps to disable a criterion.
 @pytest.mark.parametrize(
     "field", ["eps_abs", "eps_rel", "eps_infeas", "time_limit_secs"]
 )
-def test_posinf_setting_rejected(field):
-    # Upstream scs validates these fields with !isfinite (finite nonnegative
-    # required); inf is not a supported "no limit" sentinel. Use 0 to disable
-    # time_limit_secs / an eps component instead.
-    with pytest.raises(ValueError):
+def test_posinf_tolerance_rejected(field):
+    with pytest.raises(ValueError, match=field):
         scs.SCS(_make_data(), _CONE, verbose=False, max_iters=50,
                 **{field: float("inf")})
 

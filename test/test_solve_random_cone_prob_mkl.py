@@ -44,6 +44,7 @@ def test_solve_feasible():
     data, p_star = tools.gen_feasible(K, n=m // 3, density=0.1, rng=rng)
     solver = scs.SCS(data, K, linear_solver=scs.LinearSolver.MKL, **params)
     sol = solver.solve()
+    assert sol["info"]["lin_sys_solver"] == "sparse-direct-mkl-pardiso"
     x = sol["x"]
     y = sol["y"]
     s = sol["s"]

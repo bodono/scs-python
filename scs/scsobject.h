@@ -827,6 +827,9 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("acceleration_interval must be positive");
   }
+  /* TODO(repin): the core's sign contract (negative = pinned absolute
+   * value, cvxgrp/scs#421) is not in the pinned core yet; drop `< 0`
+   * with the submodule bump. */
   if (!isfinite((double)stgs->acceleration_regularization) ||
       stgs->acceleration_regularization < 0) {
     free_py_scs_data(d, k, stgs, &ps);
@@ -843,24 +846,24 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("scale must be a positive finite number");
   }
-  /* time_limit_secs: 0 disables the limit, +inf is equivalent, both allowed. */
-  if (isnan((double)stgs->time_limit_secs) || stgs->time_limit_secs < 0) {
+  /* Match the core (!isfinite): +inf is rejected; 0 disables the limit. */
+  if (!isfinite((double)stgs->time_limit_secs) || stgs->time_limit_secs < 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("time_limit_secs must be nonnegative");
+    return finish_with_error(
+        "time_limit_secs must be a nonnegative finite number (0 disables)");
   }
-  /* eps_*: +inf is allowed (effectively disables that stopping criterion);
-   * NaN is not — it would make every tolerance comparison false. */
-  if (isnan((double)stgs->eps_abs) || stgs->eps_abs < 0) {
+  if (!isfinite((double)stgs->eps_abs) || stgs->eps_abs < 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_abs must be nonnegative");
+    return finish_with_error("eps_abs must be a nonnegative finite number");
   }
-  if (isnan((double)stgs->eps_rel) || stgs->eps_rel < 0) {
+  if (!isfinite((double)stgs->eps_rel) || stgs->eps_rel < 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_rel must be nonnegative");
+    return finish_with_error("eps_rel must be a nonnegative finite number");
   }
-  if (isnan((double)stgs->eps_infeas) || stgs->eps_infeas < 0) {
+  if (!isfinite((double)stgs->eps_infeas) || stgs->eps_infeas < 0) {
     free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_infeas must be nonnegative");
+    return finish_with_error(
+        "eps_infeas must be a nonnegative finite number");
   }
   if (!isfinite((double)stgs->alpha) || stgs->alpha <= 0 || stgs->alpha >= 2) {
     free_py_scs_data(d, k, stgs, &ps);
@@ -1038,21 +1041,21 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
 #ifdef DLONG
 #ifdef SFLOAT
   char *outarg_string = "{s:L,s:L,s:L,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
-                        "s:f,s:f,s:f,s:f,s:f,s:L,s:L,s:s}";
+                        "s:f,s:f,s:f,s:f,s:f,s:L,s:L,s:s,s:s}";
   char *aa_stats_string = "{s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:f,s:f}";
 #else
   char *outarg_string = "{s:L,s:L,s:L,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
-                        "s:d,s:d,s:d,s:d,s:d,s:L,s:L,s:s}";
+                        "s:d,s:d,s:d,s:d,s:d,s:L,s:L,s:s,s:s}";
   char *aa_stats_string = "{s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:L,s:d,s:d}";
 #endif
 #else
 #ifdef SFLOAT
   char *outarg_string = "{s:i,s:i,s:i,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,s:f,"
-                        "s:f,s:f,s:f,s:f,s:f,s:i,s:i,s:s}";
+                        "s:f,s:f,s:f,s:f,s:f,s:i,s:i,s:s,s:s}";
   char *aa_stats_string = "{s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:f,s:f}";
 #else
   char *outarg_string = "{s:i,s:i,s:i,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,s:d,"
-                        "s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:s}";
+                        "s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:s,s:s}";
   char *aa_stats_string = "{s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:d,s:d}";
 #endif
 #endif
@@ -1081,7 +1084,8 @@ static PyObject *SCS_solve(SCS *self, PyObject *args) {
       "accel_time", (scs_float)(info.accel_time),
       "rejected_accel_steps", (scs_int)info.rejected_accel_steps,
       "accepted_accel_steps", (scs_int)info.accepted_accel_steps,
-      "status", info.status);
+      "status", info.status,
+      "lin_sys_solver", info.lin_sys_solver);
   aa_stats_dict = Py_BuildValue(
       aa_stats_string,
       "iter", (scs_int)info.aa_stats.iter,
