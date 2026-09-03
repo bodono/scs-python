@@ -15,26 +15,14 @@ The full documentation is available [here](https://www.cvxgrp.org/scs/).
 pip install scs
 ```
 
-> [!IMPORTANT]
-> **On x86-64 Linux, install the MKL extra instead — recommended for nearly
-> everyone:**
->
-> ```bash
-> pip install "scs[mkl]"
-> ```
->
-> This enables the MKL Pardiso direct linear solver, which is faster than the
-> built-in solver for most problems — often dramatically so on larger ones —
-> and SCS uses it automatically when it is installed; no code or settings
-> changes are needed. The MKL runtime comes from Intel's official `mkl` wheels
-> (roughly a 300 MB download, about 1 GB on disk). A plain `pip install scs`
-> works everywhere and falls back to the built-in QDLDL solver.
->
-> The extra is supported on the prebuilt manylinux x86-64 wheels (glibc
-> 2.28+) in standard prefix layouts (venv, conda, system, user site). It does
-> not work on musllinux/Alpine (Intel publishes no musl wheels), with
-> `pip install --target`, or with source/sdist builds (build against your own
-> MKL with `-Dlink_mkl=true` instead).
+On x86-64 Linux the wheels include the MKL Pardiso direct linear solver,
+linked statically into the `_scs_mkl` extension, and use it automatically:
+it is faster than the built-in QDLDL solver for most problems, often
+dramatically so on larger ones, and nothing extra needs to be installed. The
+MKL backend is single-threaded (a bundled OpenMP runtime can abort a process
+that already has one, and SCS's per-iteration work does not parallelize
+well); Intel's license notice ships in the wheel as `LICENSE-INTEL-MKL.txt`.
+Every other wheel falls back to QDLDL.
 
 To install from source:
 ```bash
@@ -62,14 +50,13 @@ Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
 `CPU_DENSE`, `GPU_INDIRECT`, `CUDSS`.
 
 The pre-built wheels (`pip install scs`) link OpenBLAS on Linux and Windows,
-and Apple Accelerate on macOS. On x86-64 Linux the MKL Pardiso backend is
-available via `pip install "scs[mkl]"` (see [Installation](#installation) —
-recommended): Intel's official `mkl` wheels provide the complete MKL runtime,
-and `AUTO` selects MKL whenever it is importable. SCS wheels deliberately do
-not vendor MKL — its CPU dispatch kernels are loaded via `dlopen`, invisible
-to wheel-repair tools, and an incompletely vendored MKL aborts the process at
-solve time (cvxgrp/scs#423). The MKL backend is also available in source
-builds (e.g. conda environments providing MKL). When installing from source,
+and Apple Accelerate on macOS. The x86-64 Linux wheels also ship the MKL
+Pardiso backend with MKL linked statically into `_scs_mkl`, and `AUTO`
+selects it; MKL is deliberately not vendored as shared libraries, whose
+dlopen'd CPU dispatch kernels are invisible to wheel-repair tools and whose
+absence aborts the process at solve time (cvxgrp/scs#423). The MKL backend
+is also available in source builds (e.g. conda environments providing MKL).
+When installing from source,
 additional backends can be enabled with build-time flags:
 
 ```bash
@@ -90,7 +77,7 @@ pip install . -Csetup-args=-Duse_spectral_cones=true
 ```
 
 Notes:
-- Linux x86_64 wheels ship a `_scs_mkl` extension linked against threaded MKL (CI asserts its exact MKL/`libiomp5` linkage); the runtime comes from `scs[mkl]`. Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
+- Linux x86_64 wheels ship a `_scs_mkl` extension with sequential MKL linked statically (CI asserts that no wheel carries a dynamic MKL dependency). Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
 - `BLAS64` is a general SCS build mode for ILP64 BLAS/LAPACK libraries, not an MKL-only feature.
 - For the MKL Pardiso backend specifically, `BLAS64` must be paired with 64-bit SCS integers (`DLONG` / `int32=false`), and SCS now fails early if another library in the process has already fixed MKL to an incompatible LP64/ILP64 interface layer.
 

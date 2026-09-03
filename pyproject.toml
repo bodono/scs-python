@@ -38,19 +38,6 @@ dependencies = [
    'scipy',
 ]
 
-[project.optional-dependencies]
-# MKL Pardiso backend for the pre-built Linux x86-64 wheels. The wheels link
-# _scs_mkl against MKL but do not vendor it (MKL's dlopen'd CPU dispatch
-# kernels are invisible to wheel-repair tools; see cvxgrp/scs#423): Intel's
-# official wheels provide the complete library set at runtime. The version
-# range must match the oneMKL generation the wheels are built against
-# (currently the .so.3 ABI, oneMKL 2026); the clean-container CI smoke test
-# enforces the pairing. Without this extra, AUTO falls back to QDLDL.
-mkl = [
-  'mkl >=2026, <2027 ; platform_system == "Linux" and platform_machine == "x86_64"',
-  'intel-openmp >=2026, <2027 ; platform_system == "Linux" and platform_machine == "x86_64"',
-]
-
 [tool.cibuildwheel]
 skip = [
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
@@ -79,32 +66,26 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
 # Openblas installation for 3 different linux images
 
-# x86_64 Linux: default backends (_scs_direct/_scs_indirect) link vendored
-# OpenBLAS; _scs_mkl links MKL *without vendoring it* (mkl_backend mode).
-# The 3.3.0 wheels vendored MKL and shipped it incomplete -- its dlopen'd
-# CPU dispatch kernels are invisible to auditwheel, and every solve aborted
-# on machines without MKL on the loader path (#423). At runtime MKL now
-# comes from Intel's official wheels via the scs[mkl] extra instead.
+# x86_64 Linux: the default backends link vendored OpenBLAS; _scs_mkl links
+# MKL *statically* (Intel's mkl-static archives, sequential, symbols hidden)
+# so the wheel is self-contained. The 3.3.0 wheels vendored dynamic MKL and
+# shipped it incomplete -- its dlopen'd CPU dispatch kernels are invisible to
+# auditwheel -- so every solve aborted on machines without MKL on the loader
+# path (#423). Static linking has no dispatch libraries to lose.
 #
-# Two hard rules, both learned from #423:
-#   1. No LD_LIBRARY_PATH in `environment`: the wheel tests must run exactly
-#      as clean as a user's machine. The oneAPI paths are scoped to the
-#      repair command only, where auditwheel needs to *find* the MKL libs it
-#      is told to exclude.
-#   2. upload_pypi is gated on the wheel_smoke_clean_env job, which installs
-#      the wheel in a pristine container with and without scs[mkl].
+# Two rules, both learned from #423: nothing in `environment` may point the
+# loader at build-machine libraries (the wheel tests must run exactly as
+# clean as a user's machine), and upload_pypi is gated on the
+# wheel_smoke_clean_env job, which installs the wheel in a pristine
+# container and solves with every backend.
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "dnf install -y openblas-devel dnf-plugins-core",
-  "dnf config-manager --add-repo https://yum.repos.intel.com/oneapi",
-  "rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB",
-  "dnf install -y intel-oneapi-mkl-devel",
+  "dnf install -y openblas-devel",
+  "bash /project/.github/scripts/install_mkl_static.sh /opt/mkl-static",
 ]
-environment = {PKG_CONFIG_PATH = "/opt/intel/oneapi/mkl/latest/lib/pkgconfig:/opt/intel/oneapi/compiler/latest/lib/pkgconfig:$PKG_CONFIG_PATH"}
-config-settings = {setup-args = "-Dmkl_backend=true"}
-repair-wheel-command = "LD_LIBRARY_PATH='/opt/intel/oneapi/mkl/latest/lib:/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/compiler/latest/lib' auditwheel repair --exclude 'libmkl_*' --exclude 'libiomp5*' -w {dest_dir} {wheel} && bash /project/.github/scripts/add_mkl_rpath.sh {dest_dir}"
+config-settings = {setup-args = "-Dmkl_static_prefix=/opt/mkl-static"}
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"

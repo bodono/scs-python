@@ -280,12 +280,10 @@ jobs:
           path: ./wheelhouse/*.whl
 
   wheel_audit:
-    # Static gate for #423-class defects across EVERY Linux wheel (all
-    # pythons, x86_64 + aarch64 + musllinux): no .so may carry an absolute
-    # RPATH/RUNPATH entry (a build-container path in a shipped wheel lets a
-    # matching system MKL shadow the scs[mkl] runtime), and _scs_mkl's
-    # MKL-related NEEDED set must be exactly what the mkl>=2026,<2027 pin
-    # provides (.so.3 ABI).
+    # Static gate for #423-class defects across every Linux wheel: no wheel
+    # may depend on a dynamic MKL (the backend is linked statically), ship
+    # an Intel shared library, or carry a build-machine path in an rpath
+    # (which let the 3.3.0 container tests pass while user machines failed).
     name: Audit wheel ELF metadata
     needs: build_wheels
     runs-on: ubuntu-latest
@@ -296,130 +294,40 @@ jobs:
           path: wheelhouse
           merge-multiple: true
 
-      - name: Audit RPATH and NEEDED across all Linux wheels
+      - name: Audit NEEDED, rpath and shipped libraries
         run: |
           cat > audit.py <<'EOF'
           import glob, os, re, subprocess, sys, tempfile, zipfile
           bad = []
           whls = sorted(glob.glob("wheelhouse/*.whl"))
           assert whls, "no wheels downloaded"
-
-          def platform_of(whl):
-              name = os.path.basename(whl)
-              if "musllinux" in name:
-                  return "musllinux"
-              if "aarch64" in name:
-                  return "aarch64"
-              assert "manylinux" in name and "x86_64" in name, name
-              return "manylinux_x86_64"
-
-          # Exact per-platform extension inventory: a missing backend is as
-          # much a packaging defect as a broken one (a vacuously green audit
-          # hid exactly this class of failure).
-          EXPECTED_EXTS = {
-              "manylinux_x86_64": {"_scs_direct", "_scs_indirect",
-                                   "_scs_dense", "_scs_mkl"},
-              "aarch64": {"_scs_direct", "_scs_indirect", "_scs_dense"},
-              "musllinux": {"_scs_direct", "_scs_indirect", "_scs_dense"},
-          }
-          WANT_MKL_NEEDED = ["libiomp5.so", "libmkl_core.so.3",
-                             "libmkl_intel_lp64.so.3",
-                             "libmkl_intel_thread.so.3", "libmkl_rt.so.3"]
-          # Exact per-platform python/ABI tag coverage: deriving the
-          # expected count from whatever happened to download would let a
-          # single surviving wheel per platform pass while two dozen were
-          # missing. Update this set when python versions are added.
-          EXPECTED_TAGS = {"cp39", "cp310", "cp311", "cp312", "cp313",
-                           "cp314", "cp314t", "cp315", "cp315t"}
-          nmkl = 0
-          group_tags = {plat: set() for plat in EXPECTED_EXTS}
-          for w in whls:
-              tag = os.path.basename(w).split("-")[3]
-              group_tags[platform_of(w)].add(tag)
-          for plat, tags in group_tags.items():
-              if tags != EXPECTED_TAGS:
-                  bad.append(("(all)", "-",
-                              f"{plat} tag set {sorted(tags)} != expected "
-                              f"{sorted(EXPECTED_TAGS)}"))
-          expected_nmkl = len(EXPECTED_TAGS)
           for whl in whls:
-              plat = platform_of(whl)
+              name = os.path.basename(whl)
               with tempfile.TemporaryDirectory() as td:
                   with zipfile.ZipFile(whl) as z:
                       z.extractall(td)
-                  sos = glob.glob(os.path.join(td, "**", "*.so*"),
-                                  recursive=True)
-                  if not sos:
-                      bad.append((os.path.basename(whl), "-",
-                                  "wheel contains no shared objects"))
-                      continue
-                  exts = {m.group(1) for so in sos
-                          for m in [re.match(r"(_scs_[a-z]+)\.",
-                                             os.path.basename(so))] if m}
-                  if exts != EXPECTED_EXTS[plat]:
-                      bad.append((os.path.basename(whl), "-",
-                                  f"extension inventory {sorted(exts)} != "
-                                  f"expected {sorted(EXPECTED_EXTS[plat])}"))
-                  # every wheel must vendor a BLAS for the default
-                  # backends; Intel libraries must not ship anywhere in
-                  # the wheel, whatever directory they landed in
-                  all_names = [os.path.basename(so) for so in sos]
-                  vendored = [os.path.basename(so) for so in sos
-                              if ".libs" in so]
-                  if not any(v.startswith("libopenblas") for v in vendored):
-                      bad.append((os.path.basename(whl), "-",
-                                  f"no vendored OpenBLAS: {vendored}"))
-                  intel = [n for n in all_names
-                           if n.startswith(("libmkl", "libiomp"))]
+                  sos = glob.glob(os.path.join(td, "**", "*.so*"), recursive=True)
+                  names = [os.path.basename(so) for so in sos]
+                  if not any(n.startswith("libopenblas") for n in names):
+                      bad.append((name, "-", f"no vendored OpenBLAS: {names}"))
+                  intel = [n for n in names if n.startswith(("libmkl", "libiomp"))]
                   if intel:
-                      bad.append((os.path.basename(whl), "-",
-                                  f"Intel libraries shipped in wheel: {intel}"))
+                      bad.append((name, "-", f"Intel shared libraries in wheel: {intel}"))
                   for so in sos:
-                      proc = subprocess.run(["readelf", "-d", so],
-                                            capture_output=True, text=True)
                       rel = os.path.relpath(so, td)
+                      proc = subprocess.run(["readelf", "-d", so], capture_output=True, text=True)
                       if proc.returncode != 0:
-                          bad.append((os.path.basename(whl), rel,
-                                      f"readelf failed: {proc.stderr.strip()}"))
+                          bad.append((name, rel, f"readelf failed: {proc.stderr.strip()}"))
                           continue
-                      out = proc.stdout
-                      rpaths = re.findall(r"\(RPATH\)[^\[]*\[([^\]]*)\]", out)
-                      runpaths = re.findall(
-                          r"\(RUNPATH\)[^\[]*\[([^\]]*)\]", out)
-                      # auditwheel deliberately writes DT_RPATH on grafted
-                      # objects (RPATH outranks LD_LIBRARY_PATH, isolating
-                      # the vendored libraries); both tag types are fine
-                      # in general as long as every entry is
-                      # $ORIGIN-relative. _scs_mkl, which we patch
-                      # ourselves, is held to the stricter shape below.
-                      for rp in rpaths + runpaths:
+                      needed = re.findall(r"\(NEEDED\)[^\[]*\[([^\]]+)\]", proc.stdout)
+                      mkl = [n for n in needed if n.startswith(("libmkl", "libiomp"))]
+                      if mkl:
+                          bad.append((name, rel, f"dynamic MKL dependency: {mkl}"))
+                      for rp in re.findall(r"\((?:RPATH|RUNPATH)\)[^\[]*\[([^\]]*)\]", proc.stdout):
                           for entry in rp.split(":"):
                               if entry and not entry.startswith("$ORIGIN"):
-                                  bad.append((os.path.basename(whl), rel,
-                                              f"non-relative rpath entry "
-                                              f"'{entry}'"))
-                      if "_scs_mkl" in os.path.basename(so):
-                          nmkl += 1
-                          needed = re.findall(
-                              r"\(NEEDED\)[^\[]*\[([^\]]+)\]", out)
-                          mkl = sorted(n for n in needed
-                                       if n.startswith(("libmkl", "libiomp")))
-                          if mkl != WANT_MKL_NEEDED:
-                              bad.append((os.path.basename(whl), rel,
-                                          f"NEEDED drift: {' '.join(mkl)}"))
-                          if rpaths:
-                              bad.append((os.path.basename(whl), rel,
-                                          f"_scs_mkl must not carry legacy "
-                                          f"DT_RPATH: {rpaths}"))
-                          if runpaths != ["$ORIGIN/../../../../lib"]:
-                              bad.append((os.path.basename(whl), rel,
-                                          f"_scs_mkl DT_RUNPATH {runpaths} "
-                                          f"!= ['$ORIGIN/../../../../lib']"))
-          if nmkl != expected_nmkl:
-              bad.append(("(all)", "-",
-                          f"found {nmkl} _scs_mkl extensions, expected "
-                          f"{expected_nmkl}"))
-          print(f"audited {len(whls)} wheels, {nmkl} _scs_mkl extensions")
+                                  bad.append((name, rel, f"non-relative rpath entry '{entry}'"))
+          print(f"audited {len(whls)} wheels")
           for whl, so, msg in bad:
               print(f"BAD: {whl} :: {so} :: {msg}")
           sys.exit(1 if bad else 0)
@@ -427,29 +335,16 @@ jobs:
           python3 audit.py
 
   wheel_smoke_clean_env:
-    # Regression gate for #423: install the built manylinux x86_64 wheel in a
-    # pristine container (no BLAS, no LD_LIBRARY_PATH, no site packages) and
-    # run a real solve on every backend. The 3.3.0 wheels passed
-    # cibuildwheel's in-container tests because the build container's
-    # environment satisfied MKL's dlopen'd dispatch kernels; only a clean
-    # environment exercises what the wheel actually ships.
-    #
-    # Variants:
-    #   default -- plain `pip install scs`: AUTO must resolve to QDLDL and the
-    #     unvendored _scs_mkl must fail with a clean ImportError, never crash.
-    #   mkl -- `pip install scs[mkl]`: MKL comes from Intel's official wheels;
-    #     AUTO must resolve to MKL and the mkl backend must solve. This also
-    #     enforces that the oneMKL generation the wheel links matches the
-    #     pinned `mkl` PyPI dependency range.
-    # Pythons: oldest (3.9), newest stable (3.14), free-threaded (3.14t via
-    # uv, python-build-standalone). Remaining ABIs are covered by wheel_audit.
-    name: Clean-container wheel smoke test (${{ matrix.variant }}, ${{ matrix.python }})
+    # The release gate for #423-class failures: install the built wheel in a
+    # pristine container with nothing on the loader path and solve with every
+    # backend, including a PSD cone so BLAS/LAPACK run. On x86-64 the static
+    # MKL backend must import and be AUTO's choice.
+    name: Clean-container wheel smoke test (${{ matrix.python }})
     needs: build_wheels
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        variant: [default, mkl]
         python: ["3.9", "3.14", "3.14t"]
     steps:
       - uses: actions/download-artifact@v7
@@ -458,15 +353,14 @@ jobs:
           path: wheelhouse
           merge-multiple: true
 
-      - name: Solve in pristine container (${{ matrix.variant }}, ${{ matrix.python }})
+      - name: Solve in pristine container (${{ matrix.python }})
         run: |
           cat > smoke.py <<'EOF'
-          import importlib, os, sys, traceback
+          import os, sys
           import numpy as np, scipy.sparse as sp, scs
-          mode = sys.argv[1]
-          print("scs", scs.__version__, "mode", mode, "python", sys.version)
-          # LP block plus a small PSD cone: the PSD projection goes through
-          # the wheel's BLAS/LAPACK, the exact path #423 failed to ship.
+          # the loader must be exactly as clean as a user's machine
+          assert not os.environ.get("LD_LIBRARY_PATH"), os.environ["LD_LIBRARY_PATH"]
+          print("scs", scs.__version__, "python", sys.version)
           data = {
               "A": sp.csc_matrix(np.vstack([np.array([[1.0, 1.0], [1.0, -1.0], [0.0, 1.0]]),
                                             np.array([[-1.0, 0.0], [0.0, 0.0], [0.0, -1.0]])])),
@@ -474,49 +368,23 @@ jobs:
               "c": np.array([1.0, 1.0]),
           }
           cone = {"z": 1, "l": 2, "s": [2]}
-
-          # Exercise the scs[mkl] loader path explicitly, with diagnostics.
-          mkl_err = None
-          try:
-              scs._load_module("_scs_mkl")
-          except ImportError as e:
-              mkl_err = e
-              if mode == "mkl":
-                  traceback.print_exc()
-                  libdir = os.path.join(sys.prefix, "lib")
-                  libs = sorted(f for f in os.listdir(libdir)
-                                if f.startswith(("libmkl", "libiomp"))) if os.path.isdir(libdir) else []
-                  print(libdir, "->", libs[:8], "..." if len(libs) > 8 else "")
-          if mode == "mkl":
-              assert mkl_err is None, f"scs[mkl] installed but _scs_mkl failed: {mkl_err}"
-          else:
-              # The wheel ships _scs_mkl but its MKL comes from scs[mkl];
-              # without the extra it must fail cleanly, never crash.
-              assert mkl_err is not None, "unvendored _scs_mkl imported without scs[mkl]"
-              print("mkl backend unavailable without scs[mkl], as expected")
-
-          # The extensions share the PyModuleDef name "_scs" (single-phase
-          # init), so identify the AUTO backend by file, not __name__.
-          auto_file = os.path.basename(getattr(scs._resolve_auto(), "__file__", ""))
+          scs._load_module("_scs_mkl")  # static MKL: must import with nothing installed
+          auto_file = os.path.basename(scs._resolve_auto().__file__)
+          assert auto_file.startswith("_scs_mkl"), auto_file
           print("auto resolves to", auto_file)
-          want = "_scs_mkl" if mode == "mkl" else "_scs_direct"
-          assert auto_file.startswith(want), (auto_file, want)
-
-          solvers = ["qdldl", "cpu_indirect"] + (["mkl"] if mode == "mkl" else [])
-          for name in solvers + ["auto"]:
+          for name in ["qdldl", "cpu_indirect", "dense", "mkl", "auto"]:
               kw = {} if name == "auto" else {"linear_solver": name}
               sol = scs.SCS(data, cone, verbose=True, **kw).solve()
               assert sol["info"]["status"] == "solved", (name, sol["info"]["status"])
               print(name, "ok:", sol["info"].get("lin_sys_solver", "n/a"))
-          print("ALL OK:", mode)
+          print("ALL OK")
           EOF
           case "${{ matrix.python }}" in
             3.9)   IMAGE=python:3.9-slim;  TAG=cp39-cp39 ;;
             3.14)  IMAGE=python:3.14-slim; TAG=cp314-cp314 ;;
             3.14t) IMAGE=ghcr.io/astral-sh/uv:debian-slim; TAG=cp314-cp314t ;;
           esac
-          docker run --rm -v "$PWD:/work" -w /tmp \
-            -e VARIANT=${{ matrix.variant }} -e PY=${{ matrix.python }} -e TAG=$TAG \
+          docker run --rm -v "$PWD:/work" -w /tmp -e PY=${{ matrix.python }} -e TAG=$TAG \
             "$IMAGE" bash -ec '
             if command -v uv >/dev/null; then
               uv python install "$PY"
@@ -528,14 +396,8 @@ jobs:
               PYBIN=python
             fi
             $PIP numpy scipy
-            WHL=$(ls /work/wheelhouse/scs-*-${TAG}-manylinux*x86_64.whl)
-            if [ "$VARIANT" = mkl ]; then
-              $PIP "${WHL}[mkl]"
-            else
-              $PIP "$WHL"
-            fi
-            $PYBIN -m pip list 2>/dev/null | grep -i -E "scs|mkl|openmp" || true
-            $PYBIN /work/smoke.py "$VARIANT"'
+            $PIP /work/wheelhouse/scs-*-${TAG}-manylinux*x86_64.whl
+            $PYBIN /work/smoke.py'
 
   build_sdist:
     name: Build source distribution

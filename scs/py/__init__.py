@@ -37,90 +37,9 @@ class LinearSolver(enum.Enum):
   CUDSS = "cudss"
 
 
-def _preload_intel_mkl():
-  """Preload MKL from Intel's official ``mkl`` PyPI wheels (``scs[mkl]``).
-
-  The pre-built Linux x86-64 wheels link the _scs_mkl extension against MKL
-  without vendoring it: MKL loads its CPU dispatch kernels via dlopen, which
-  wheel-repair tools cannot see, so a vendored MKL is incomplete and aborts
-  the process at solve time (cvxgrp/scs#423). The ``scs[mkl]`` extra instead
-  installs Intel's own ``mkl`` and ``intel-openmp`` wheels into
-  ``<prefix>/lib``.
-
-  The primary lookup mechanism is a ``$ORIGIN``-relative RUNPATH baked into
-  the wheel's extension (site-packages/scs is four levels below the prefix
-  in every standard layout), which lets the loader resolve MKL's mutually
-  referencing component libraries as one group. This fallback covers
-  non-standard layouts where that relative path misses: it dlopens the
-  libraries RTLD_LAZY | RTLD_LOCAL so the extension's DT_NEEDED entries
-  resolve from the link map. LAZY is required -- the components cannot be
-  eagerly bound one at a time -- and ctypes.CDLL always forces RTLD_NOW,
-  so this calls dlopen(3) directly. RTLD_LOCAL keeps MKL's BLAS from
-  interposing on other libraries (e.g. NumPy's vendored OpenBLAS).
-  Returns True if anything was loaded.
-  """
-  if not sys.platform.startswith("linux"):
-    return False
-  import ctypes
-  import glob
-  import os
-  from importlib import metadata
-
-  libdirs = []
-  for pkg in ("mkl", "intel-openmp"):
-    try:
-      dist = metadata.distribution(pkg)
-    except metadata.PackageNotFoundError:
-      continue
-    for f in dist.files or ():
-      if f.name.startswith(("libmkl_", "libiomp5")):
-        d = os.path.dirname(os.fspath(dist.locate_file(f)))
-        if d not in libdirs and os.path.isdir(d):
-          libdirs.append(d)
-  if not libdirs:
-    # Fallback for installers that do not record RECORD data files.
-    for prefix in dict.fromkeys((sys.prefix, sys.base_prefix, sys.exec_prefix)):
-      d = os.path.join(prefix, "lib")
-      if glob.glob(os.path.join(d, "libmkl_core.so*")):
-        libdirs.append(d)
-  if not libdirs:
-    return False
-
-  # Dependency-safe order: OpenMP runtime, then MKL core, threading layer,
-  # interface layer, and the single-dynamic-library runtime (used by the
-  # extension's interface-layer check).
-  patterns = (
-      "libiomp5.so",
-      "libmkl_core.so*",
-      "libmkl_sequential.so*",
-      "libmkl_intel_thread.so*",
-      "libmkl_intel_lp64.so*",
-      "libmkl_intel_ilp64.so*",
-      "libmkl_rt.so*",
-  )
-  dlopen = ctypes.CDLL(None).dlopen
-  dlopen.restype = ctypes.c_void_p
-  dlopen.argtypes = (ctypes.c_char_p, ctypes.c_int)
-  loaded = False
-  for pattern in patterns:
-    for d in libdirs:
-      for path in sorted(glob.glob(os.path.join(d, pattern))):
-        if dlopen(os.fsencode(path), os.RTLD_LAZY | os.RTLD_LOCAL):
-          loaded = True
-  return loaded
-
-
 def _load_module(name):
   from importlib import import_module
-  try:
-    return import_module(f"scs.{name}")
-  except ImportError:
-    # The wheel _scs_mkl extension resolves MKL from the `mkl` PyPI package
-    # (scs[mkl]) rather than vendored libraries; make those loadable and
-    # retry. Without them the ImportError propagates and AUTO falls back.
-    if name != "_scs_mkl" or not _preload_intel_mkl():
-      raise
-    return import_module(f"scs.{name}")
+  return import_module(f"scs.{name}")
 
 
 def _resolve_auto():
