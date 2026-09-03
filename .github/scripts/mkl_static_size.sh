@@ -97,7 +97,7 @@ printf 'RESULT layer=%s gc_sections=%s plain=%s\n' "$LAYER" \
 echo "== full core test suite against the static library (clean environment) =="
 gcc $CFLAGS -I$SRC/test $SRC/test/run_tests.c -L"$OUT" -lscsmkl_static -Wl,-rpath,"$PWD/$OUT" -lm -o "$OUT/run_tests"
 set +e
-( cd "$OUT" && env -i PATH=/usr/bin:/bin stdbuf -oL ./run_tests > run_tests.log 2>&1 ); rc=$?
+( cd "$SRC" && env -i PATH=/usr/bin:/bin stdbuf -oL "$OLDPWD/$OUT/run_tests" > "$OLDPWD/$OUT/run_tests.log" 2>&1 ); rc=$?
 set -e
 grep -E "ALL TESTS PASSED|Tests run|FAIL|failed|Segmentation" "$OUT/run_tests.log" | head -12
 if [ $rc -eq 0 ] && grep -q "ALL TESTS PASSED" "$OUT/run_tests.log"; then
