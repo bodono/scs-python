@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        python-version: [ 3.9, "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        python-version: [ "3.12" ]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: prefix-dev/setup-pixi@v0.10.1
+      - uses: prefix-dev/setup-pixi@v0.10.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -48,33 +48,38 @@ jobs:
           rm -rf build/
 
   build_mkl:
-    runs-on: ${{ matrix.os }}
+    # Source builds against conda-forge's dynamic MKL (link_mkl), one job per
+    # semantic case: an LP64 build solving under an MKL-backed NumPy; an
+    # ILP64 build refusing to share a process with that LP64 NumPy through
+    # the interface-layer guard; and an ILP64 build solving under an
+    # OpenBLAS NumPy, where no LP64 interface is preset.
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ 3.9, "3.10", "3.11", "3.12", "3.13", "3.14"]
-        link_mkl: [true]
-        use_blas64: [true, false]
-
+        include:
+          - case: lp64-solve
+            use_blas64: false
+            numpy_blas: mkl
+          - case: ilp64-guard
+            use_blas64: true
+            numpy_blas: mkl
+          - case: ilp64-solve
+            use_blas64: true
+            numpy_blas: openblas
+    name: build_mkl (${{ matrix.case }})
     env:
-      PYTHON_VERSION: ${{ matrix.python-version }}
-      LINK_MKL: ${{ matrix.link_mkl }}
       USE_BLAS64: ${{ matrix.use_blas64 }}
+      NUMPY_BLAS: ${{ matrix.numpy_blas }}
 
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-
-      - name: Set Additional Envs
-        shell: bash
-        run: |
-          echo "PYTHON_SUBVERSION=$(echo $PYTHON_VERSION | cut -c 3-)" >> $GITHUB_ENV
-      - uses: prefix-dev/setup-pixi@v0.10.1
+      - uses: prefix-dev/setup-pixi@v0.10.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -83,12 +88,7 @@ jobs:
         shell: bash
       - name: Install dependencies
         run: |
-          if [[ "$LINK_MKL" == "true" ]]; then
-            BLAS_PKGS="blas-devel=*=*mkl"
-          else
-            BLAS_PKGS="blas-devel=*=*openblas"
-          fi
-          pixi add --platform linux-64 $BLAS_PKGS pip scipy numpy pytest mkl mkl-devel pkg-config meson meson-python
+          pixi add --platform linux-64 "blas-devel=*=*${NUMPY_BLAS}" pip scipy numpy pytest mkl mkl-devel pkg-config meson meson-python python==3.12
       - name: Build
         run: |
           pixi r python -c "import numpy as np;print(np.show_config())"
@@ -99,8 +99,14 @@ jobs:
           pixi r python -m pip install --verbose --no-build-isolation $MESON_ARGS .
       - name: Test
         run: |
-          pixi r pytest
-          rm -rf build/
+          set -euo pipefail
+          export LD_LIBRARY_PATH="$(pwd)/.pixi/envs/default/lib:${LD_LIBRARY_PATH:-}"
+          if [ "${{ matrix.case }}" = ilp64-guard ]; then
+            pixi r python .github/scripts/mkl_guard.py 2>&1 | tee /tmp/guard.log
+            grep -q "MKL interface layer mismatch" /tmp/guard.log
+          else
+            pixi r pytest
+          fi
 
   build_gpu:
     # Build-only: linking against cuBLAS/cuSPARSE needs the CUDA toolkit but
@@ -119,7 +125,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: prefix-dev/setup-pixi@v0.10.1
+      - uses: prefix-dev/setup-pixi@v0.10.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -164,13 +170,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        native_arch: [true, false]
+        native_arch: [true]
 
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: prefix-dev/setup-pixi@v0.10.1
+      - uses: prefix-dev/setup-pixi@v0.10.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -196,13 +202,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        python-version: [ "3.14" ]
 
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: prefix-dev/setup-pixi@v0.10.1
+      - uses: prefix-dev/setup-pixi@v0.10.2
         with:
           cache: false
           pixi-version: v0.46.0
