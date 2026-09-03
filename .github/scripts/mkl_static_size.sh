@@ -32,11 +32,15 @@ case "$LAYER" in
   intel_thread) RT="-L$L -liomp5" ;;
   tbb_thread)   RT="-L$L -ltbb" ;;
 esac
+link() {  # $1 = output, rest = extra linker flags
+  local out=$1; shift
+  gcc -shared -o "$out" "${objs[@]}" \
+    -Wl,--start-group "$L/libmkl_intel_lp64.a" "$L/libmkl_$LAYER.a" "$L/libmkl_core.a" -Wl,--end-group \
+    $RT -lpthread -lm -ldl -Wl,--exclude-libs,ALL -Wl,-rpath,"$L" "$@"
+}
 SO="$OUT/libscsmkl_static.so"
-gcc -shared -o "$SO" "${objs[@]}" \
-  -Wl,--start-group "$L/libmkl_intel_lp64.a" "$L/libmkl_$LAYER.a" "$L/libmkl_core.a" -Wl,--end-group \
-  $RT -lpthread -lm -ldl \
-  -Wl,--exclude-libs,ALL -Wl,--gc-sections -Wl,-rpath,"$L"
+link "$SO" -Wl,--gc-sections
+link "$OUT/libscsmkl_nogc.so"
 
 echo "== NEEDED (must contain no libmkl) =="
 readelf -d "$SO" | grep NEEDED
@@ -46,16 +50,13 @@ echo "== exported symbols (MKL must be hidden) =="
 nm -D --defined-only "$SO" | grep -c " T " | xargs echo "exported functions:"
 nm -D --defined-only "$SO" | grep -ci "mkl\|pardiso\|dgemm" | xargs echo "of which MKL-looking (want 0):" || true
 
-echo "== solve in a clean environment =="
-gcc -O2 -DUSE_LAPACK -I$SRC -I$SRC/include -I$SRC/linsys \
-  $SRC/test/random_socp_prob.c -L"$OUT" -lscsmkl_static -Wl,-rpath,"$PWD/$OUT" -lm -o "$OUT/demo"
-env -i PATH=/usr/bin:/bin "$OUT/demo" 800 0.1 0.3 7 > "$OUT/demo.log" 2>&1 || { tail -20 "$OUT/demo.log"; echo "FAIL: demo"; exit 1; }
-grep -m1 "lin-sys" "$OUT/demo.log"
-grep -m1 -i "status" "$OUT/demo.log"
-grep -qi "mkl-pardiso" "$OUT/demo.log" || { echo "FAIL: not the pardiso backend"; exit 1; }
-grep -qi "solved" "$OUT/demo.log" || { echo "FAIL: not solved"; exit 1; }
-
 echo "== sizes =="
+for v in libscsmkl_static libscsmkl_nogc; do
+  cp "$OUT/$v.so" "$OUT/$v.stripped"; strip --strip-unneeded "$OUT/$v.stripped"
+  printf '  %-18s raw=%dMB stripped=%dMB gzip=%dMB\n' "$v" \
+    $(( $(stat -c %s "$OUT/$v.so")/1000000 )) $(( $(stat -c %s "$OUT/$v.stripped")/1000000 )) \
+    $(( $(gzip -6 -c "$OUT/$v.stripped" | wc -c)/1000000 ))
+done
 cp "$SO" "$OUT/stripped.so"; strip --strip-unneeded "$OUT/stripped.so"
 raw=$(stat -c %s "$SO"); strp=$(stat -c %s "$OUT/stripped.so")
 gz=$(gzip -6 -c "$OUT/stripped.so" | wc -c); xz=$(xz -6 -c "$OUT/stripped.so" | wc -c)
@@ -66,3 +67,22 @@ case "$LAYER" in
 esac
 printf 'SIZE layer=%s raw=%dMB stripped=%dMB gzip=%dMB xz=%dMB %s\n' \
   "$LAYER" $((raw/1000000)) $((strp/1000000)) $((gz/1000000)) $((xz/1000000)) "$extra"
+echo "== solve in a clean environment =="
+# the demo must see the SAME struct layouts as the library (USE_SPECTRAL_CONES
+# adds ScsCone fields), so it gets the identical defines
+run_demo() {  # $1 = library basename (without lib/.so)
+  gcc $CFLAGS $SRC/test/random_socp_prob.c -L"$OUT" -l"$1" -Wl,-rpath,"$PWD/$OUT" -lm -o "$OUT/demo_$1"
+  if env -i PATH=/usr/bin:/bin stdbuf -oL "$OUT/demo_$1" 800 0.1 0.3 7 > "$OUT/demo_$1.log" 2>&1 \
+     && grep -qi "mkl-pardiso" "$OUT/demo_$1.log" && grep -qi "solved" "$OUT/demo_$1.log"; then
+    echo "DEMO $1: ok  ($(grep -m1 'lin-sys' "$OUT/demo_$1.log" | tr -s ' '))"
+  else
+    echo "DEMO $1: FAILED (rc=$?)"; tail -12 "$OUT/demo_$1.log"; return 1
+  fi
+}
+set +e
+run_demo scsmkl_static; ok_gc=$?
+run_demo scsmkl_nogc;   ok_nogc=$?
+set -e
+printf 'RESULT layer=%s gc_sections=%s plain=%s\n' "$LAYER" \
+  "$([ $ok_gc -eq 0 ] && echo ok || echo FAIL)" "$([ $ok_nogc -eq 0 ] && echo ok || echo FAIL)"
+
