@@ -5,13 +5,14 @@ on:
   workflow_dispatch:
 jobs:
   size:
-    name: static MKL (${{ matrix.layer }})
+    name: static MKL (${{ matrix.layer }}, spectral=${{ matrix.spectral }})
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        layer: [sequential, intel_thread, tbb_thread]
+        layer: [sequential]
+        spectral: [0, 1]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,4 +24,4 @@ jobs:
             "intel-openmp==2026.1.1" tbb
           ls venv/lib | grep -E "libmkl_(core|intel_lp64|sequential|intel_thread|tbb_thread)\.a|libiomp5\.so$|libtbb\.so" | tr '\n' ' '; echo
       - name: Build, solve, measure
-        run: ./.github/scripts/mkl_static_size.sh ${{ matrix.layer }}
+        run: ./.github/scripts/mkl_static_size.sh ${{ matrix.layer }} ${{ matrix.spectral }}
