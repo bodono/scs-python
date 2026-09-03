@@ -15,14 +15,12 @@ The full documentation is available [here](https://www.cvxgrp.org/scs/).
 pip install scs
 ```
 
-On x86-64 Linux the wheels include the MKL Pardiso direct linear solver,
-linked statically into the `_scs_mkl` extension, and use it automatically:
-it is faster than the built-in QDLDL solver for most problems, often
-dramatically so on larger ones, and nothing extra needs to be installed. The
-MKL backend is single-threaded (a bundled OpenMP runtime can abort a process
-that already has one, and SCS's per-iteration work does not parallelize
-well); Intel's license notice ships in the wheel as `LICENSE-INTEL-MKL.txt`.
-Every other wheel falls back to QDLDL.
+On x86-64 Linux the wheels include the MKL Pardiso direct linear solver
+(MKL linked statically into `_scs_mkl`, single-threaded) and use it
+automatically: it is faster than the built-in QDLDL solver for most problems,
+often dramatically so on larger ones, and nothing extra needs to be
+installed. Intel's license notice ships in the wheel as
+`LICENSE-INTEL-MKL.txt`. Every other wheel falls back to QDLDL.
 
 To install from source:
 ```bash
@@ -50,13 +48,11 @@ Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
 `CPU_DENSE`, `GPU_INDIRECT`, `CUDSS`.
 
 The pre-built wheels (`pip install scs`) link OpenBLAS on Linux and Windows,
-and Apple Accelerate on macOS. The x86-64 Linux wheels also ship the MKL
-Pardiso backend with MKL linked statically into `_scs_mkl`, and `AUTO`
-selects it; MKL is deliberately not vendored as shared libraries, whose
-dlopen'd CPU dispatch kernels are invisible to wheel-repair tools and whose
-absence aborts the process at solve time (cvxgrp/scs#423). The MKL backend
-is also available in source builds (e.g. conda environments providing MKL).
-When installing from source,
+and Apple Accelerate on macOS; the x86-64 Linux wheels also ship the MKL
+Pardiso backend (see Installation). MKL is linked statically rather than
+bundled as shared libraries, whose dlopen'd CPU dispatch kernels wheel-repair
+tools cannot see (cvxgrp/scs#423). The MKL backend is also available in
+source builds (e.g. conda environments providing MKL), where
 additional backends can be enabled with build-time flags:
 
 ```bash

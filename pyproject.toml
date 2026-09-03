@@ -67,17 +67,13 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 # Openblas installation for 3 different linux images
 
 # x86_64 Linux: the default backends link vendored OpenBLAS; _scs_mkl links
-# MKL *statically* (Intel's mkl-static archives, sequential, symbols hidden)
-# so the wheel is self-contained. The 3.3.0 wheels vendored dynamic MKL and
-# shipped it incomplete -- its dlopen'd CPU dispatch kernels are invisible to
-# auditwheel -- so every solve aborted on machines without MKL on the loader
-# path (#423). Static linking has no dispatch libraries to lose.
-#
-# Two rules, both learned from #423: nothing in `environment` may point the
-# loader at build-machine libraries (the wheel tests must run exactly as
-# clean as a user's machine), and upload_pypi is gated on the
-# wheel_smoke_clean_env job, which installs the wheel in a pristine
-# container and solves with every backend.
+# MKL statically (Intel's mkl-static archives, sequential, symbols hidden) so
+# the wheel is self-contained. The 3.3.0 wheels vendored dynamic MKL without
+# its dlopen'd CPU dispatch kernels, which auditwheel cannot see, and every
+# solve aborted on machines without MKL on the loader path (cvxgrp/scs#423).
+# Hence: nothing in `environment` may point the loader at build-machine
+# libraries, and publishing waits for wheel_smoke_clean_env (a pristine
+# container solving with every backend) and wheel_audit.
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"

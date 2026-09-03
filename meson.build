@@ -24,11 +24,8 @@ print(incdir)
 #
 # link_mkl links every extension against a dynamic MKL from the environment
 # (conda/source builds). mkl_static_prefix builds only _scs_mkl, with MKL
-# linked statically and its symbols hidden, while every other extension uses
-# the platform BLAS: this is the x86-64 Linux wheel configuration. Static
-# linking is what makes the wheel self-contained -- dynamic MKL loads its CPU
-# dispatch kernels via dlopen, invisible to wheel-repair tools, and the 3.3.0
-# wheels shipped without them (cvxgrp/scs#423).
+# linked statically, while every other extension uses the platform BLAS: the
+# x86-64 Linux wheel configuration (see pyproject.toml for why).
 blas_deps = []
 mkl_blas_deps = []
 mkl_pkg_name = ''
@@ -364,19 +361,17 @@ if get_option('link_mkl')
   if not mkl_rt_dep.found()
     error('link_mkl requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
   endif
-  _mkl_deps = [mkl_blas_deps] + _base_deps + [mkl_rt_dep]
+  _mkl_deps = _deps + [mkl_rt_dep]
   # The core's reference to MKL_Set_Interface_Layer is weak (static MKL has
   # no mkl_rt), so with --as-needed the linker would drop mkl_rt, the
   # symbol would resolve to NULL and the interface-layer guard would be
   # skipped. Keep mkl_rt a hard dependency of the dynamic build.
-  _mkl_link_args = host_machine.system() == 'linux' ? ['-Wl,--no-as-needed'] : []
+  _mkl_link_args = is_linux ? ['-Wl,--no-as-needed'] : []
 elif mkl_static_prefix != ''
-  # Static MKL from Intel's mkl-static archives: LP64 interface, sequential
-  # threading (no OpenMP runtime to duplicate), linked as a group because the
-  # archives reference each other, with every MKL symbol hidden so an MKL
-  # already in the process (an MKL-backed NumPy, say) is never interposed.
-  # The core's MKL_Set_Interface_Layer reference is weak, so the mkl_rt-only
-  # runtime check is skipped automatically.
+  # Intel's mkl-static archives: LP64, sequential, linked as a group (they
+  # reference each other) with every MKL symbol hidden so an MKL already in
+  # the process is never interposed. The core's MKL_Set_Interface_Layer
+  # reference is weak, so the mkl_rt-only runtime check is skipped.
   if get_option('use_blas64')
     error('mkl_static_prefix links the LP64 interface; use link_mkl for ILP64 MKL builds.')
   endif
@@ -388,10 +383,7 @@ elif mkl_static_prefix != ''
     endif
     _mkl_archives += _mkl_lib / _a
   endforeach
-  _mkl_deps = _base_deps + [cc.find_library('dl', required : false), cc.find_library('m', required : false)]
-  if is_linux
-    _mkl_deps += cc.find_library('rt', required : true)
-  endif
+  _mkl_deps = _base_deps + [cc.find_library('dl'), cc.find_library('m'), cc.find_library('rt')]
   _mkl_link_args = ['-Wl,--start-group'] + _mkl_archives + ['-Wl,--end-group', '-Wl,--exclude-libs,ALL']
   # Intel Simplified Software License: the notice ships with the binaries.
   install_data('LICENSE-INTEL-MKL.txt', install_dir: scs_dir)

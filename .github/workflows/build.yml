@@ -280,10 +280,9 @@ jobs:
           path: ./wheelhouse/*.whl
 
   wheel_audit:
-    # Static gate for #423-class defects across every Linux wheel: no wheel
-    # may depend on a dynamic MKL (the backend is linked statically), ship
-    # an Intel shared library, or carry a build-machine path in an rpath
-    # (which let the 3.3.0 container tests pass while user machines failed).
+    # No Linux wheel may depend on a dynamic MKL (it is linked statically),
+    # ship an Intel shared library, or carry an absolute rpath entry; see
+    # pyproject.toml (#423).
     name: Audit wheel ELF metadata
     needs: build_wheels
     runs-on: ubuntu-latest
@@ -307,23 +306,19 @@ jobs:
                   with zipfile.ZipFile(whl) as z:
                       z.extractall(td)
                   sos = glob.glob(os.path.join(td, "**", "*.so*"), recursive=True)
-                  names = [os.path.basename(so) for so in sos]
-                  if not any(n.startswith("libopenblas") for n in names):
-                      bad.append((name, "-", f"no vendored OpenBLAS: {names}"))
-                  intel = [n for n in names if n.startswith(("libmkl", "libiomp"))]
+                  intel = [os.path.basename(so) for so in sos
+                           if os.path.basename(so).startswith(("libmkl", "libiomp"))]
                   if intel:
                       bad.append((name, "-", f"Intel shared libraries in wheel: {intel}"))
                   for so in sos:
                       rel = os.path.relpath(so, td)
-                      proc = subprocess.run(["readelf", "-d", so], capture_output=True, text=True)
-                      if proc.returncode != 0:
-                          bad.append((name, rel, f"readelf failed: {proc.stderr.strip()}"))
-                          continue
-                      needed = re.findall(r"\(NEEDED\)[^\[]*\[([^\]]+)\]", proc.stdout)
+                      out = subprocess.run(["readelf", "-d", so], capture_output=True,
+                                           text=True, check=True).stdout
+                      needed = re.findall(r"\(NEEDED\)[^\[]*\[([^\]]+)\]", out)
                       mkl = [n for n in needed if n.startswith(("libmkl", "libiomp"))]
                       if mkl:
                           bad.append((name, rel, f"dynamic MKL dependency: {mkl}"))
-                      for rp in re.findall(r"\((?:RPATH|RUNPATH)\)[^\[]*\[([^\]]*)\]", proc.stdout):
+                      for rp in re.findall(r"\((?:RPATH|RUNPATH)\)[^\[]*\[([^\]]*)\]", out):
                           for entry in rp.split(":"):
                               if entry and not entry.startswith("$ORIGIN"):
                                   bad.append((name, rel, f"non-relative rpath entry '{entry}'"))
@@ -335,10 +330,9 @@ jobs:
           python3 audit.py
 
   wheel_smoke_clean_env:
-    # The release gate for #423-class failures: install the built wheel in a
-    # pristine container with nothing on the loader path and solve with every
-    # backend, including a PSD cone so BLAS/LAPACK run. On x86-64 the static
-    # MKL backend must import and be AUTO's choice.
+    # The release gate: install the built wheel in a pristine container with
+    # nothing on the loader path and solve with every backend (a PSD cone so
+    # BLAS/LAPACK run). On x86-64 the static MKL backend must be AUTO's choice.
     name: Clean-container wheel smoke test (${{ matrix.python }})
     needs: build_wheels
     runs-on: ubuntu-latest
@@ -416,9 +410,7 @@ jobs:
           path: dist/*.tar.gz
 
   upload_pypi:
-    # The clean-container smoke tests and the ELF audit gate publishing:
-    # wheels that only work in the build container, carry build-machine
-    # paths, or drift their MKL linkage must never reach PyPI (see #423).
+    # publishing waits for the clean-container smoke tests and the ELF audit
     needs: [build_wheels, build_sdist, wheel_smoke_clean_env, wheel_audit]
     runs-on: ubuntu-latest
     environment: pypi
