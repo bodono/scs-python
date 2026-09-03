@@ -1,0 +1,26 @@
+name: MKL static size experiment
+on:
+  push:
+    branches: [scratch/mkl-static-size]
+  workflow_dispatch:
+jobs:
+  size:
+    name: static MKL (${{ matrix.layer }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        layer: [sequential, intel_thread, tbb_thread]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install static oneMKL from PyPI
+        run: |
+          python3 -m venv venv
+          venv/bin/pip install --quiet "mkl-static==2026.1.0" "mkl-include==2026.1.0" \
+            "intel-openmp==2026.1.1" tbb
+          ls venv/lib | grep -E "libmkl_(core|intel_lp64|sequential|intel_thread|tbb_thread)\.a|libiomp5\.so$|libtbb\.so" | tr '\n' ' '; echo
+      - name: Build, solve, measure
+        run: ./.github/scripts/mkl_static_size.sh ${{ matrix.layer }}
