@@ -365,7 +365,11 @@ if get_option('link_mkl')
     error('link_mkl requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
   endif
   _mkl_deps = [mkl_blas_deps] + _base_deps + [mkl_rt_dep]
-  _mkl_link_args = []
+  # The core's reference to MKL_Set_Interface_Layer is weak (static MKL has
+  # no mkl_rt), so with --as-needed the linker would drop mkl_rt, the
+  # symbol would resolve to NULL and the interface-layer guard would be
+  # skipped. Keep mkl_rt a hard dependency of the dynamic build.
+  _mkl_link_args = host_machine.system() == 'linux' ? ['-Wl,--no-as-needed'] : []
 elif mkl_static_prefix != ''
   # Static MKL from Intel's mkl-static archives: LP64 interface, sequential
   # threading (no OpenMP runtime to duplicate), linked as a group because the
