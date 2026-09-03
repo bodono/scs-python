@@ -372,7 +372,7 @@ jobs:
           auto_file = os.path.basename(scs._resolve_auto().__file__)
           assert auto_file.startswith("_scs_mkl"), auto_file
           print("auto resolves to", auto_file)
-          for name in ["qdldl", "cpu_indirect", "dense", "mkl", "auto"]:
+          for name in ["qdldl", "cpu_indirect", "cpu_dense", "mkl", "auto"]:
               kw = {} if name == "auto" else {"linear_solver": name}
               sol = scs.SCS(data, cone, verbose=True, **kw).solve()
               assert sol["info"]["status"] == "solved", (name, sol["info"]["status"])
