@@ -280,9 +280,10 @@ jobs:
           path: ./wheelhouse/*.whl
 
   wheel_audit:
-    # No Linux wheel may depend on a dynamic MKL (it is linked statically),
-    # ship an Intel shared library, or carry an absolute rpath entry; see
-    # pyproject.toml (#423).
+    # Every Linux wheel must ship the standard extensions and a vendored
+    # OpenBLAS, _scs_mkl exactly in the x86-64 manylinux wheels; no wheel may
+    # depend on a dynamic MKL (it is linked statically), ship an Intel shared
+    # library, or carry an absolute rpath entry; see pyproject.toml (#423).
     name: Audit wheel ELF metadata
     needs: build_wheels
     runs-on: ubuntu-latest
@@ -306,6 +307,16 @@ jobs:
                   with zipfile.ZipFile(whl) as z:
                       z.extractall(td)
                   sos = glob.glob(os.path.join(td, "**", "*.so*"), recursive=True)
+                  mods = {os.path.basename(so).split(".")[0] for so in sos}
+                  want = {"_scs_direct", "_scs_indirect", "_scs_dense"}
+                  if "manylinux" in name and "x86_64" in name:
+                      want.add("_scs_mkl")
+                  elif "_scs_mkl" in mods:
+                      bad.append((name, "-", "_scs_mkl belongs only in x86-64 manylinux wheels"))
+                  if want - mods:
+                      bad.append((name, "-", f"missing extensions: {sorted(want - mods)}"))
+                  if not any(os.path.basename(so).startswith("libopenblas") for so in sos):
+                      bad.append((name, "-", "no vendored OpenBLAS"))
                   intel = [os.path.basename(so) for so in sos
                            if os.path.basename(so).startswith(("libmkl", "libiomp"))]
                   if intel:
@@ -322,6 +333,7 @@ jobs:
                           for entry in rp.split(":"):
                               if entry and not entry.startswith("$ORIGIN"):
                                   bad.append((name, rel, f"non-relative rpath entry '{entry}'"))
+          assert any("manylinux" in w and "x86_64" in w for w in map(os.path.basename, whls)), "no x86-64 manylinux wheel"
           print(f"audited {len(whls)} wheels")
           for whl, so, msg in bad:
               print(f"BAD: {whl} :: {so} :: {msg}")
@@ -410,8 +422,9 @@ jobs:
           path: dist/*.tar.gz
 
   upload_pypi:
-    # publishing waits for the clean-container smoke tests and the ELF audit
-    needs: [build_wheels, build_sdist, wheel_smoke_clean_env, wheel_audit]
+    # publishing waits for the clean-container smoke tests, the wheel audit
+    # and the source-MKL lanes (the sdist carries the link_mkl build path)
+    needs: [build_wheels, build_sdist, wheel_smoke_clean_env, wheel_audit, build_mkl]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

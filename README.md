@@ -15,7 +15,7 @@ The full documentation is available [here](https://www.cvxgrp.org/scs/).
 pip install scs
 ```
 
-On x86-64 Linux the wheels include the MKL Pardiso direct linear solver
+On x86-64 Linux the manylinux (glibc) wheels include the MKL Pardiso direct linear solver
 (MKL linked statically into `_scs_mkl`, single-threaded) and use it
 automatically: it is faster than the built-in QDLDL solver for most problems,
 often dramatically so on larger ones, and nothing extra needs to be
@@ -48,7 +48,7 @@ Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
 `CPU_DENSE`, `GPU_INDIRECT`, `CUDSS`.
 
 The pre-built wheels (`pip install scs`) link OpenBLAS on Linux and Windows,
-and Apple Accelerate on macOS; the x86-64 Linux wheels also ship the MKL
+and Apple Accelerate on macOS; the x86-64 manylinux wheels also ship the MKL
 Pardiso backend (see Installation). MKL is linked statically rather than
 bundled as shared libraries, whose dlopen'd CPU dispatch kernels wheel-repair
 tools cannot see (cvxgrp/scs#423). The MKL backend is also available in
@@ -73,7 +73,7 @@ pip install . -Csetup-args=-Duse_spectral_cones=true
 ```
 
 Notes:
-- Linux x86_64 wheels ship a `_scs_mkl` extension with sequential MKL linked statically (CI asserts that no wheel carries a dynamic MKL dependency). Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
+- x86-64 manylinux wheels ship a `_scs_mkl` extension with sequential MKL linked statically (CI asserts the shipped inventory and that no wheel carries a dynamic MKL dependency). The musllinux, aarch64, macOS and Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
 - `BLAS64` is a general SCS build mode for ILP64 BLAS/LAPACK libraries, not an MKL-only feature.
 - For the MKL Pardiso backend specifically, `BLAS64` must be paired with 64-bit SCS integers (`DLONG` / `int32=false`), and SCS now fails early if another library in the process has already fixed MKL to an incompatible LP64/ILP64 interface layer.
 
