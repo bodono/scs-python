@@ -1,0 +1,95 @@
+name: Windows dense-backend crash probe
+
+on:
+  push:
+    branches: [scratch/win-dense-crash]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # one cp39 Windows wheel, exactly as build_wheels makes it (pinned OpenBLAS)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: egor-tensin/vs-shell@v2
+      - uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniconda-version: "latest"
+          channels: conda-forge, anaconda
+      - run: conda install -y "openblas=0.3.33" pkgconfig
+      - run: conda list openblas
+      - uses: pypa/cibuildwheel@v4.2.0
+        env:
+          CIBW_BUILD: cp39-win_amd64
+          CIBW_TEST_COMMAND: python -c "import scs"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: probe-wheel
+          path: ./wheelhouse/*.whl
+
+  probe:
+    # the wheel's own test command plus a ctypes micro-test on the vendored DLL,
+    # on whatever CPU the runner has; records AVX-512 exposure
+    needs: build
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repeat: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    name: probe (${{ matrix.repeat }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.9"
+      - uses: actions/download-artifact@v8
+        with:
+          name: probe-wheel
+          path: wheelhouse
+      - run: |
+          python -m pip install --quiet numpy scipy pytest
+          python -m pip install --quiet (Get-ChildItem wheelhouse\*.whl).FullName
+      - name: Probe
+        run: |
+          $cpu = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name.Trim()
+          Write-Host "CPU: $cpu"
+          $micro = Join-Path $env:GITHUB_WORKSPACE "micro.py"
+          @'
+          import ctypes, glob, os
+          import numpy as np
+          import scs
+          try:
+              from numpy._core._multiarray_umath import __cpu_features__ as feat
+          except ImportError:
+              from numpy.core._multiarray_umath import __cpu_features__ as feat
+          libs = os.path.join(os.path.dirname(os.path.dirname(scs.__file__)), "scs.libs")
+          dll = glob.glob(os.path.join(libs, "openblas-*.dll"))[0]
+          ob = ctypes.CDLL(dll)
+          ob.openblas_get_config.restype = ctypes.c_char_p
+          ob.openblas_get_corename.restype = ctypes.c_char_p
+          print("DLL:", os.path.basename(dll), "| CONFIG:", ob.openblas_get_config().decode(), "| CORE:", ob.openblas_get_corename().decode(),
+                "| AVX512F exposed:", feat.get("AVX512F"), flush=True)
+          def by(v): return ctypes.byref(ctypes.c_int(v))
+          D = ctypes.POINTER(ctypes.c_double)
+          for (m, n) in [(165, 55), (1200, 400)]:
+              rng = np.random.RandomState(0)
+              A = np.asfortranarray(rng.randn(m, n)); G = np.zeros((n, n), order="F")
+              b = rng.randn(n); y = rng.randn(m); info = ctypes.c_int(0)
+              one, zero = ctypes.c_double(1.0), ctypes.c_double(0.0)
+              ob.dsyrk_(b"U", b"T", by(n), by(m), ctypes.byref(one), A.ctypes.data_as(D), by(m), ctypes.byref(zero), G.ctypes.data_as(D), by(n))
+              G[np.diag_indices(n)] += 1.0 + m
+              ob.dpotrf_(b"U", by(n), G.ctypes.data_as(D), by(n), ctypes.byref(info)); assert info.value == 0
+              ob.dpotrs_(b"U", by(n), by(1), G.ctypes.data_as(D), by(n), b.ctypes.data_as(D), by(n), ctypes.byref(info)); assert info.value == 0
+              ob.dgemv_(b"T", by(m), by(n), ctypes.byref(one), A.ctypes.data_as(D), by(m), y.ctypes.data_as(D), by(1), ctypes.byref(one), b.ctypes.data_as(D), by(1))
+              ob.dgemv_(b"N", by(m), by(n), ctypes.byref(one), A.ctypes.data_as(D), by(m), b.ctypes.data_as(D), by(1), ctypes.byref(zero), y.ctypes.data_as(D), by(1))
+          print("MICRO OK", flush=True)
+          '@ | Out-File -FilePath $micro -Encoding ascii
+          $tests = Join-Path $env:GITHUB_WORKSPACE "test"
+          Set-Location $env:RUNNER_TEMP
+          & python $micro 2>&1 | ForEach-Object { Write-Host $_ }
+          $mcode = $LASTEXITCODE
+          & python -X faulthandler -m pytest $tests -q -p no:cacheprovider 2>&1 | Select-Object -Last 3 | ForEach-Object { Write-Host $_ }
+          $tcode = $LASTEXITCODE
+          Write-Host "RESULT cpu=$cpu micro_exit=$mcode pytest_exit=$tcode"
