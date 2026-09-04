@@ -74,6 +74,7 @@ pip install . -Csetup-args=-Duse_spectral_cones=true
 
 Notes:
 - x86-64 manylinux wheels ship a `_scs_mkl` extension with sequential MKL linked statically (CI asserts the shipped inventory and that no wheel carries a dynamic MKL dependency). The musllinux, aarch64, macOS and Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
+- Windows wheels link conda-forge OpenBLAS pinned to 0.3.33: the win-64 0.3.34 build crashes inside its DGEMM kernels on AMD Zen 4/5 CPUs that expose AVX-512 (conda-forge/openblas-feedstock#196), so Windows source builds should avoid that build too.
 - `BLAS64` is a general SCS build mode for ILP64 BLAS/LAPACK libraries, not an MKL-only feature.
 - For the MKL Pardiso backend specifically, `BLAS64` must be paired with 64-bit SCS integers (`DLONG` / `int32=false`), and SCS now fails early if another library in the process has already fixed MKL to an incompatible LP64/ILP64 interface layer.
 
