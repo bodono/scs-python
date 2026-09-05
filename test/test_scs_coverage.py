@@ -2780,11 +2780,21 @@ def test_acceleration_relaxation_out_of_range_rejected(bad):
                 acceleration_relaxation=bad, verbose=False)
 
 
-@pytest.mark.parametrize("bad", [-1e-12, float("nan"), float("inf")])
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -float("inf")])
 def test_acceleration_regularization_invalid_rejected(bad):
     with pytest.raises(ValueError, match="acceleration_regularization"):
         scs.SCS(_make_data(), _CONE,
                 acceleration_regularization=bad, verbose=False)
+
+
+@pytest.mark.parametrize("aa_type", [0, 1])
+def test_acceleration_regularization_negative_pins_and_solves(aa_type):
+    solver = scs.SCS(_make_data(), _CONE, acceleration_type_1=aa_type,
+                     acceleration_interval=1,
+                     acceleration_regularization=-1e-8, verbose=False)
+    sol = solver.solve()
+    assert sol["info"]["status_val"] == scs.SOLVED
+    assert_almost_equal(sol["x"], [1.0], decimal=3)
 
 
 def test_acceleration_regularization_zero_allowed():

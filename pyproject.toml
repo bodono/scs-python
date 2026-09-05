@@ -7,7 +7,7 @@ requires = [
 
 [project]
 name = 'scs'
-version = "3.3.0"
+version = "3.3.1"
 description = 'Splitting conic solver'
 readme = 'README.md'
 requires-python = '>=3.9'
