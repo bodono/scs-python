@@ -202,7 +202,8 @@ def install_scs(**kwargs):
     if args.extraverbose:
         define_macros += [("VERBOSITY", 999)]  # for debugging
     if args.blas64:
-        define_macros += [("BLAS64", 1)]  # 64 bit blas
+        raise SystemExit("--blas64 is not supported by legacy_setup.py; use meson: "
+                         "pip install . -Csetup-args=-Duse_blas64=true -Csetup-args=-Dlink_mkl=true")
     if not args.int32 and not args.gpu:
         define_macros += [("DLONG", 1)]  # longs for integer type
 

@@ -176,6 +176,12 @@ if get_option('use_singleprec')
 endif
 
 if get_option('use_blas64')
+  if not get_option('link_mkl')
+    # Declaring 64-bit BLAS integers while linking an LP64 BLAS (the standard
+    # Accelerate/OpenBLAS builds) corrupts every BLAS call; only the MKL ILP64
+    # configuration is verified.
+    error('use_blas64=true requires link_mkl=true (ILP64 MKL).')
+  endif
   common_c_args += '-DBLAS64=1'
 endif
 

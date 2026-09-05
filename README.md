@@ -59,8 +59,10 @@ additional backends can be enabled with build-time flags:
 # MKL Pardiso direct solver
 pip install . -Csetup-args=-Dlink_mkl=true
 
-# Use 64-bit BLAS/LAPACK integers (ILP64 / BLAS64)
-pip install . -Csetup-args=-Duse_blas64=true
+# Use 64-bit BLAS/LAPACK integers (ILP64 / BLAS64). Requires the MKL
+# backend (-Dlink_mkl=true): standard system BLAS (Accelerate/OpenBLAS)
+# is LP64 and the build rejects the combination as unsafe.
+pip install . -Csetup-args=-Dlink_mkl=true -Csetup-args=-Duse_blas64=true
 
 # GPU direct solver (cuDSS)
 pip install . -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true
@@ -110,7 +112,7 @@ well for most problems, but the following settings can be tuned:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `acceleration_lookback` | `10` | AA memory size; `0` disables AA. |
-| `acceleration_interval` | `10` | Apply AA every N ADMM iterations. |
+| `acceleration_interval` | `5` | Apply AA every N ADMM iterations. |
 | `acceleration_type_1` | `1` | `1` = type-I AA, `0` = type-II AA. |
 | `acceleration_regularization` | `1e-8` | Tikhonov regularization for the AA least-squares solve. Tuned for type-I; type-II typically prefers `1e-12`. |
 | `acceleration_relaxation` | `1.0` | Relaxation factor in `[0, 2]`; `1.0` is vanilla AA. |
