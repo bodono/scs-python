@@ -184,8 +184,10 @@ def install_scs(**kwargs):
     extra_link_args = []
     libraries = []
     sources = (
-        ["scs/scspy.c"]
-        + glob("scs_source/src/*.c")
+        ["scs/scspy.c", "scs/py_ctrlc.c"]
+        # Python builds share one process-wide interrupt state (scs/py_ctrlc.c)
+        # instead of the upstream per-extension ctrlc.c
+        + [f for f in glob("scs_source/src/*.c") if not f.endswith("ctrlc.c")]
         + glob("scs_source/linsys/*.c")
     )
     include_dirs = ["scs_source/include", "scs_source/linsys"]

@@ -209,7 +209,7 @@ endif
 scs_core_sources = files(
   'scs_source/src/aa.c',
   'scs_source/src/cones.c',
-  'scs_source/src/ctrlc.c',
+  'scs/py_ctrlc.c',
   'scs_source/src/exp_cone.c',
   'scs_source/src/linalg.c',
   'scs_source/src/normalize.c',

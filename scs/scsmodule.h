@@ -1,6 +1,9 @@
 #ifndef PY_SCSMODULE_H
 #define PY_SCSMODULE_H
 
+/* from scs/py_ctrlc.c */
+extern int scs_py_ctrlc_init(void);
+
 static PyObject *version(PyObject *self) {
   return Py_BuildValue("s", scs_version());
 }
@@ -71,14 +74,26 @@ static PyObject *moduleinit(void) {
   /* Initialize SCS_Type */
   SCS_Type.tp_new = PyType_GenericNew;
   if (PyType_Ready(&SCS_Type) < 0)
-    return NULL;
+    goto fail;
 
   /* Add type to the module dictionary and initialize it */
   Py_INCREF(&SCS_Type);
-  if (PyModule_AddObject(m, "SCS", (PyObject *)&SCS_Type) < 0)
-    return NULL;
+  if (PyModule_AddObject(m, "SCS", (PyObject *)&SCS_Type) < 0) {
+    Py_DECREF(&SCS_Type);
+    goto fail;
+  }
+
+  /* Join (or create) the process-shared interrupt state; see
+   * scs/py_ctrlc.c. Must run while the GIL is held. */
+  if (scs_py_ctrlc_init() < 0)
+    goto fail;
 
   return m;
+
+fail:
+  /* every failure exit after PyModule_Create must release the module */
+  Py_DECREF(m);
+  return NULL;
 };
 
 #if PY_MAJOR_VERSION >= 3
