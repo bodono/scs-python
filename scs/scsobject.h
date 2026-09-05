@@ -827,14 +827,11 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error("acceleration_interval must be positive");
   }
-  /* TODO(repin): the core's sign contract (negative = pinned absolute
-   * value, cvxgrp/scs#421) is not in the pinned core yet; drop `< 0`
-   * with the submodule bump. */
-  if (!isfinite((double)stgs->acceleration_regularization) ||
-      stgs->acceleration_regularization < 0) {
+  /* Negative regularization pins its absolute value. */
+  if (!isfinite((double)stgs->acceleration_regularization)) {
     free_py_scs_data(d, k, stgs, &ps);
     return finish_with_error(
-        "acceleration_regularization must be a nonnegative finite number");
+        "acceleration_regularization must be a finite number");
   }
   if (!isfinite((double)stgs->acceleration_relaxation) ||
       stgs->acceleration_relaxation < 0 ||
