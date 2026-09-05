@@ -249,11 +249,14 @@ jobs:
         uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
-          channels: https://software.repos.intel.com/python/conda/, conda-forge
+          channels: conda-forge, anaconda
 
-      - name: Install MKL from conda on Windows
+      - name: Install openblas from conda on Windows
         if: runner.os == 'Windows'
-        run: conda install -y -c https://software.repos.intel.com/python/conda/ -c conda-forge mkl mkl-devel intel-openmp pkgconfig
+        # 0.3.33 pinned: conda-forge's win-64 0.3.34 build crashes inside its
+        # DGEMM kernels on AMD Zen 4/5 CPUs that expose AVX-512
+        # (conda-forge/openblas-feedstock#196). Unpin once a fixed build ships.
+        run: conda install -y "openblas=0.3.33" pkgconfig
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2.0
@@ -279,6 +282,132 @@ jobs:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
+  wheel_audit:
+    # Every Linux wheel must ship the standard extensions and a vendored
+    # OpenBLAS, _scs_mkl exactly in the x86-64 manylinux wheels; no wheel may
+    # depend on a dynamic MKL (it is linked statically), ship an Intel shared
+    # library, or carry an absolute rpath entry; see pyproject.toml (#423).
+    name: Audit wheel ELF metadata
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: cibw-wheels-ubuntu-*
+          path: wheelhouse
+          merge-multiple: true
+
+      - name: Audit NEEDED, rpath and shipped libraries
+        run: |
+          cat > audit.py <<'EOF'
+          import glob, os, re, subprocess, sys, tempfile, zipfile
+          bad = []
+          whls = sorted(glob.glob("wheelhouse/*.whl"))
+          assert whls, "no wheels downloaded"
+          for whl in whls:
+              name = os.path.basename(whl)
+              with tempfile.TemporaryDirectory() as td:
+                  with zipfile.ZipFile(whl) as z:
+                      z.extractall(td)
+                  sos = glob.glob(os.path.join(td, "**", "*.so*"), recursive=True)
+                  mods = {os.path.basename(so).split(".")[0] for so in sos}
+                  want = {"_scs_direct", "_scs_indirect", "_scs_dense"}
+                  if "manylinux" in name and "x86_64" in name:
+                      want.add("_scs_mkl")
+                  elif "_scs_mkl" in mods:
+                      bad.append((name, "-", "_scs_mkl belongs only in x86-64 manylinux wheels"))
+                  if want - mods:
+                      bad.append((name, "-", f"missing extensions: {sorted(want - mods)}"))
+                  if not any(os.path.basename(so).startswith("libopenblas") for so in sos):
+                      bad.append((name, "-", "no vendored OpenBLAS"))
+                  intel = [os.path.basename(so) for so in sos
+                           if os.path.basename(so).startswith(("libmkl", "libiomp"))]
+                  if intel:
+                      bad.append((name, "-", f"Intel shared libraries in wheel: {intel}"))
+                  for so in sos:
+                      rel = os.path.relpath(so, td)
+                      out = subprocess.run(["readelf", "-d", so], capture_output=True,
+                                           text=True, check=True).stdout
+                      needed = re.findall(r"\(NEEDED\)[^\[]*\[([^\]]+)\]", out)
+                      mkl = [n for n in needed if n.startswith(("libmkl", "libiomp"))]
+                      if mkl:
+                          bad.append((name, rel, f"dynamic MKL dependency: {mkl}"))
+                      for rp in re.findall(r"\((?:RPATH|RUNPATH)\)[^\[]*\[([^\]]*)\]", out):
+                          for entry in rp.split(":"):
+                              if entry and not entry.startswith("$ORIGIN"):
+                                  bad.append((name, rel, f"non-relative rpath entry '{entry}'"))
+          assert any("manylinux" in w and "x86_64" in w for w in map(os.path.basename, whls)), "no x86-64 manylinux wheel"
+          print(f"audited {len(whls)} wheels")
+          for whl, so, msg in bad:
+              print(f"BAD: {whl} :: {so} :: {msg}")
+          sys.exit(1 if bad else 0)
+          EOF
+          python3 audit.py
+
+  wheel_smoke_clean_env:
+    # The release gate: install the built wheel in a pristine container with
+    # nothing on the loader path and solve with every backend (a PSD cone so
+    # BLAS/LAPACK run). On x86-64 the static MKL backend must be AUTO's choice.
+    name: Clean-container wheel smoke test (${{ matrix.python }})
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.14", "3.14t"]
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: cibw-wheels-ubuntu-latest-*
+          path: wheelhouse
+          merge-multiple: true
+
+      - name: Solve in pristine container (${{ matrix.python }})
+        run: |
+          cat > smoke.py <<'EOF'
+          import os, sys
+          import numpy as np, scipy.sparse as sp, scs
+          # the loader must be exactly as clean as a user's machine
+          assert not os.environ.get("LD_LIBRARY_PATH"), os.environ["LD_LIBRARY_PATH"]
+          print("scs", scs.__version__, "python", sys.version)
+          data = {
+              "A": sp.csc_matrix(np.vstack([np.array([[1.0, 1.0], [1.0, -1.0], [0.0, 1.0]]),
+                                            np.array([[-1.0, 0.0], [0.0, 0.0], [0.0, -1.0]])])),
+              "b": np.hstack([np.array([1.0, 0.5, 0.7]), np.zeros(3)]),
+              "c": np.array([1.0, 1.0]),
+          }
+          cone = {"z": 1, "l": 2, "s": [2]}
+          scs._load_module("_scs_mkl")  # static MKL: must import with nothing installed
+          auto_file = os.path.basename(scs._resolve_auto().__file__)
+          assert auto_file.startswith("_scs_mkl"), auto_file
+          print("auto resolves to", auto_file)
+          for name in ["qdldl", "cpu_indirect", "cpu_dense", "mkl", "auto"]:
+              kw = {} if name == "auto" else {"linear_solver": name}
+              sol = scs.SCS(data, cone, verbose=True, **kw).solve()
+              assert sol["info"]["status"] == "solved", (name, sol["info"]["status"])
+              print(name, "ok:", sol["info"].get("lin_sys_solver", "n/a"))
+          print("ALL OK")
+          EOF
+          case "${{ matrix.python }}" in
+            3.9)   IMAGE=python:3.9-slim;  TAG=cp39-cp39 ;;
+            3.14)  IMAGE=python:3.14-slim; TAG=cp314-cp314 ;;
+            3.14t) IMAGE=ghcr.io/astral-sh/uv:debian-slim; TAG=cp314-cp314t ;;
+          esac
+          docker run --rm -v "$PWD:/work" -w /tmp -e PY=${{ matrix.python }} -e TAG=$TAG \
+            "$IMAGE" bash -ec '
+            if command -v uv >/dev/null; then
+              uv python install "$PY"
+              uv venv -p "$PY" /venv
+              PIP="uv pip install --python /venv/bin/python"
+              PYBIN=/venv/bin/python
+            else
+              PIP="pip install --quiet"
+              PYBIN=python
+            fi
+            $PIP numpy scipy
+            $PIP /work/wheelhouse/scs-*-${TAG}-manylinux*x86_64.whl
+            $PYBIN /work/smoke.py'
+
   build_sdist:
     name: Build source distribution
     runs-on: ubuntu-latest
@@ -296,7 +425,9 @@ jobs:
           path: dist/*.tar.gz
 
   upload_pypi:
-    needs: [build_wheels, build_sdist]
+    # publishing waits for the clean-container smoke tests, the wheel audit
+    # and the source-MKL lanes (the sdist carries the link_mkl build path)
+    needs: [build_wheels, build_sdist, wheel_smoke_clean_env, wheel_audit, build_mkl]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

@@ -15,6 +15,13 @@ The full documentation is available [here](https://www.cvxgrp.org/scs/).
 pip install scs
 ```
 
+On x86-64 Linux the manylinux (glibc) wheels include the MKL Pardiso direct linear solver
+(MKL linked statically into `_scs_mkl`, single-threaded) and use it
+automatically: it is faster than the built-in QDLDL solver for most problems,
+often dramatically so on larger ones, and nothing extra needs to be
+installed. Intel's license notice ships in the wheel as
+`LICENSE-INTEL-MKL.txt`. Every other wheel falls back to QDLDL.
+
 To install from source:
 ```bash
 git clone --recursive https://github.com/bodono/scs-python.git
@@ -40,9 +47,13 @@ solver = scs.SCS(data, cone, linear_solver=scs.LinearSolver.QDLDL)
 Available values: `AUTO`, `QDLDL`, `CPU_INDIRECT`, `MKL`, `ACCELERATE`,
 `CPU_DENSE`, `GPU_INDIRECT`, `CUDSS`.
 
-The pre-built wheels (`pip install scs`) include MKL on x86_64 Linux and
-Windows, and Apple Accelerate on macOS. When installing from source, additional
-backends can be enabled with build-time flags:
+The pre-built wheels (`pip install scs`) link OpenBLAS on Linux and Windows,
+and Apple Accelerate on macOS; the x86-64 manylinux wheels also ship the MKL
+Pardiso backend (see Installation). MKL is linked statically rather than
+bundled as shared libraries, whose dlopen'd CPU dispatch kernels wheel-repair
+tools cannot see (cvxgrp/scs#423). The MKL backend is also available in
+source builds (e.g. conda environments providing MKL), where
+additional backends can be enabled with build-time flags:
 
 ```bash
 # MKL Pardiso direct solver
@@ -62,7 +73,8 @@ pip install . -Csetup-args=-Duse_spectral_cones=true
 ```
 
 Notes:
-- Linux x86_64 wheels are built and tested against threaded MKL, and CI asserts a `libiomp5` dependency on the packaged `_scs_mkl` extension. Windows currently falls back to sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
+- x86-64 manylinux wheels ship a `_scs_mkl` extension with sequential MKL linked statically (CI asserts the shipped inventory and that no wheel carries a dynamic MKL dependency). The musllinux, aarch64, macOS and Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
+- Windows wheels link conda-forge OpenBLAS pinned to 0.3.33: the win-64 0.3.34 build crashes inside its DGEMM kernels on AMD Zen 4/5 CPUs that expose AVX-512 (conda-forge/openblas-feedstock#196), so Windows source builds should avoid that build too.
 - `BLAS64` is a general SCS build mode for ILP64 BLAS/LAPACK libraries, not an MKL-only feature.
 - For the MKL Pardiso backend specifically, `BLAS64` must be paired with 64-bit SCS integers (`DLONG` / `int32=false`), and SCS now fails early if another library in the process has already fixed MKL to an incompatible LP64/ILP64 interface layer.
 

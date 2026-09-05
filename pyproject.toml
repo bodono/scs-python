@@ -63,21 +63,25 @@ archs = [
 before-build = "pip install delvewheel"
 # This will probably become default in newer cibuildwheels versions
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
-config-settings = {setup-args = "-Dlink_mkl=true"}
 
 # Openblas installation for 3 different linux images
 
+# x86_64 Linux: the default backends link vendored OpenBLAS; _scs_mkl links
+# MKL statically (Intel's mkl-static archives, sequential, symbols hidden) so
+# the wheel is self-contained. The 3.3.0 wheels vendored dynamic MKL without
+# its dlopen'd CPU dispatch kernels, which auditwheel cannot see, and every
+# solve aborted on machines without MKL on the loader path (cvxgrp/scs#423).
+# Hence: nothing in `environment` may point the loader at build-machine
+# libraries, and publishing waits for wheel_smoke_clean_env (a pristine
+# container solving with every backend) and wheel_audit.
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "dnf install -y dnf-plugins-core",
-  "dnf config-manager --add-repo https://yum.repos.intel.com/oneapi",
-  "rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB",
-  "dnf install -y intel-oneapi-mkl-devel",
+  "dnf install -y openblas-devel",
+  "bash /project/.github/scripts/install_mkl_static.sh /opt/mkl-static",
 ]
-environment = {PKG_CONFIG_PATH = "/opt/intel/oneapi/mkl/latest/lib/pkgconfig:/opt/intel/oneapi/compiler/latest/lib/pkgconfig:$PKG_CONFIG_PATH", LD_LIBRARY_PATH = "/opt/intel/oneapi/mkl/latest/lib/intel64:/opt/intel/oneapi/mkl/latest/lib:/opt/intel/oneapi/compiler/latest/lib:$LD_LIBRARY_PATH"}
-config-settings = {setup-args = "-Dlink_mkl=true"}
+config-settings = {setup-args = "-Dmkl_static_prefix=/opt/mkl-static"}
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"

@@ -21,8 +21,18 @@ print(incdir)
 '''], check: true).stdout().strip()
 
 # Get BLAS
+#
+# link_mkl links every extension against a dynamic MKL from the environment
+# (conda/source builds). mkl_static_prefix builds only _scs_mkl, with MKL
+# linked statically, while every other extension uses the platform BLAS: the
+# x86-64 Linux wheel configuration (see pyproject.toml for why).
 blas_deps = []
+mkl_blas_deps = []
 mkl_pkg_name = ''
+mkl_static_prefix = get_option('mkl_static_prefix')
+if get_option('link_mkl') and mkl_static_prefix != ''
+    error('link_mkl and mkl_static_prefix are mutually exclusive.')
+endif
 if get_option('link_mkl')
     if get_option('use_blas64') and get_option('int32')
         error('MKL BLAS64 requires 64-bit SCS integers. Re-run Meson with -Dint32=false.')
@@ -50,27 +60,34 @@ if get_option('link_mkl')
     if host_machine.system() == 'windows'
         # On Windows the conda MKL iomp .pc file has broken Cflags (raw path
         # without -I prefix). Use sequential MKL until Intel ships a fix.
-        blas_deps = [dependency(_mkl_seq, required : false)]
-        if blas_deps[0].found()
+        mkl_blas_deps = [dependency(_mkl_seq, required : false)]
+        if mkl_blas_deps[0].found()
             mkl_pkg_name = _mkl_seq
         endif
     else
-        blas_deps = [dependency(_mkl_iomp, required : false)]
-        if not blas_deps[0].found()
-            blas_deps = [dependency(_mkl_seq, required : false)]
-            if blas_deps[0].found()
+        mkl_blas_deps = [dependency(_mkl_iomp, required : false)]
+        if not mkl_blas_deps[0].found()
+            mkl_blas_deps = [dependency(_mkl_seq, required : false)]
+            if mkl_blas_deps[0].found()
                 mkl_pkg_name = _mkl_seq
             endif
         else
             mkl_pkg_name = _mkl_iomp
         endif
     endif
-    if not blas_deps[0].found()
-        blas_deps = [cc.find_library('mkl_rt', required : false)]
+    if not mkl_blas_deps[0].found()
+        mkl_blas_deps = [cc.find_library('mkl_rt', required : false)]
     endif
-    if not blas_deps[0].found()
-        blas_deps = [dependency('mkl-sdl', required : false)]
+    if not mkl_blas_deps[0].found()
+        mkl_blas_deps = [dependency('mkl-sdl', required : false)]
     endif
+    if not mkl_blas_deps[0].found() and not get_option('sdist_mode')
+        error('link_mkl was requested but MKL was not found.')
+    endif
+endif
+
+if get_option('link_mkl')
+    blas_deps = mkl_blas_deps
 else
     if host_machine.system() == 'darwin'
         blas_deps = [dependency('Accelerate')]
@@ -131,11 +148,11 @@ if get_option('native_arch')
   endif
 endif
 
-_deps = [blas_deps]
-_deps += dependency('threads')
+_base_deps = [dependency('threads')]
 if get_option('use_openmp')
-  _deps += dependency('openmp')
+  _base_deps += dependency('openmp')
 endif
+_deps = [blas_deps] + _base_deps
 
 is_linux = host_machine.system() == 'linux'
 if is_linux
@@ -336,15 +353,42 @@ if get_option('link_mkl')
   endif
   if not mkl_rt_dep.found() and mkl_pkg_name != ''
     # Search next to the pkg-config-provided MKL component libraries.
-    _mkl_libdir = blas_deps[0].get_variable(pkgconfig: 'libdir', default_value: '')
+    _mkl_libdir = mkl_blas_deps[0].get_variable(pkgconfig: 'libdir', default_value: '')
     if _mkl_libdir != ''
       mkl_rt_dep = cc.find_library('mkl_rt', dirs: [_mkl_libdir], required : false)
     endif
   endif
   if not mkl_rt_dep.found()
-    error('link_mkl=true requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
+    error('link_mkl requires mkl_rt (or mkl-sdl). _scs_mkl calls MKL_Set_Interface_Layer() at startup and cannot be built safely without it.')
   endif
   _mkl_deps = _deps + [mkl_rt_dep]
+  # The core's reference to MKL_Set_Interface_Layer is weak (static MKL has
+  # no mkl_rt), so with --as-needed the linker would drop mkl_rt, the
+  # symbol would resolve to NULL and the interface-layer guard would be
+  # skipped. Keep mkl_rt a hard dependency of the dynamic build.
+  _mkl_link_args = is_linux ? ['-Wl,--no-as-needed'] : []
+elif mkl_static_prefix != ''
+  # Intel's mkl-static archives: LP64, sequential, linked as a group (they
+  # reference each other) with every MKL symbol hidden so an MKL already in
+  # the process is never interposed. The core's MKL_Set_Interface_Layer
+  # reference is weak, so the mkl_rt-only runtime check is skipped.
+  if get_option('use_blas64')
+    error('mkl_static_prefix links the LP64 interface; use link_mkl for ILP64 MKL builds.')
+  endif
+  _mkl_lib = mkl_static_prefix / 'lib'
+  _mkl_archives = []
+  foreach _a : ['libmkl_intel_lp64.a', 'libmkl_sequential.a', 'libmkl_core.a']
+    if not fs.exists(_mkl_lib / _a)
+      error('mkl_static_prefix: ' + (_mkl_lib / _a) + ' not found (pip install mkl-static).')
+    endif
+    _mkl_archives += _mkl_lib / _a
+  endforeach
+  _mkl_deps = _base_deps + [cc.find_library('dl'), cc.find_library('m'), cc.find_library('rt')]
+  _mkl_link_args = ['-Wl,--start-group'] + _mkl_archives + ['-Wl,--end-group', '-Wl,--exclude-libs,ALL']
+  # Intel Simplified Software License: the notice ships with the binaries.
+  install_data('LICENSE-INTEL-MKL.txt', install_dir: scs_dir)
+endif
+if get_option('link_mkl') or mkl_static_prefix != ''
   py.extension_module(
     '_scs_mkl',
     'scs/scspy.c',
@@ -355,6 +399,7 @@ if get_option('link_mkl')
     c_args: common_c_args + ['-DPY_MKL', '-DSCS_MKL=1'],
     include_directories: common_includes + ['scs_source/linsys/mkl/direct'],
     dependencies: _mkl_deps,
+    link_args: _mkl_link_args,
     install_dir: scs_dir,
     install: true,
   )

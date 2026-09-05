@@ -29,3 +29,5 @@ option('native_arch', type: 'boolean',
        value: false, description: 'Compile with -march=native for the current CPU. Improves performance but produces non-portable binaries. Enable when building from source for local use.')
 option('use_spectral_cones', type: 'boolean',
        value: false, description: 'Build with spectral cone support (logdet, nuclear norm, ell1, sum-of-largest). Requires LAPACK.')
+option('mkl_static_prefix', type: 'string', value: '',
+       description: 'Prefix holding Intel MKL static archives (<prefix>/lib/libmkl_*.a, e.g. from the mkl-static PyPI wheel). Builds _scs_mkl with MKL linked statically and hidden while every other extension uses the platform BLAS: the x86-64 Linux wheel configuration.')

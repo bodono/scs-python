@@ -1,6 +1,4 @@
 from __future__ import print_function, division
-import os
-import subprocess
 import sys
 import platform
 import scs
@@ -13,9 +11,10 @@ import gen_random_cone_prob as tools
 #  Uses scs to solve a random cone problem  #
 #############################################
 
-# MKL is shipped in manylinux x86_64 and Windows wheels, but not in
-# musllinux or macOS or aarch64 wheels. Skip on platforms where MKL
-# is never available; on MKL platforms fail hard if the import is missing.
+# The MKL backend ships in the x86-64 Linux wheels (MKL linked statically
+# into _scs_mkl) and in source builds with link_mkl / mkl_static_prefix.
+# Skip on platforms where it is never available, and when the extension is
+# absent (musllinux, aarch64, macOS).
 if sys.platform == "darwin":
     pytest.skip("MKL is not available on macOS", allow_module_level=True)
 if sys.platform == "linux" and platform.machine() != "x86_64":
@@ -24,8 +23,7 @@ if sys.platform == "linux" and platform.machine() != "x86_64":
 try:
     from scs import _scs_mkl  # noqa: E402
 except ImportError:
-    # musllinux x86_64 ships openblas, not MKL
-    pytest.skip("MKL module not installed", allow_module_level=True)
+    pytest.skip("MKL backend not importable", allow_module_level=True)
 
 # cone:
 K = {
@@ -39,15 +37,6 @@ K = {
 }
 m = tools.get_scs_cone_dims(K)
 params = {"verbose": True, "eps_abs": 1e-7, "eps_rel": 1e-7, "eps_infeas": 1e-7}
-
-
-@pytest.mark.skipif(
-    not (sys.platform == "linux" and platform.machine() == "x86_64"),
-    reason="Threaded MKL linkage is only checked on Linux x86_64",
-)
-def test_mkl_module_links_intel_openmp():
-    out = subprocess.check_output(["ldd", os.fspath(_scs_mkl.__file__)], text=True)
-    assert "libiomp5" in out
 
 
 def test_solve_feasible():
