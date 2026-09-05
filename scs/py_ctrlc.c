@@ -25,6 +25,7 @@ typedef struct {
   volatile LONG int_detected;
   CRITICAL_SECTION cs;
   int listener_count;
+  PHANDLER_ROUTINE handler;
 } scs_py_interrupt_state;
 #define SCS_PY_LOCK(s) EnterCriticalSection(&(s)->cs)
 #define SCS_PY_UNLOCK(s) LeaveCriticalSection(&(s)->cs)
@@ -105,7 +106,8 @@ void scs_start_interrupt_listener(void) {
   SCS_PY_LOCK(s);
   if (s->listener_count++ == 0) {
     InterlockedExchange(&s->int_detected, 0);
-    SetConsoleCtrlHandler(scs_handle_ctrlc, TRUE);
+    s->handler = scs_handle_ctrlc;
+    SetConsoleCtrlHandler(s->handler, TRUE);
   }
   SCS_PY_UNLOCK(s);
 }
@@ -114,7 +116,9 @@ void scs_end_interrupt_listener(void) {
   scs_py_interrupt_state *s = shared_state;
   SCS_PY_LOCK(s);
   if (s->listener_count > 0 && --s->listener_count == 0) {
-    SetConsoleCtrlHandler(scs_handle_ctrlc, FALSE);
+    /* The last solver may belong to a different extension, whose static
+     * handler has a different address. Remove the one we installed. */
+    SetConsoleCtrlHandler(s->handler, FALSE);
   }
   SCS_PY_UNLOCK(s);
 }

@@ -5,10 +5,6 @@ import sys
 
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    sys.platform == "win32", reason="POSIX signal semantics"
-)
-
 _COMMON = r"""
 import threading, os, signal, time
 import numpy as np, scipy.sparse as sp
@@ -31,13 +27,14 @@ def make_solver(backend, max_iters, eps):
 """
 
 
-def _run(body):
+def _run(body, **kwargs):
     return subprocess.run(
         [sys.executable, "-c", _COMMON + body],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, timeout=120, **kwargs,
     )
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX signal semantics")
 def test_sigint_during_and_after_mixed_backend_overlap():
     body = r"""
 results = {}
@@ -80,3 +77,60 @@ except KeyboardInterrupt:
     assert "BOTH_INTERRUPTED" in r.stdout and "RESTORED" in r.stdout, (
         r.stdout, r.stderr)
 
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console handlers")
+def test_windows_handler_removed_after_non_lifo_overlap():
+    body = r"""
+import ctypes, sys
+
+solvers = {
+    "a": scs.SCS(DATA, CONE, linear_solver=scs.LinearSolver.QDLDL,
+                 verbose=True, max_iters=1),
+    "b": scs.SCS(DATA, CONE, linear_solver=scs.LinearSolver.CPU_INDIRECT,
+                 verbose=True, max_iters=1),
+}
+entered = {name: threading.Event() for name in solvers}
+release = {name: threading.Event() for name in solvers}
+output = sys.stdout
+
+class Gate:
+    def write(self, text):
+        name = threading.current_thread().name
+        if name in entered and not entered[name].is_set():
+            # scs_solve prints its header after installing the listener.
+            # Pause here to enforce A-start, B-start, A-end, B-end exactly.
+            entered[name].set()
+            assert release[name].wait(30), "solver release timed out"
+        return output.write(text)
+
+    def flush(self):
+        output.flush()
+
+sys.stdout = Gate()
+threads = {
+    name: threading.Thread(name=name, target=solver.solve, daemon=True)
+    for name, solver in solvers.items()
+}
+for name, thread in threads.items():
+    thread.start()
+    assert entered[name].wait(30), f"{name} did not enter scs_solve"
+for name, thread in threads.items():
+    release[name].set()
+    thread.join(30)
+    assert not thread.is_alive(), f"{name} did not finish"
+sys.stdout = output
+
+# This child has its own console: the event cannot reach pytest or its runner.
+kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+try:
+    if not kernel32.GenerateConsoleCtrlEvent(signal.CTRL_C_EVENT, 0):
+        raise ctypes.WinError(ctypes.get_last_error())
+    time.sleep(5)
+except KeyboardInterrupt:
+    print("RESTORED")
+else:
+    raise AssertionError("SCS swallowed Ctrl+C after both solves finished")
+"""
+    r = _run(body, creationflags=subprocess.CREATE_NEW_CONSOLE)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert "RESTORED" in r.stdout, (r.stdout, r.stderr)
