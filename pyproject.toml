@@ -108,3 +108,15 @@ markers = [
 # pytest-run-parallel: functions that are not thread-safe
 # (capsys/capfd are detected automatically by pytest-run-parallel)
 thread_unsafe_functions = ["numpy.random.seed"]
+
+# `--cov=scs` measures nothing when pytest runs from the repo root: the source
+# directory `scs/` has no `__init__.py`, so coverage resolves the name to that
+# namespace-package directory rather than to the installed `scs` package, and
+# reports 0% with "No data was collected". `source_pkgs` states that `scs` is an
+# importable package name, so coverage follows the import to site-packages.
+[tool.coverage.run]
+source_pkgs = ["scs"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 100

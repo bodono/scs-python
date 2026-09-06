@@ -52,3 +52,9 @@ out
 # pixi environments
 .pixi
 *.egg-info
+
+# coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
