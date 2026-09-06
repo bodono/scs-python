@@ -66,9 +66,66 @@ _SOLVER_DISPATCH = {
 }
 
 
+# The boolean selection flags SCS accepted before 3.3.0. They were consumed
+# here, so this is also where they are recognised on the way out.
+_LEGACY_SOLVER_FLAGS = ("cudss", "gpu", "mkl", "use_indirect")
+
+
+def _pop_legacy_solver_flags(stgs):
+  """Translate the pre-3.3.0 boolean selection flags into a `LinearSolver`.
+
+  Returns `None` when no legacy flag was passed. Otherwise the flags are
+  removed from `stgs`, one `DeprecationWarning` naming the replacement is
+  emitted, and the equivalent enum member is returned.
+
+  The mapping reproduces what 3.2.11 did, including its two surprises:
+  `gpu=True` without `use_indirect` selected cuDSS rather than the CUDA
+  indirect solver, and `mkl=True` with `use_indirect=True` was refused.
+  The one deliberate difference is `cudss=True`, which 3.2.11 rejected
+  outright ("To use cuDSS set gpu=True and use_indirect=False.") and which
+  now maps to the backend its name plainly means.
+  """
+  present = {k: stgs.pop(k) for k in _LEGACY_SOLVER_FLAGS if k in stgs}
+  if not present:
+    return None
+
+  use_indirect = bool(present.get("use_indirect", False))
+  if present.get("cudss"):
+    replacement = LinearSolver.CUDSS
+  elif present.get("gpu"):
+    replacement = (
+        LinearSolver.GPU_INDIRECT if use_indirect else LinearSolver.CUDSS
+    )
+  elif present.get("mkl"):
+    if use_indirect:
+      raise NotImplementedError(
+          "There is no MKL indirect solver; pass"
+          " `linear_solver=scs.LinearSolver.CPU_INDIRECT` for the iterative"
+          " solver, or `LinearSolver.MKL` for MKL Pardiso."
+      )
+    replacement = LinearSolver.MKL
+  else:
+    replacement = (
+        LinearSolver.CPU_INDIRECT if use_indirect else LinearSolver.QDLDL
+    )
+
+  named = ", ".join("`%s`" % k for k in sorted(present))
+  warnings.warn(
+      "The boolean solver-selection flags were removed in SCS 3.3.0."
+      " You passed %s; pass `linear_solver=scs.LinearSolver.%s` instead."
+      % (named, replacement.name),
+      DeprecationWarning,
+      # _pop_legacy_solver_flags <- _select_scs_module <- SCS.__init__ <- user
+      stacklevel=4,
+  )
+  return replacement
+
+
 def _select_scs_module(stgs):
   """Choose which SCS C extension to import based on settings."""
-  linear_solver = stgs.pop("linear_solver", LinearSolver.AUTO)
+  legacy = _pop_legacy_solver_flags(stgs)
+  # An explicit `linear_solver` wins: the legacy flag only supplies a default.
+  linear_solver = stgs.pop("linear_solver", legacy or LinearSolver.AUTO)
   if isinstance(linear_solver, str):
     linear_solver = LinearSolver(linear_solver)
   return _SOLVER_DISPATCH[linear_solver]()
