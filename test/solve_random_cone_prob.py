@@ -60,7 +60,7 @@ def solve_infeasible(linear_solver, rng):
     m = tools.get_scs_cone_dims(K)
     data = tools.gen_infeasible(K, n=m // 3, rng=rng)
     params = {"normalize": True, "scale": 0.5}
-    sol = scs.solve(data, K, linear_solver=linear_solver, **params)
+    scs.solve(data, K, linear_solver=linear_solver, **params)
 
 
 def solve_unbounded(linear_solver, rng):
@@ -76,7 +76,7 @@ def solve_unbounded(linear_solver, rng):
     m = tools.get_scs_cone_dims(K)
     data = tools.gen_unbounded(K, n=m // 3, rng=rng)
     params = {"normalize": True, "scale": 0.5}
-    sol = scs.solve(data, K, linear_solver=linear_solver, **params)
+    scs.solve(data, K, linear_solver=linear_solver, **params)
 
 
 if __name__ == "__main__":

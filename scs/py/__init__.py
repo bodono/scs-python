@@ -1,10 +1,21 @@
-#!/usr/bin/env python
+"""Python interface to SCS, the splitting conic solver.
+
+Exposes the `SCS` class, the legacy `solve` helper, and the `LinearSolver`
+enum naming the linear-system backends a given build can dispatch to.
+"""
+
 import enum
 import sys
+import warnings
+from types import ModuleType
+from typing import Any, Optional
+
 import numpy as np
 from scipy import sparse
-from scs import _scs_direct
-import warnings
+
+# The `_scs_*` extensions are produced by the meson build, so they do not
+# exist in the source tree for a static checker to resolve.
+from scs import _scs_direct  # type: ignore[attr-defined]
 
 __version__ = _scs_direct.version()
 __sizeof_int__ = _scs_direct.sizeof_int()
@@ -50,12 +61,13 @@ class LinearSolver(enum.Enum):
   CUDSS = "cudss"
 
 
-def _load_module(name):
+def _load_module(name: str) -> ModuleType:
+  """Import one of the sibling `_scs_*` C extension modules by name."""
   from importlib import import_module
   return import_module(f"scs.{name}")
 
 
-def _resolve_auto():
+def _resolve_auto() -> ModuleType:
   """Auto-detect the best available direct solver for this platform."""
   if sys.platform == "darwin":
     # Prefer the bundled QDLDL on macOS over Apple Accelerate.
@@ -79,7 +91,7 @@ _SOLVER_DISPATCH = {
 }
 
 
-def _select_scs_module(stgs):
+def _select_scs_module(stgs: dict) -> ModuleType:
   """Choose which SCS C extension to import based on settings."""
   linear_solver = stgs.pop("linear_solver", LinearSolver.AUTO)
   if isinstance(linear_solver, str):
@@ -87,7 +99,7 @@ def _select_scs_module(stgs):
   return _SOLVER_DISPATCH[linear_solver]()
 
 
-def _has_lower_tri(P):
+def _has_lower_tri(P: Any) -> bool:
   """Fast check for strictly lower triangular entries in a sorted CSC matrix."""
   nnz_per_col = np.diff(P.indptr)
   nonempty = nnz_per_col > 0
@@ -119,7 +131,7 @@ class SCS(object):
   'solved'
   """
 
-  def __init__(self, data, cone, **settings):
+  def __init__(self, data: dict, cone: dict, **settings: Any) -> None:
     """Initialize the SCS solver.
 
     @param data     Dictionary containing keys `P`, `A`, `b`, `c`.
@@ -216,7 +228,13 @@ class SCS(object):
         **self._settings,
     )
 
-  def solve(self, warm_start=True, x=None, y=None, s=None):
+  def solve(
+      self,
+      warm_start: bool = True,
+      x: Optional[np.ndarray] = None,
+      y: Optional[np.ndarray] = None,
+      s: Optional[np.ndarray] = None,
+  ) -> dict:
     """Solve the optimization problem.
 
     @param warm_start   Whether to warm-start. By default the solution of
@@ -256,7 +274,11 @@ class SCS(object):
     """
     return self._solver.solve(warm_start, x, y, s)
 
-  def update(self, b=None, c=None):
+  def update(
+      self,
+      b: Optional[np.ndarray] = None,
+      c: Optional[np.ndarray] = None,
+  ) -> None:
     """Update the `b` vector, `c` vector, or both, before another solve.
 
     After a solve we can reuse the SCS workspace in another solve if the
@@ -286,7 +308,7 @@ class SCS(object):
     self._solver.update(b, c)
 
 
-def solve(data, cone, **settings):
+def solve(data: dict, cone: dict, **settings: Any) -> dict:
   """Solve a problem in one call, without holding on to a solver instance.
 
   Backwards compatible helper that simply calls the main API. Warm-start

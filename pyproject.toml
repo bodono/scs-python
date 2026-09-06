@@ -120,3 +120,45 @@ source_pkgs = ["scs"]
 [tool.coverage.report]
 show_missing = true
 fail_under = 100
+
+[tool.ruff]
+extend-exclude = ["scs_source", "scs/pythoncapi-compat", "legacy_setup.py"]
+
+[tool.ruff.lint]
+# Pyflakes, the error subset of pycodestyle, and import sorting. Deliberately
+# not ruff's rolling default set: that set grows with each release, so a ruff
+# upgrade would turn into a CI failure unrelated to any change here.
+select = ["E4", "E7", "E9", "F", "I"]
+# `l` is the SCS cone key for the non-negative cone. It is the domain's name
+# for that quantity, not a careless one-letter variable.
+ignore = ["E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# The backend test modules import an extension solely to discover whether this
+# build has it, inside a try/except that skips the module when it does not.
+# The unused import *is* the test.
+# I001 too: these modules' import order is left as the maintainers wrote it.
+# `_scs_mkl` sets the MKL interface layer at import time, so import order
+# around numpy/scipy carries meaning here that a sorter cannot see.
+"test/*" = ["F401", "I001"]
+
+[tool.mypy]
+files = ["scs/py"]
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+# scipy ships no inline types and its stub package is a separate, partial
+# project; numpy's own stubs are used, so arrays are still checked.
+module = ["scipy.*"]
+ignore_missing_imports = true
+
+[tool.interrogate]
+fail-under = 100
+
+[tool.deptry]
+# `scs` is this project's own package: `scs/py/__init__.py` imports its
+# compiled siblings via `from scs import _scs_direct`, which is not a
+# third-party dependency.
+known_first_party = ["scs"]

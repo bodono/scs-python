@@ -1,0 +1,47 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  quality:
+    # Static checks only — no submodules, no compilation, no pixi, so this
+    # reports in well under a minute and is the fastest signal on a PR.
+    #
+    # Every rule set and threshold lives in pyproject.toml, so a contributor
+    # running these locally gets the same verdict as CI. The tool versions are
+    # pinned for the same reason: ruff in particular enables new rules by
+    # default in each release, which would otherwise turn an unrelated ruff
+    # release into a red build here.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Lint (ruff)
+        run: uvx ruff@0.16.6 check scs/py test
+
+      - name: Type check (mypy)
+        # numpy ships its own stubs, so installing it means arrays are really
+        # checked rather than silently degraded to Any.
+        run: uvx --with numpy --with scipy mypy@2.3.1
+
+      - name: Docstring coverage (interrogate)
+        run: uvx interrogate@1.7.0 -v scs/py
+
+      - name: Dependency hygiene (deptry)
+        run: uvx deptry@0.25.1 scs/py
+
+      - name: Resolve the declared dependency closure
+        run: uv pip compile pyproject.toml --python-version 3.12 -o /tmp/audit-requirements.txt
+
+      - name: Audit dependencies (pip-audit)
+        run: uvx pip-audit@2.10.1 -r /tmp/audit-requirements.txt

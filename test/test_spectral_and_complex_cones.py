@@ -398,6 +398,6 @@ class TestEdgeCases:
         cone = {"ell1": [4]}
         data = _gen_feasible_qp(cone, rng=rng)
         solver = scs.SCS(data, cone, verbose=False, max_iters=500)
-        sol1 = solver.solve()
+        solver.solve()
         sol2 = solver.solve(warm_start=True)
         assert sol2["info"]["status_val"] in (1, 2)

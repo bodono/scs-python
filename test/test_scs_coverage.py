@@ -263,7 +263,6 @@ def test_P_full_symmetric_extracts_upper():
     """For a 2x2 P, lower triangular entries should be discarded."""
     # min (1/2)||x||^2 + c'x over x ∈ [0,1]^2  (two separate LP constraints)
     # Optimal is where gradient = Px + c = 0 projected onto box.
-    n = 2
     A2 = sp.block_diag([sp.csc_matrix([[1.0], [-1.0]]),
                          sp.csc_matrix([[1.0], [-1.0]])], format="csc")
     b2 = np.array([1.0, 0.0, 1.0, 0.0])
@@ -1442,7 +1441,6 @@ def test_P_lower_triangular_stripped():
     P = [[2, 1], [1, 2]] (symmetric) should behave the same as the upper-
     triangular version P = [[2, 1], [0, 2]].
     """
-    n = 2
     A2 = sp.block_diag(
         [sp.csc_matrix([[1.0], [-1.0]]), sp.csc_matrix([[1.0], [-1.0]])],
         format="csc",
@@ -1943,7 +1941,6 @@ def test_large_random_lp():
 
     rng = np.random.RandomState(3)
     K_lp = {"z": 0, "l": 40, "q": [], "s": [], "ep": 0, "ed": 0, "p": []}
-    m_lp = tools.get_scs_cone_dims(K_lp)
     data, pstar = tools.gen_feasible(K_lp, n=20, density=0.3, rng=rng)
 
     solver = scs.SCS(
@@ -1992,7 +1989,6 @@ def test_P_forced_unsorted_indices_sorted_and_solved():
     in SCS.__init__ even when the underlying data is already ordered.
     The solve must still produce the correct QP answer.
     """
-    n = 2
     A2 = sp.csc_matrix(np.array([
         [1., 0.], [-1., 0.], [0., 1.], [0., -1.]
     ]))
@@ -2653,7 +2649,6 @@ def test_large_max_iters_solves():
 
 def test_box_cone_numpy_bounds():
     """bu/bl specified as numpy float arrays should work."""
-    n = 2
     # box cone: dim = d + 1 = 3 (t, x1, x2)
     # s = b - Ax, s in box cone => bl <= x <= bu
     A = sp.csc_matrix(np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]))

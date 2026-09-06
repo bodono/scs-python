@@ -72,26 +72,6 @@ def test_problems(cone, linear_solver, expected):
     assert_almost_equal(sol["x"][0], expected, decimal=2)
 
 
-if platform.python_version_tuple() < ("3", "0", "0"):
-
-    @pytest.mark.parametrize(
-        "cone,linear_solver,expected",
-        [
-            ({"q": [], "l": long(2)}, scs.LinearSolver.AUTO, 1),
-            ({"q": [], "l": long(2)}, scs.LinearSolver.QDLDL, 1),
-            ({"q": [], "l": long(2)}, scs.LinearSolver.CPU_INDIRECT, 1),
-            ({"q": [long(2)], "l": 0}, scs.LinearSolver.AUTO, 0.5),
-            ({"q": [long(2)], "l": 0}, scs.LinearSolver.QDLDL, 0.5),
-            ({"q": [long(2)], "l": 0}, scs.LinearSolver.CPU_INDIRECT, 0.5),
-        ],
-    )
-    def test_problems_with_longs(cone, linear_solver, expected):
-        sol = scs.solve(
-            data, cone=cone, linear_solver=linear_solver, verbose=False
-        )
-        assert_almost_equal(sol["x"][0], expected, decimal=2)
-
-
 def test_failures():
     with pytest.raises(TypeError):
         scs.solve()
@@ -111,4 +91,4 @@ def test_failures():
             scs.solve(data, {"q": [], "l": 2}, max_iters=1.1)
 
     with pytest.raises(ValueError):
-        sol = scs.solve(data, {"q": [1], "l": 0}, verbose=False)
+        scs.solve(data, {"q": [1], "l": 0}, verbose=False)
