@@ -3,7 +3,7 @@
 
 /* IMPORTANT: This code now uses numpy array types. It is a private C module
  * in the sense that end users only see the front-facing Python code in
- * "scs.py"; hence, we can get away with the inputs being numpy arrays of
+ * "scs/py/__init__.py"; hence, we can get away with the inputs being numpy arrays of
  * the CSC data structures.
  *
  * WARNING: This code also does not check that the data for the sparse

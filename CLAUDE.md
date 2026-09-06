@@ -53,21 +53,23 @@ MKL, GPU, and dense tests (`test_solve_random_cone_prob_mkl.py`, `test_solve_ran
 ```
 Python API (scs/py/__init__.py)
     └── SCS class + legacy solve() function
-        └── Dynamically selected C extension module
-            ├── _scs_direct   (always built — direct solver via QDLDL)
-            ├── _scs_indirect (always built — iterative/CG solver)
-            ├── _scs_dense    (built if use_lapack=true — dense LU via LAPACK)
-            ├── _scs_mkl      (built if link_mkl=true)
-            ├── _scs_gpu      (built if use_gpu=true, requires int32=true + CUDA)
-            └── _scs_cudss    (built if link_cudss=true, requires int32=true + cuDSS)
+        └── C extension chosen by the `linear_solver` setting
+            ├── _scs_direct     (always built — direct solver via QDLDL)
+            ├── _scs_indirect   (always built — iterative/CG solver)
+            ├── _scs_dense      (built if use_lapack=true, the default — dense LU via LAPACK)
+            ├── _scs_accelerate (built on macOS — Apple Accelerate; drops DLONG, it needs int32)
+            ├── _scs_mkl        (built if link_mkl=true)
+            ├── _scs_gpu        (built if use_gpu=true, requires int32=true + CUDA)
+            └── _scs_cudss      (built if link_cudss=true, requires int32=true + cuDSS)
                 └── scs_source/ (git submodule — core SCS C library)
 ```
 
 ### Key Files
 
 - `scs/py/__init__.py` — All Python-layer logic: input validation, sparse matrix conversion (enforces CSC format), module selection, warm-start handling, and result post-processing.
-- `scs/scspy.c` + `scs/include/scsmodule.h` + `scs/include/scsobject.h` — Thin C wrapper that bridges Python/NumPy to the SCS C API.
+- `scs/scspy.c` + `scs/scsmodule.h` + `scs/scsobject.h` — Thin C wrapper that bridges Python/NumPy to the SCS C API. `scspy.c` is a ~30-line translation unit that includes the two headers; meson compiles it once per backend, which is why the implementation lives in headers rather than `.c` files.
 - `scs/scsobject.h` — C-level cone dict parsing and SCS workspace init/solve/dealloc.
+- `scs/py_ctrlc.c` — Process-shared ctrl-c state, replacing `scs_source/src/ctrlc.c` in Python builds. Each extension compiles its own copy of the solver, so per-extension static state let overlapping solves restore the SIGINT handler non-LIFO; one state struct per process is published as a PyCapsule instead.
 - `meson.build` / `meson.options` — Build configuration and build options that control which extension modules are compiled.
 - `scs_source/` — Git submodule containing the full SCS C library: `src/` (ADMM loop, cone projections, Anderson acceleration), `linsys/` (pluggable linear system solvers), `include/`, `external/` (AMD ordering, QDLDL).
 
@@ -75,13 +77,13 @@ Python API (scs/py/__init__.py)
 
 1. User passes `data` dict (`A`, `b`, `c`, optional `P`) and `cone` dict to `scs.SCS()` or `scs.solve()`.
 2. Python layer validates and converts `A`/`P` to sparse CSC, converts `b`/`c` to dense float arrays.
-3. The appropriate C extension is selected based on settings (`use_indirect`, `gpu`, `mkl`, `cudss`, `dense`).
+3. The appropriate C extension is selected from the `linear_solver` setting — a `LinearSolver` enum member or its string value (`"auto"`, `"qdldl"`, `"cpu_indirect"`, `"mkl"`, `"accelerate"`, `"cpu_dense"`, `"gpu_indirect"`, `"cudss"`), defaulting to `AUTO`. The boolean flags this replaced (`use_indirect`, `gpu`, `mkl`, `dense`) were removed in 3.3.0 and now raise `TypeError`.
 4. `.solve()` (with optional warm-start vectors `x`, `y`, `s`) calls into the C extension.
 5. The C library runs ADMM iterations with Anderson acceleration, delegates linear system solves to the configured backend, and returns a dict with keys `x`, `s`, `y`, `info`.
 
 ### Solver Variants
 
-The Python module selection logic in `scs/py/__init__.py` loads the right `_scs_*` module at runtime based on which build options were enabled at compile time and which runtime settings are passed.
+`_SOLVER_DISPATCH` in `scs/py/__init__.py` maps each `LinearSolver` member to a thunk that imports the corresponding `_scs_*` module. The import is deferred, so `import scs` succeeds regardless of which backends were built and asking for an unbuilt one raises `ModuleNotFoundError` (an `ImportError` subclass) when the solver is constructed. `AUTO` resolves via `_resolve_auto()`: QDLDL on macOS (in preference to Accelerate), otherwise MKL if importable, else QDLDL.
 
 ## Important Notes
 
