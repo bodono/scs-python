@@ -26,7 +26,20 @@ SOLVED_INACCURATE = 2  # SCS best guess solved
 
 
 class LinearSolver(enum.Enum):
-  """Linear system solver backend for SCS."""
+  """Linear system solver backend for SCS.
+
+  Pass a member (or its string value) as the `linear_solver` setting. Which
+  members are importable depends on the build; `AUTO` picks the best one
+  available on the platform.
+
+  Example:
+
+  >>> import scs
+  >>> scs.LinearSolver.QDLDL.value
+  'qdldl'
+  >>> scs.LinearSolver("cpu_indirect") is scs.LinearSolver.CPU_INDIRECT
+  True
+  """
   AUTO = "auto"
   QDLDL = "qdldl"
   CPU_INDIRECT = "cpu_indirect"
@@ -85,6 +98,26 @@ def _has_lower_tri(P):
 
 
 class SCS(object):
+  """A solver instance bound to one problem's data and cone.
+
+  Construct it once, then call `solve` as often as needed; `update` swaps in
+  a new `b` or `c` without rebuilding the workspace.
+
+  Example:
+
+  >>> import numpy as np
+  >>> import scipy.sparse as sp
+  >>> import scs
+  >>> # maximize x  subject to  0 <= x <= 1
+  >>> data = {
+  ...     "A": sp.csc_matrix(np.array([[1.0], [-1.0]])),
+  ...     "b": np.array([1.0, 0.0]),
+  ...     "c": np.array([-1.0]),
+  ... }
+  >>> solver = scs.SCS(data, {"l": 2}, verbose=False)
+  >>> solver.solve()["info"]["status"]
+  'solved'
+  """
 
   def __init__(self, data, cone, **settings):
     """Initialize the SCS solver.
@@ -199,6 +232,27 @@ class SCS(object):
          's' - primal slack solution
          'y' - dual solution
          'info' - information dictionary (see docs)
+
+    Example:
+
+    >>> import numpy as np
+    >>> import scipy.sparse as sp
+    >>> import scs
+    >>> # maximize x  subject to  0 <= x <= 1
+    >>> data = {
+    ...     "A": sp.csc_matrix(np.array([[1.0], [-1.0]])),
+    ...     "b": np.array([1.0, 0.0]),
+    ...     "c": np.array([-1.0]),
+    ... }
+    >>> solver = scs.SCS(data, {"l": 2}, eps_abs=1e-9, eps_rel=1e-9,
+    ...                  verbose=False)
+    >>> sol = solver.solve()
+    >>> sorted(sol)
+    ['info', 's', 'x', 'y']
+    >>> sol["info"]["status"]
+    'solved'
+    >>> float(np.round(sol["x"][0], 6))
+    1.0
     """
     return self._solver.solve(warm_start, x, y, s)
 
@@ -210,12 +264,59 @@ class SCS(object):
 
     @param  b   New `b` vector.
     @param  c   New `c` vector.
+
+    Example:
+
+    >>> import numpy as np
+    >>> import scipy.sparse as sp
+    >>> import scs
+    >>> data = {
+    ...     "A": sp.csc_matrix(np.array([[1.0], [-1.0]])),
+    ...     "b": np.array([1.0, 0.0]),
+    ...     "c": np.array([-1.0]),
+    ... }
+    >>> solver = scs.SCS(data, {"l": 2}, eps_abs=1e-9, eps_rel=1e-9,
+    ...                  verbose=False)
+    >>> float(np.round(solver.solve()["x"][0], 6))   # maximize x
+    1.0
+    >>> solver.update(c=np.array([1.0]))             # now minimize x
+    >>> float(np.round(abs(solver.solve()["x"][0]), 6))
+    0.0
     """
     self._solver.update(b, c)
 
 
-# Backwards compatible helper function that simply calls the main API.
 def solve(data, cone, **settings):
+  """Solve a problem in one call, without holding on to a solver instance.
+
+  Backwards compatible helper that simply calls the main API. Warm-start
+  vectors are read out of `data` under the keys `x`, `y` and `s`, which is
+  how the pre-`SCS`-class API passed them.
+
+  @param data     Dictionary containing keys `A`, `b`, `c`, optionally `P`,
+                  and optionally the warm-start vectors `x`, `y`, `s`.
+  @param cone     Dictionary containing cone information.
+  @param settings Settings as kwargs, see docs.
+
+  @return the same dictionary `SCS.solve` returns.
+
+  Example:
+
+  >>> import numpy as np
+  >>> import scipy.sparse as sp
+  >>> import scs
+  >>> data = {
+  ...     "A": sp.csc_matrix(np.array([[1.0], [-1.0]])),
+  ...     "b": np.array([1.0, 0.0]),
+  ...     "c": np.array([-1.0]),
+  ... }
+  >>> sol = scs.solve(data, {"l": 2}, eps_abs=1e-9, eps_rel=1e-9,
+  ...                 verbose=False)
+  >>> sol["info"]["status"]
+  'solved'
+  >>> float(np.round(sol["x"][0], 6))
+  1.0
+  """
   solver = SCS(data, cone, **settings)
 
   # Hack out the warm start data from old API
