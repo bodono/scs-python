@@ -40,11 +40,16 @@ jobs:
         run: echo "$(pwd)/.pixi/envs/default/bin" >> $GITHUB_PATH
         shell: bash
       - name: Install dependencies
-        run: pixi add --platform linux-64 scipy numpy pip pytest meson meson-python openblas python==${{ matrix.python-version }}
+        run: pixi add --platform linux-64 scipy numpy pip pytest pytest-cov meson meson-python openblas python==${{ matrix.python-version }}
       - name: Test
+        # This job is the coverage gate for the Python layer. The threshold and
+        # the source resolution both live in pyproject.toml ([tool.coverage.*]),
+        # so `--cov` takes no inline flags: `source_pkgs` is what makes coverage
+        # follow the import to the installed package instead of measuring the
+        # repo-root `scs/` directory, which has no __init__.py and reports 0%.
         run: |
           pixi r python -m pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true
-          pixi r pytest
+          pixi r pytest --cov
           rm -rf build/
 
   build_mkl:
