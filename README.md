@@ -37,6 +37,18 @@ selects the best available solver for the platform:
 - **Linux / Windows**: MKL Pardiso if available, otherwise QDLDL
 
 ```python
+import numpy as np
+import scipy.sparse as sp
+import scs
+
+# A minimal LP:  maximize x  subject to  0 <= x <= 1
+data = {
+    "A": sp.csc_matrix(np.array([[1.0], [-1.0]])),
+    "b": np.array([1.0, 0.0]),
+    "c": np.array([-1.0]),
+}
+cone = {"l": 2}
+
 # Auto-detect best backend (default)
 solver = scs.SCS(data, cone)
 
@@ -86,6 +98,8 @@ Notes:
 import numpy as np
 import scipy.sparse as sp
 import scs
+
+np.random.seed(0)  # so the printed status below is reproducible
 
 m, n = 4, 2
 A = sp.random(m, n, density=0.5, format="csc")
