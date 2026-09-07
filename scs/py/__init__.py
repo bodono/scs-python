@@ -71,12 +71,16 @@ _SOLVER_DISPATCH = {
 _LEGACY_SOLVER_FLAGS = ("cudss", "gpu", "mkl", "use_indirect")
 
 
-def _pop_legacy_solver_flags(stgs):
+def _pop_legacy_solver_flags(stgs, explicit_linear_solver=None):
   """Translate the pre-3.3.0 boolean selection flags into a `LinearSolver`.
 
   Returns `None` when no legacy flag was passed. Otherwise the flags are
   removed from `stgs`, one `DeprecationWarning` naming the replacement is
   emitted, and the equivalent enum member is returned.
+
+  When `explicit_linear_solver` is given the caller already chose a backend,
+  so the flags are consumed and warned about but not translated: an explicit
+  `linear_solver` wins even over a flag combination that was never valid.
 
   The mapping reproduces what 3.2.11 did, including its two surprises:
   `gpu=True` without `use_indirect` selected cuDSS rather than the CUDA
@@ -87,6 +91,17 @@ def _pop_legacy_solver_flags(stgs):
   """
   present = {k: stgs.pop(k) for k in _LEGACY_SOLVER_FLAGS if k in stgs}
   if not present:
+    return None
+
+  named = ", ".join("`%s`" % k for k in sorted(present))
+  if explicit_linear_solver is not None:
+    warnings.warn(
+        "The boolean solver-selection flags were removed in SCS 3.3.0."
+        " You passed %s; they are ignored because `linear_solver` was given."
+        % named,
+        DeprecationWarning,
+        stacklevel=4,
+    )
     return None
 
   use_indirect = bool(present.get("use_indirect", False))
@@ -109,7 +124,6 @@ def _pop_legacy_solver_flags(stgs):
         LinearSolver.CPU_INDIRECT if use_indirect else LinearSolver.QDLDL
     )
 
-  named = ", ".join("`%s`" % k for k in sorted(present))
   warnings.warn(
       "The boolean solver-selection flags were removed in SCS 3.3.0."
       " You passed %s; pass `linear_solver=scs.LinearSolver.%s` instead."
@@ -123,9 +137,12 @@ def _pop_legacy_solver_flags(stgs):
 
 def _select_scs_module(stgs):
   """Choose which SCS C extension to import based on settings."""
-  legacy = _pop_legacy_solver_flags(stgs)
-  # An explicit `linear_solver` wins: the legacy flag only supplies a default.
-  linear_solver = stgs.pop("linear_solver", legacy or LinearSolver.AUTO)
+  # An explicit `linear_solver` wins: the legacy flags only supply a default,
+  # and are not translated at all (so a never-valid combination such as
+  # mkl=True, use_indirect=True cannot raise) when a choice was made.
+  explicit = stgs.pop("linear_solver", None)
+  legacy = _pop_legacy_solver_flags(stgs, explicit)
+  linear_solver = explicit if explicit is not None else (legacy or LinearSolver.AUTO)
   if isinstance(linear_solver, str):
     linear_solver = LinearSolver(linear_solver)
   return _SOLVER_DISPATCH[linear_solver]()

@@ -133,6 +133,31 @@ def test_explicit_linear_solver_wins_over_legacy_flag():
     assert "indirect" not in info["lin_sys_solver"].lower()
 
 
+def test_explicit_linear_solver_wins_over_invalid_legacy_combination():
+    """mkl=True with use_indirect=True was refused in 3.2.11, but an explicit
+    `linear_solver` must still be honoured rather than tripping on the
+    translation of flags it overrides."""
+    with pytest.warns(DeprecationWarning, match="ignored"):
+        solver = scs.SCS(
+            _data(),
+            _CONE,
+            linear_solver="qdldl",
+            mkl=True,
+            use_indirect=True,
+            verbose=False,
+        )
+    info = solver.solve()["info"]
+    assert info["status"] == "solved"
+    assert "indirect" not in info["lin_sys_solver"].lower()
+
+
+def test_explicit_linear_solver_skips_translation():
+    stgs = {"mkl": True, "use_indirect": True, "eps_abs": 1e-9}
+    with pytest.warns(DeprecationWarning):
+        assert _pop_legacy_solver_flags(stgs, LinearSolver.QDLDL) is None
+    assert stgs == {"eps_abs": 1e-9}
+
+
 def test_legacy_solve_helper_accepts_the_flags():
     with pytest.warns(DeprecationWarning):
         sol = scs.solve(_data(), _CONE, use_indirect=False, verbose=False)
