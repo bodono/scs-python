@@ -298,7 +298,7 @@ jobs:
     needs: build_wheels
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: cibw-wheels-ubuntu-*
           path: wheelhouse
@@ -363,7 +363,7 @@ jobs:
       matrix:
         python: ["3.9", "3.14", "3.14t"]
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: cibw-wheels-ubuntu-latest-*
           path: wheelhouse
