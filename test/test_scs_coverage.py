@@ -294,6 +294,17 @@ def test_invalid_linear_solver_string_raises():
         scs.SCS(_make_data(), _CONE, linear_solver="invalid", verbose=False)
 
 
+@pytest.mark.parametrize(
+    "flag", ["use_indirect", "gpu", "mkl", "cudss", "dense", "apple_ldl"])
+def test_removed_solver_flags_raise_helpful_error(flag):
+    """Legacy boolean solver flags (removed in 3.3.0) should name the
+    `linear_solver` replacement rather than fail as an unknown kwarg."""
+    with pytest.raises(TypeError, match=f"`{flag}`.*linear_solver"):
+        scs.SCS(_make_data(), _CONE, verbose=False, **{flag: True})
+    with pytest.raises(TypeError, match="removed in scs 3.3.0"):
+        scs.solve(_make_data(), _CONE, verbose=False, **{flag: False})
+
+
 def test_dense_tries_import():
     """linear_solver=DENSE should attempt to import _scs_dense."""
     try:

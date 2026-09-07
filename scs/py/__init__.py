@@ -66,8 +66,27 @@ _SOLVER_DISPATCH = {
 }
 
 
+# Boolean solver-selection flags that were removed in 3.3.0 in favour of the
+# `linear_solver` argument, mapped to their replacement.
+_REMOVED_SOLVER_FLAGS = {
+    "use_indirect": "linear_solver=scs.LinearSolver.CPU_INDIRECT "
+                    "(or scs.LinearSolver.QDLDL for the direct solver)",
+    "gpu": "linear_solver=scs.LinearSolver.GPU_INDIRECT",
+    "cudss": "linear_solver=scs.LinearSolver.CUDSS",
+    "mkl": "linear_solver=scs.LinearSolver.MKL",
+    "apple_ldl": "linear_solver=scs.LinearSolver.ACCELERATE",
+    "dense": "linear_solver=scs.LinearSolver.CPU_DENSE",
+}
+
+
 def _select_scs_module(stgs):
   """Choose which SCS C extension to import based on settings."""
+  removed = [k for k in _REMOVED_SOLVER_FLAGS if k in stgs]
+  if removed:
+    hints = "; ".join(f"`{k}` -> `{_REMOVED_SOLVER_FLAGS[k]}`" for k in removed)
+    raise TypeError(
+        f"The solver-selection flag(s) {removed} were removed in scs 3.3.0. "
+        f"Select the backend with the `linear_solver` argument instead: {hints}.")
   linear_solver = stgs.pop("linear_solver", LinearSolver.AUTO)
   if isinstance(linear_solver, str):
     linear_solver = LinearSolver(linear_solver)
