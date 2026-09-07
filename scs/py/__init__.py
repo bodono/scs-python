@@ -67,26 +67,53 @@ _SOLVER_DISPATCH = {
 
 
 # Boolean solver-selection flags that were removed in 3.3.0 in favour of the
-# `linear_solver` argument, mapped to their replacement.
-_REMOVED_SOLVER_FLAGS = {
-    "use_indirect": "linear_solver=scs.LinearSolver.CPU_INDIRECT "
-                    "(or scs.LinearSolver.QDLDL for the direct solver)",
-    "gpu": "linear_solver=scs.LinearSolver.GPU_INDIRECT",
-    "cudss": "linear_solver=scs.LinearSolver.CUDSS",
-    "mkl": "linear_solver=scs.LinearSolver.MKL",
-    "apple_ldl": "linear_solver=scs.LinearSolver.ACCELERATE",
-    "dense": "linear_solver=scs.LinearSolver.CPU_DENSE",
-}
+# `linear_solver` argument.
+_REMOVED_SOLVER_FLAGS = ("use_indirect", "gpu", "cudss", "mkl", "apple_ldl",
+                         "dense")
+_REMOVED_DIRECT_ONLY_FLAGS = (("mkl", LinearSolver.MKL),
+                              ("apple_ldl", LinearSolver.ACCELERATE),
+                              ("dense", LinearSolver.CPU_DENSE))
+
+
+def _removed_flags_message(flags):
+  """Explain how to replace a set of pre-3.3.0 solver-selection flags.
+
+  `flags` maps removed flag names to the values that were passed. The
+  replacement is derived from the values and their combination using the
+  3.2.x selection order (cudss/gpu, then mkl, apple_ldl, dense, then
+  use_indirect), so the hint names the backend the caller used to get.
+  """
+  passed = ", ".join(f"{k}={v!r}" for k, v in flags.items())
+  head = f"The solver-selection flag(s) {passed} were removed in scs 3.3.0."
+  use_indirect = bool(flags.get("use_indirect", False))
+  if flags.get("cudss"):
+    solver = LinearSolver.CUDSS
+  elif flags.get("gpu"):
+    # 3.2.x: gpu=True selected cuDSS unless use_indirect=True.
+    solver = LinearSolver.GPU_INDIRECT if use_indirect else LinearSolver.CUDSS
+  else:
+    solver = next((s for k, s in _REMOVED_DIRECT_ONLY_FLAGS if flags.get(k)),
+                  None)
+    if solver is not None and use_indirect:
+      return (f"{head} `{solver.name}` is a direct solver and had no indirect "
+              f"variant. Pass `linear_solver=scs.LinearSolver.{solver.name}` "
+              "for it, or `linear_solver=scs.LinearSolver.CPU_INDIRECT` for "
+              "the iterative solver.")
+    if solver is None:
+      solver = (LinearSolver.CPU_INDIRECT if use_indirect
+                else LinearSolver.QDLDL)
+  msg = f"{head} Pass `linear_solver=scs.LinearSolver.{solver.name}` instead."
+  if solver is LinearSolver.QDLDL:
+    msg += (" That was the old default; omitting `linear_solver` now selects "
+            "AUTO, which prefers MKL where it is available.")
+  return msg
 
 
 def _select_scs_module(stgs):
   """Choose which SCS C extension to import based on settings."""
-  removed = [k for k in _REMOVED_SOLVER_FLAGS if k in stgs]
+  removed = {k: stgs[k] for k in _REMOVED_SOLVER_FLAGS if k in stgs}
   if removed:
-    hints = "; ".join(f"`{k}` -> `{_REMOVED_SOLVER_FLAGS[k]}`" for k in removed)
-    raise TypeError(
-        f"The solver-selection flag(s) {removed} were removed in scs 3.3.0. "
-        f"Select the backend with the `linear_solver` argument instead: {hints}.")
+    raise TypeError(_removed_flags_message(removed))
   linear_solver = stgs.pop("linear_solver", LinearSolver.AUTO)
   if isinstance(linear_solver, str):
     linear_solver = LinearSolver(linear_solver)

@@ -295,11 +295,53 @@ def test_invalid_linear_solver_string_raises():
 
 
 @pytest.mark.parametrize(
+    "flags,expected",
+    [
+        ({"use_indirect": True}, "CPU_INDIRECT"),
+        ({"use_indirect": False}, "QDLDL"),
+        ({"gpu": False}, "QDLDL"),
+        ({"mkl": False, "use_indirect": True}, "CPU_INDIRECT"),
+        ({"mkl": True}, "MKL"),
+        ({"mkl": True, "use_indirect": False}, "MKL"),
+        ({"apple_ldl": True}, "ACCELERATE"),
+        ({"dense": True}, "CPU_DENSE"),
+        # 3.2.x: gpu=True selected cuDSS unless use_indirect=True.
+        ({"gpu": True}, "CUDSS"),
+        ({"gpu": True, "use_indirect": False}, "CUDSS"),
+        ({"gpu": True, "use_indirect": True}, "GPU_INDIRECT"),
+        ({"cudss": True, "gpu": True, "use_indirect": False}, "CUDSS"),
+        # gpu took precedence over mkl in 3.2.x.
+        ({"gpu": True, "mkl": True, "use_indirect": True}, "GPU_INDIRECT"),
+    ],
+)
+def test_removed_solver_flags_hint_matches_old_selection(flags, expected):
+    """The migration hint must name the backend the old flags selected."""
+    msg = scs._removed_flags_message(flags)
+    assert f"linear_solver=scs.LinearSolver.{expected}" in msg
+    others = {m.name for m in scs.LinearSolver} - {expected}
+    assert not any(f"LinearSolver.{o}" in msg for o in others), msg
+    for k, v in flags.items():
+        assert f"{k}={v!r}" in msg
+
+
+@pytest.mark.parametrize("flag,expected", [("mkl", "MKL"),
+                                           ("apple_ldl", "ACCELERATE"),
+                                           ("dense", "CPU_DENSE")])
+def test_removed_direct_only_flag_with_use_indirect(flag, expected):
+    """Direct-only backends combined with use_indirect=True were never valid;
+    the hint offers both the direct backend and CPU_INDIRECT."""
+    msg = scs._removed_flags_message({flag: True, "use_indirect": True})
+    assert "direct solver" in msg
+    assert f"LinearSolver.{expected}" in msg
+    assert "LinearSolver.CPU_INDIRECT" in msg
+
+
+@pytest.mark.parametrize(
     "flag", ["use_indirect", "gpu", "mkl", "cudss", "dense", "apple_ldl"])
 def test_removed_solver_flags_raise_helpful_error(flag):
-    """Legacy boolean solver flags (removed in 3.3.0) should name the
-    `linear_solver` replacement rather than fail as an unknown kwarg."""
-    with pytest.raises(TypeError, match=f"`{flag}`.*linear_solver"):
+    """Legacy boolean solver flags (removed in 3.3.0) raise a TypeError that
+    names the `linear_solver` replacement rather than an unknown-kwarg error."""
+    with pytest.raises(TypeError, match=f"{flag}=True.*linear_solver"):
         scs.SCS(_make_data(), _CONE, verbose=False, **{flag: True})
     with pytest.raises(TypeError, match="removed in scs 3.3.0"):
         scs.solve(_make_data(), _CONE, verbose=False, **{flag: False})
