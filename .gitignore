@@ -52,3 +52,4 @@ out
 # pixi environments
 .pixi
 *.egg-info
+CLAUDE.md
