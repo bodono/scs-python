@@ -241,29 +241,42 @@ jobs:
             arch: auto
           - os: windows-latest
             arch: auto
+          - os: windows-11-arm
+            arch: auto
 
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
 
-      - name: Set up MSVC for Windows
+      - name: Install OpenBLAS on Windows
+        # meson finds OpenBLAS via its CMake config; delvewheel finds the DLL via PATH.
+        # 0.3.34 is skipped: its DGEMM kernels crash on AMD Zen 4/5 CPUs that
+        # expose AVX-512 (Fixed in OpenMathLib/OpenBLAS#6013. Bump with the next release.)
         if: runner.os == 'Windows'
-        uses: egor-tensin/vs-shell@v2
-
-      - name: Install conda on Windows
-        if: runner.os == 'Windows'
-        uses: conda-incubator/setup-miniconda@v4
-        with:
-          miniconda-version: "latest"
-          channels: conda-forge, anaconda
-
-      - name: Install openblas from conda on Windows
-        if: runner.os == 'Windows'
-        # 0.3.33 pinned: conda-forge's win-64 0.3.34 build crashes inside its
-        # DGEMM kernels on AMD Zen 4/5 CPUs that expose AVX-512
-        # (conda-forge/openblas-feedstock#196). Unpin once a fixed build ships.
-        run: conda install -y "openblas=0.3.33" pkgconfig
+        shell: pwsh
+        run: |
+          $version = '0.3.33'
+          $asset, $sha256 = @{
+            X64   = 'x64',        '7ad797ef0c9a5c42e28903bf726eaaaade307dafe187ff0e923d90cd4002780c'
+            ARM64 = 'woa64-dll',  'bdb1047eb24a17c38d20eda6aa3fe5a9d74fd4ad95432f452bfa2ae28a9227d0'
+          }[$env:RUNNER_ARCH]
+          $zip = Join-Path $env:RUNNER_TEMP 'openblas.zip'
+          $dest = Join-Path $env:RUNNER_TEMP 'openblas'
+          Invoke-WebRequest -OutFile $zip `
+            -Uri "https://github.com/OpenMathLib/OpenBLAS/releases/download/v$version/OpenBLAS-$version-$asset.zip"
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $sha256) { throw 'OpenBLAS checksum mismatch' }
+          Expand-Archive $zip -DestinationPath $dest
+          # The woa64 archive nests everything under OpenBLAS/; the x64 one does not.
+          $root = if (Test-Path (Join-Path $dest 'OpenBLAS')) { Join-Path $dest 'OpenBLAS' } else { $dest }
+          # The x64 (MinGW) CMake config points the linker at the DLL instead of its import library.
+          # (Fixed in OpenMathLib/OpenBLAS#6091. Can be removed with the next release.)
+          $cfg = Join-Path $root 'lib\cmake\openblas\OpenBLASConfig.cmake'
+          if (Test-Path $cfg) {
+            (Get-Content $cfg) -replace 'bin/libopenblas\.dll', 'lib/libopenblas.lib' | Set-Content $cfg
+          }
+          "CMAKE_PREFIX_PATH=$root" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "$root\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2.1
