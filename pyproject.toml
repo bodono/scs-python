@@ -41,6 +41,8 @@ dependencies = [
 [tool.cibuildwheel]
 skip = [
   "*-win32", # fails on locating Python headers, probably meson.build is misconfigured
+  # there are no CPython win_arm64 releases before 3.11
+  "cp39-win_arm64", "cp310-win_arm64",
   "*musllinux*aarch64*" # no Scipy wheels for this
 ]
 # Test
@@ -61,6 +63,7 @@ archs = [
 
 [tool.cibuildwheel.windows]
 before-build = "pip install delvewheel"
+config-settings = {setup-args = "--vsenv"}
 # This will probably become default in newer cibuildwheels versions
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 
