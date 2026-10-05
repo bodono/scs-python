@@ -30,13 +30,8 @@ if ($install.ExitCode -ne 0) { throw "LLVM installation failed: $($install.ExitC
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.ARM64 -property installationPath
 if (-not $vs) { throw 'Visual Studio ARM64 tools were not found' }
-$vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvarsarm64.bat'
-$environment = & cmd /d /c "`"`"$vcvars`" >nul && set`""
-foreach ($line in $environment) {
-    if ($line -match '^([^=]+)=(.*)$') {
-        [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-    }
-}
+# Initialize the current PowerShell process without passing paths through cmd.
+& (Join-Path $vs 'Common7\Tools\Launch-VsDevShell.ps1') -Arch arm64 -HostArch arm64 -SkipAutomaticLocation
 $env:PATH = "$llvm\bin;$env:PATH"
 
 cmake -S $source -B $build -G Ninja `
