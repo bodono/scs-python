@@ -52,7 +52,9 @@ jobs:
           python -m pytest test/ -v --parallel-threads=4 --iterations=3
 
   test_sanitizers:
-    runs-on: ubuntu-latest
+    # Pinned: the cached sanitizer CPython is tied to the image it was built on
+    # (a 24.04-built TSan interpreter breaks pip on ubuntu-latest = 26.04).
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +83,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: cpython-${{ matrix.sanitizer }}
-          key: cpython-${{ matrix.sanitizer }}-3.14-${{ runner.os }}-v1
+          key: cpython-${{ matrix.sanitizer }}-3.14-${{ runner.os }}-${{ env.ImageOS }}-v1
 
       - name: Build CPython 3.14t with ${{ matrix.sanitizer }}
         if: steps.cache-cpython.outputs.cache-hit != 'true'
