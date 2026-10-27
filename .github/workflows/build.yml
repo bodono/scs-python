@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        python-version: [ "3.12" ]
+        python-version: [ "3.12", "3.13", "3.14", "3.15" ]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
@@ -64,13 +64,37 @@ jobs:
           - case: lp64-solve
             use_blas64: false
             numpy_blas: mkl
+            python-version: "3.12"
           - case: ilp64-guard
             use_blas64: true
             numpy_blas: mkl
+            python-version: "3.12"
           - case: ilp64-solve
             use_blas64: true
             numpy_blas: openblas
-    name: build_mkl (${{ matrix.case }})
+            python-version: "3.12"
+          # Every case on the newest Python; only lp64-solve in between.
+          - case: lp64-solve
+            use_blas64: false
+            numpy_blas: mkl
+            python-version: "3.13"
+          - case: lp64-solve
+            use_blas64: false
+            numpy_blas: mkl
+            python-version: "3.14"
+          - case: lp64-solve
+            use_blas64: false
+            numpy_blas: mkl
+            python-version: "3.15"
+          - case: ilp64-guard
+            use_blas64: true
+            numpy_blas: mkl
+            python-version: "3.15"
+          - case: ilp64-solve
+            use_blas64: true
+            numpy_blas: openblas
+            python-version: "3.15"
+    name: build_mkl (${{ matrix.case }}, ${{ matrix.python-version }})
     env:
       USE_BLAS64: ${{ matrix.use_blas64 }}
       NUMPY_BLAS: ${{ matrix.numpy_blas }}
@@ -88,7 +112,7 @@ jobs:
         shell: bash
       - name: Install dependencies
         run: |
-          pixi add --platform linux-64 "blas-devel=*=*${NUMPY_BLAS}" pip scipy numpy pytest mkl mkl-devel pkg-config meson meson-python python==3.12
+          pixi add --platform linux-64 "blas-devel=*=*${NUMPY_BLAS}" pip scipy numpy pytest mkl mkl-devel pkg-config meson meson-python python==${{ matrix.python-version }}
       - name: Build
         run: |
           pixi r python -c "import numpy as np;print(np.show_config())"
@@ -120,7 +144,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.12" ]
+        python-version: [ "3.12", "3.13", "3.14", "3.15" ]
 
     steps:
       - uses: actions/checkout@v7
@@ -172,6 +196,7 @@ jobs:
       fail-fast: false
       matrix:
         native_arch: [true]
+        python-version: [ "3.12", "3.13", "3.14", "3.15" ]
 
     steps:
       - uses: actions/checkout@v7
@@ -185,7 +210,7 @@ jobs:
         run: echo "$(pwd)/.pixi/envs/default/bin" >> $GITHUB_PATH
         shell: bash
       - name: Install dependencies
-        run: pixi add --platform linux-64 scipy numpy pip pytest meson meson-python openblas python==3.12
+        run: pixi add --platform linux-64 scipy numpy pip pytest meson meson-python openblas python==${{ matrix.python-version }}
       - name: Build (native_arch=${{ matrix.native_arch }})
         run: |
           pixi r python -m pip install -v . --no-build-isolation \
@@ -203,7 +228,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.14" ]
+        python-version: [ "3.13", "3.14", "3.15" ]
 
     steps:
       - uses: actions/checkout@v7
@@ -377,7 +402,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.14", "3.14t"]
+        python: ["3.9", "3.13", "3.14", "3.15", "3.14t", "3.15t"]
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -413,8 +438,11 @@ jobs:
           EOF
           case "${{ matrix.python }}" in
             3.9)   IMAGE=python:3.9-slim;  TAG=cp39-cp39 ;;
+            3.13)  IMAGE=python:3.13-slim; TAG=cp313-cp313 ;;
             3.14)  IMAGE=python:3.14-slim; TAG=cp314-cp314 ;;
+            3.15)  IMAGE=python:3.15-slim; TAG=cp315-cp315 ;;
             3.14t) IMAGE=ghcr.io/astral-sh/uv:debian-slim; TAG=cp314-cp314t ;;
+            3.15t) IMAGE=ghcr.io/astral-sh/uv:debian-slim; TAG=cp315-cp315t ;;
           esac
           docker run --rm -v "$PWD:/work" -w /tmp -e PY=${{ matrix.python }} -e TAG=$TAG \
             "$IMAGE" bash -ec '
