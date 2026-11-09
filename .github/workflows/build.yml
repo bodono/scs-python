@@ -32,7 +32,20 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      # setup-pixi downloads the pixi binary without retrying, so a transient
+      # 5xx or DNS failure would fail the job; retry once after a pause.
       - uses: prefix-dev/setup-pixi@v0.11.2
+        id: pixi
+        continue-on-error: true
+        with:
+          cache: false
+          pixi-version: v0.46.0
+      - name: Wait before retrying setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        run: sleep 60
+      - name: Retry setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        uses: prefix-dev/setup-pixi@v0.11.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -103,7 +116,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      # Retry once on a transient download failure (see build_openmp).
       - uses: prefix-dev/setup-pixi@v0.11.2
+        id: pixi
+        continue-on-error: true
+        with:
+          cache: false
+          pixi-version: v0.46.0
+      - name: Wait before retrying setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        run: sleep 60
+      - name: Retry setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        uses: prefix-dev/setup-pixi@v0.11.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -150,7 +175,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      # Retry once on a transient download failure (see build_openmp).
       - uses: prefix-dev/setup-pixi@v0.11.2
+        id: pixi
+        continue-on-error: true
+        with:
+          cache: false
+          pixi-version: v0.46.0
+      - name: Wait before retrying setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        run: sleep 60
+      - name: Retry setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        uses: prefix-dev/setup-pixi@v0.11.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -202,7 +239,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      # Retry once on a transient download failure (see build_openmp).
       - uses: prefix-dev/setup-pixi@v0.11.2
+        id: pixi
+        continue-on-error: true
+        with:
+          cache: false
+          pixi-version: v0.46.0
+      - name: Wait before retrying setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        run: sleep 60
+      - name: Retry setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        uses: prefix-dev/setup-pixi@v0.11.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -234,7 +283,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+      # Retry once on a transient download failure (see build_openmp).
       - uses: prefix-dev/setup-pixi@v0.11.2
+        id: pixi
+        continue-on-error: true
+        with:
+          cache: false
+          pixi-version: v0.46.0
+      - name: Wait before retrying setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        run: sleep 60
+      - name: Retry setup-pixi
+        if: steps.pixi.outcome == 'failure'
+        uses: prefix-dev/setup-pixi@v0.11.2
         with:
           cache: false
           pixi-version: v0.46.0
@@ -285,8 +346,16 @@ jobs:
           $sha256 = '7ad797ef0c9a5c42e28903bf726eaaaade307dafe187ff0e923d90cd4002780c'
           $zip = Join-Path $env:RUNNER_TEMP 'openblas.zip'
           $dest = Join-Path $env:RUNNER_TEMP 'openblas'
-          Invoke-WebRequest -OutFile $zip `
-            -Uri "https://github.com/OpenMathLib/OpenBLAS/releases/download/v$version/OpenBLAS-$version-x64.zip"
+          $uri = "https://github.com/OpenMathLib/OpenBLAS/releases/download/v$version/OpenBLAS-$version-x64.zip"
+          # Retry transient 5xx/network failures before failing the job.
+          for ($attempt = 1; ; $attempt++) {
+            try { Invoke-WebRequest -OutFile $zip -Uri $uri; break }
+            catch {
+              if ($attempt -ge 4) { throw }
+              Write-Warning "Download of $uri failed (attempt $attempt): $_"
+              Start-Sleep -Seconds (15 * $attempt)
+            }
+          }
           if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $sha256) { throw 'OpenBLAS checksum mismatch' }
           Expand-Archive $zip -DestinationPath $dest
           $root = $dest
@@ -306,10 +375,27 @@ jobs:
         shell: pwsh
         run: ./.github/scripts/install_openblas_arm64.ps1
 
+      # cibuildwheel's own downloads (virtualenv, CPython installers) and the
+      # pip installs inside it fail outright on a transient 5xx or DNS error,
+      # so retry the step once after a pause. A genuine build failure also
+      # reruns once, costing one extra build before the job goes red.
       - name: Build wheels
+        id: cibw
+        continue-on-error: true
         uses: pypa/cibuildwheel@v4.3.5
         env:
           # Explicitly set the architecture based on the matrix
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+
+      - name: Wait before retrying cibuildwheel
+        if: steps.cibw.outcome == 'failure'
+        run: sleep 60
+        shell: bash
+
+      - name: Build wheels (retry)
+        if: steps.cibw.outcome == 'failure'
+        uses: pypa/cibuildwheel@v4.3.5
+        env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
       - name: Report wheel sizes

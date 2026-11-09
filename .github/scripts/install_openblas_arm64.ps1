@@ -3,6 +3,21 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 
+# Release downloads occasionally fail with a transient 5xx or network error;
+# retry a few times before failing the job.
+function Invoke-Download([string]$Uri, [string]$OutFile) {
+    for ($attempt = 1; ; $attempt++) {
+        try {
+            Invoke-WebRequest -OutFile $OutFile -Uri $Uri
+            return
+        } catch {
+            if ($attempt -ge 4) { throw }
+            Write-Warning "Download of $Uri failed (attempt $attempt): $_"
+            Start-Sleep -Seconds (15 * $attempt)
+        }
+    }
+}
+
 $version = '0.3.33'
 $archive = Join-Path $env:RUNNER_TEMP 'openblas-source.tar.gz'
 $source = Join-Path $env:RUNNER_TEMP "OpenBLAS-$version"
@@ -11,7 +26,7 @@ $prefix = Join-Path $env:RUNNER_TEMP 'openblas'
 $llvm = Join-Path $env:RUNNER_TEMP 'openblas-llvm'
 $installer = Join-Path $env:RUNNER_TEMP 'LLVM-20.1.8-woa64.exe'
 
-Invoke-WebRequest -OutFile $archive -Uri "https://github.com/OpenMathLib/OpenBLAS/releases/download/v$version/OpenBLAS-$version.tar.gz"
+Invoke-Download -OutFile $archive -Uri "https://github.com/OpenMathLib/OpenBLAS/releases/download/v$version/OpenBLAS-$version.tar.gz"
 if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne '6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab') {
     throw 'OpenBLAS source checksum mismatch'
 }
@@ -19,7 +34,7 @@ tar -xf $archive -C $env:RUNNER_TEMP
 
 # Pin the C and Fortran toolchain used by the upstream recipe. Keep it separate
 # from the runner's LLVM, which does not necessarily include flang-new.
-Invoke-WebRequest -OutFile $installer -Uri 'https://github.com/llvm/llvm-project/releases/download/llvmorg-20.1.8/LLVM-20.1.8-woa64.exe'
+Invoke-Download -OutFile $installer -Uri 'https://github.com/llvm/llvm-project/releases/download/llvmorg-20.1.8/LLVM-20.1.8-woa64.exe'
 if ((Get-FileHash $installer -Algorithm SHA256).Hash -ne '7c4ac97eb2ae6b960ca5f9caf3ff6124c8d2a18cc07a7840a4d2ea15537bad8e') {
     throw 'LLVM installer checksum mismatch'
 }
