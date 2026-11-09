@@ -82,7 +82,8 @@ repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
 select = "*-manylinux_x86_64"
 inherit.before-all = "append"
 before-all = [
-  "dnf install -y openblas-devel",
+  # Retry: AlmaLinux mirrors intermittently serve empty repo metadata.
+  "for i in 1 2 3 4 5; do dnf install -y --disablerepo=extras openblas-devel && break; [ $i = 5 ] && exit 1; dnf clean metadata; sleep $((i * 10)); done",
   "bash /project/.github/scripts/install_mkl_static.sh /opt/mkl-static",
 ]
 config-settings = {setup-args = "-Dmkl_static_prefix=/opt/mkl-static"}
@@ -92,7 +93,8 @@ select = "*-manylinux_aarch64"
 inherit.before-all = "append"
 before-all = [
   # "dnf update", "dnf search blas",
-  "dnf install -y openblas-devel"]
+  # Retry: AlmaLinux mirrors intermittently serve empty repo metadata.
+  "for i in 1 2 3 4 5; do dnf install -y --disablerepo=extras openblas-devel && break; [ $i = 5 ] && exit 1; dnf clean metadata; sleep $((i * 10)); done"]
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
