@@ -100,6 +100,35 @@ def test_feasible(solver_opts):
         assert_almost_equal(np.dot(-data["b"], sol["y"]), p_star, decimal=2)
 
 
+# Several PSD blocks of comparable size, with enough work for SCS to project
+# them in parallel when it is built for that (-Duse_openmp=true
+# -Duse_parallel_psd=true, with an SCS source that has USE_PARALLEL_PSD). Every
+# other build projects them one after another. The answer must be the same.
+K_blocks = {
+    "z": 4,
+    "l": 6,
+    "q": [5],
+    "s": [24, 24, 22, 24],
+    "ep": 0,
+    "ed": 0,
+    "p": [],
+}
+m_blocks = tools.get_scs_cone_dims(K_blocks)
+
+
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_feasible_several_psd_blocks(solver_opts):
+    rng = np.random.RandomState(2003)
+    for i in range(3):
+        data, p_star = tools.gen_feasible(
+            K_blocks, n=m_blocks // 3, density=0.1, rng=rng
+        )
+        solver = scs.SCS(data, K_blocks, **solver_opts, **opts)
+        sol = solver.solve()
+        assert_almost_equal(np.dot(data["c"], sol["x"]), p_star, decimal=2)
+        assert_almost_equal(np.dot(-data["b"], sol["y"]), p_star, decimal=2)
+
+
 @pytest.mark.parametrize("solver_opts", _solver_configs)
 def test_infeasible(solver_opts):
     rng = np.random.RandomState(2001)

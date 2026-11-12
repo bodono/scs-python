@@ -59,6 +59,14 @@ jobs:
           pixi r python -m pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true
           pixi r pytest
           rm -rf build/
+      - name: Test with the parallel PSD projection option
+        # One Python version is enough to check the Meson option. It changes
+        # the build only with an SCS source that has USE_PARALLEL_PSD.
+        if: matrix.python-version == '3.13'
+        run: |
+          pixi r python -m pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true -Csetup-args=-Duse_parallel_psd=true
+          pixi r pytest
+          rm -rf build/
 
   build_mkl:
     # Source builds against conda-forge's dynamic MKL (link_mkl), one job per

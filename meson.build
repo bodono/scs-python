@@ -163,6 +163,27 @@ if get_option('use_lapack')
   common_c_args += '-DUSE_LAPACK=1'
 endif
 
+# Parallel projection of the PSD blocks (USE_PARALLEL_PSD in SCS): the OpenMP
+# threads of SCS project several blocks at once, each calling LAPACK for its
+# own blocks. Off by default, because it is only faster when the BLAS runs on
+# one thread inside those threads. A BLAS on the same OpenMP runtime as SCS
+# does that by itself. A BLAS with threads of its own (a pthreads OpenBLAS)
+# has to be set to one thread (OPENBLAS_NUM_THREADS=1), or the threads of the
+# two multiply and the projection gets slower. See "Parallel projection of PSD
+# blocks" on the BLAS and LAPACK page of the SCS documentation.
+if get_option('use_parallel_psd')
+  if not get_option('use_openmp')
+    error('The parallel PSD projection requires OpenMP. Please re-run Meson with -Duse_openmp=true')
+  endif
+  if not get_option('use_lapack')
+    error('The parallel PSD projection requires LAPACK. Please re-run Meson with -Duse_lapack=true')
+  endif
+  if not fs.read('scs_source/src/cones.c').contains('USE_PARALLEL_PSD')
+    warning('use_parallel_psd has no effect: the SCS source in scs_source does not have the build option USE_PARALLEL_PSD')
+  endif
+  common_c_args += '-DUSE_PARALLEL_PSD=1'
+endif
+
 use_spectral_cones = get_option('use_spectral_cones')
 if use_spectral_cones
   if not get_option('use_lapack')
