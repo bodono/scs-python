@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import platform
 
 ## import utilities to generate random cone probs:
@@ -102,8 +103,8 @@ def test_feasible(solver_opts):
 
 # Several PSD blocks of comparable size, with enough work for SCS to project
 # them in parallel when it is built for that (-Duse_openmp=true
-# -Duse_parallel_psd=true, with an SCS source that has USE_PARALLEL_PSD). Every
-# other build projects them one after another. The answer must be the same.
+# -Duse_parallel_psd=true). Every other build projects them one after another.
+# The answer must be the same.
 K_blocks = {
     "z": 4,
     "l": 6,
@@ -127,6 +128,33 @@ def test_feasible_several_psd_blocks(solver_opts):
         sol = solver.solve()
         assert_almost_equal(np.dot(data["c"], sol["x"]), p_star, decimal=2)
         assert_almost_equal(np.dot(-data["b"], sol["y"]), p_star, decimal=2)
+
+
+# Whether those blocks are projected in parallel is decided by the build, and
+# a verbose setup says so in its header. CI sets SCS_EXPECT_PARALLEL_PSD to
+# "1" for a build with -Duse_parallel_psd=true and to "0" for one without,
+# both with several OpenMP threads and the BLAS on one thread
+# (OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1), so that each build is seen to
+# take the path it is meant to take. Without the variable there is nothing to
+# compare with, and the test is skipped.
+_expect_parallel_psd = os.environ.get("SCS_EXPECT_PARALLEL_PSD")
+
+
+@pytest.mark.skipif(
+    _expect_parallel_psd not in ("0", "1"),
+    reason="SCS_EXPECT_PARALLEL_PSD is not set to 0 or 1",
+)
+@pytest.mark.parametrize("solver_opts", _solver_configs)
+def test_parallel_psd_matches_build(solver_opts, capsys):
+    rng = np.random.RandomState(2004)
+    data, _ = tools.gen_feasible(
+        K_blocks, n=m_blocks // 3, density=0.1, rng=rng
+    )
+    capsys.readouterr()
+    scs.SCS(data, K_blocks, verbose=True, **solver_opts, **opts)
+    header = capsys.readouterr().out
+    parallel = "psd cones projected in parallel by" in header
+    assert parallel == (_expect_parallel_psd == "1"), header
 
 
 @pytest.mark.parametrize("solver_opts", _solver_configs)
