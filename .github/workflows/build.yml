@@ -58,11 +58,23 @@ jobs:
         run: |
           pixi r python -m pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true
           pixi r pytest
+          # Without use_parallel_psd an OpenMP build projects the PSD blocks
+          # one after another, under the conditions of the step below too.
+          OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 SCS_EXPECT_PARALLEL_PSD=0 pixi r pytest -v test/test_scs_sdp.py -k parallel_psd
           rm -rf build/
       - name: Test with the parallel PSD projection option
-        # One Python version is enough to check the Meson option. It changes
-        # the build only with an SCS source that has USE_PARALLEL_PSD.
+        # One Python version is enough to check the Meson option. The suite
+        # runs with several OpenMP threads and the BLAS on one thread, which
+        # is what the parallel projection asks for: SCS keeps it serial when
+        # it sees an OpenBLAS with a thread pool of its own on more than one
+        # thread. SCS_EXPECT_PARALLEL_PSD=1 makes
+        # test_parallel_psd_matches_build fail unless SCS reports a parallel
+        # projection.
         if: matrix.python-version == '3.13'
+        env:
+          OMP_NUM_THREADS: "4"
+          OPENBLAS_NUM_THREADS: "1"
+          SCS_EXPECT_PARALLEL_PSD: "1"
         run: |
           pixi r python -m pip install -v . --no-build-isolation -Csetup-args=-Duse_openmp=true -Csetup-args=-Duse_parallel_psd=true
           pixi r pytest

@@ -178,9 +178,6 @@ if get_option('use_parallel_psd')
   if not get_option('use_lapack')
     error('The parallel PSD projection requires LAPACK. Please re-run Meson with -Duse_lapack=true')
   endif
-  if not fs.read('scs_source/src/cones.c').contains('USE_PARALLEL_PSD')
-    warning('use_parallel_psd has no effect: the SCS source in scs_source does not have the build option USE_PARALLEL_PSD')
-  endif
   common_c_args += '-DUSE_PARALLEL_PSD=1'
 endif
 
