@@ -84,9 +84,15 @@ pip install . -Csetup-args=-Duse_lapack=true
 
 # Spectral cones (logdet, nuclear norm, ell-1, sum-of-largest)
 pip install . -Csetup-args=-Duse_spectral_cones=true
+
+# Project the PSD blocks of a problem in parallel with OpenMP. Off by
+# default: it is only faster when BLAS runs on one thread inside the threads
+# of SCS (see "Parallel projection of PSD blocks" in the SCS documentation).
+pip install . -Csetup-args=-Duse_openmp=true -Csetup-args=-Duse_parallel_psd=true
 ```
 
 Notes:
+- `use_parallel_psd` needs an SCS source that has the build option `USE_PARALLEL_PSD` (cvxgrp/scs#506). With an older source in `scs_source` the build prints a warning and the option has no effect.
 - x86-64 manylinux wheels ship a `_scs_mkl` extension with sequential MKL linked statically (CI asserts the shipped inventory and that no wheel carries a dynamic MKL dependency). The musllinux, aarch64, macOS and Windows wheels do not include the MKL backend; Windows source builds use sequential MKL because Intel's conda `pkg-config` metadata for the threaded variant is still broken.
 - Windows wheels link conda-forge OpenBLAS pinned to 0.3.33: the win-64 0.3.34 build crashes inside its DGEMM kernels on AMD Zen 4/5 CPUs that expose AVX-512 (conda-forge/openblas-feedstock#196), so Windows source builds should avoid that build too.
 - `BLAS64` is a general SCS build mode for ILP64 BLAS/LAPACK libraries, not an MKL-only feature.

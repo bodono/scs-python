@@ -9,6 +9,8 @@ option('link_cudss', type: 'boolean',
        value: false, description: 'link to cuDSS library')
 option('use_openmp', type: 'boolean',
        value: false, description: 'Compile SCS with OpenMP parallelization enabled. This can make SCS faster, but requires a compiler with openMP support, the user must control how many threads OpenMP uses')
+option('use_parallel_psd', type: 'boolean',
+       value: false, description: 'Project the PSD blocks of a problem in parallel with OpenMP (USE_PARALLEL_PSD in SCS). Requires use_openmp and use_lapack. Only faster when BLAS runs on one thread inside the threads of SCS, so read the SCS documentation on BLAS and LAPACK before enabling it')
 option('sdist_mode', type: 'boolean', value: false,
        description: 'Set to true if building an sdist')
 option('use_lapack', type: 'boolean',
