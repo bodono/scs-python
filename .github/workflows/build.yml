@@ -244,6 +244,45 @@ jobs:
           readelf -d "$so" | grep -q 'libcusparse' || { echo "ERROR: _scs_gpu not linked against cuSPARSE"; exit 1; }
           echo "OK: _scs_gpu links cuBLAS and cuSPARSE"
 
+  build_cudss:
+    # Build-only check of the cuDSS backend against NVIDIA's apt cuDSS, which
+    # installs the builds for CUDA 12 and CUDA 13 side by side. With the CUDA 12
+    # toolkit of this container, the CUDA 13 build must be refused when Meson
+    # configures (cuDSS's own check, see link_cudss in meson.build) and the
+    # CUDA 12 build must build and import. Importing needs only the shared
+    # libraries, not a GPU. Each build is pointed at explicitly with cudss_DIR,
+    # so the job does not depend on which one apt makes the default.
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:12.6.3-devel-ubuntu22.04
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y git pkg-config cmake \
+            ninja-build libopenblas-dev liblapack-dev python3-dev python3-venv binutils cudss
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Python build tools
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          python3 -m venv /opt/venv
+          /opt/venv/bin/pip install numpy scipy meson-python meson ninja
+      - name: The cuDSS build for another CUDA major version is refused
+        run: |
+          if cudss_DIR=/usr/lib/x86_64-linux-gnu/libcudss/13/cmake/cudss /opt/venv/bin/pip install -v \
+              --no-build-isolation -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true . > mismatch.log 2>&1; then
+            cat mismatch.log
+            echo "::error::the CUDA 13 build of cuDSS was accepted with the CUDA 12 toolkit"
+            exit 1
+          fi
+          grep "cuDSS for CUDA 12 was not found" mismatch.log || { cat mismatch.log; exit 1; }
+      - name: The cuDSS build for this CUDA builds and imports
+        run: |
+          cudss_DIR=/usr/lib/x86_64-linux-gnu/libcudss/12/cmake/cudss /opt/venv/bin/pip install -v \
+            --no-build-isolation -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true .
+          cd /tmp && /opt/venv/bin/python -c "from scs import _scs_cudss; import scs; print('scs', scs.__version__, 'cuDSS backend imports')"
+
   build_native_arch:
     runs-on: ubuntu-latest
     defaults:

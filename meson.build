@@ -456,7 +456,27 @@ if host_machine.system() == 'darwin'
 endif
 
 if get_option('link_cudss')
-  cudss_dep = dependency('cudss', required: true)
+  # A cuDSS build works only with the CUDA major version it was built for, and
+  # NVIDIA's apt package installs the builds for CUDA 12 and 13 side by side
+  # with the CUDA 13 one as the default. cuDSS's CMake package checks the
+  # match, but only when it is told the consumer's CUDA version, which Meson's
+  # CMake lookup does not do on its own. Pass it the major version of the
+  # toolkit cuda_dep found, so that a mismatched cuDSS stops the configure step
+  # instead of building a module that fails on import (for example with
+  # "libcublas.so.13: cannot open shared object file" under CUDA 12). A cuDSS
+  # found through pkg-config (cudss.pc) is not checked.
+  cuda_major = cuda_dep.version().split('.')[0]
+  cudss_dep = dependency('cudss', required: false,
+                         cmake_args: ['-DCUDAToolkit_VERSION_MAJOR=' + cuda_major])
+  if not cudss_dep.found()
+    error('cuDSS for CUDA ' + cuda_major + ' was not found (tried pkg-config and ' +
+          'cuDSS\'s CMake package; the latter needs cmake). If cuDSS is installed ' +
+          'for another CUDA major version, or Meson found that build, point it at ' +
+          'the build for CUDA ' + cuda_major + ' with the cudss_DIR environment ' +
+          'variable, e.g. on x86-64 cudss_DIR=/usr/lib/x86_64-linux-gnu/libcudss/' +
+          cuda_major + '/cmake/cudss for NVIDIA\'s apt package. The reason is in ' +
+          'meson-logs/meson-log.txt.')
+  endif
   # Scope the CUDA libraries to this target rather than mutating the shared
   # `_deps` (see the use_gpu block above).
   cudss_deps = _deps + [cuda_dep, cudss_dep]
