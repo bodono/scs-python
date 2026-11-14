@@ -328,18 +328,16 @@ endif
 
 if get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
-  cublas_dep = cc.find_library('cublas', required: false)
-  if not cublas_dep.found()
-    cublas_dep = dependency('cublas', required: true)
-  endif
-  cusparse_dep = cc.find_library('cusparse', required: false)
-  if not cusparse_dep.found()
-    cusparse_dep = dependency('cusparse', required: true)
-  endif
+  # cuBLAS and cuSPARSE come from the same CUDA toolkit as cuda_dep (found
+  # from CUDA_PATH, CUDA_HOME or CUDA_ROOT, or else /usr/local/cuda). The
+  # compiler's default library path and pkg-config do not know where a toolkit
+  # is installed, and the toolkit's own .pc files carry the CUDA version in
+  # their names, so look the libraries up as modules of that dependency.
+  cuda_gpu_dep = dependency('cuda', modules: ['cublas', 'cusparse'], required: true)
   # Scope the CUDA libraries to this target rather than mutating the shared
   # `_deps`, so they don't leak into _scs_mkl / _scs_accelerate / _scs_cudss
   # when use_gpu is combined with those backends.
-  gpu_deps = _deps + [cuda_dep, cublas_dep, cusparse_dep]
+  gpu_deps = _deps + [cuda_gpu_dep]
   if get_option('gpu_atrans')
     gpu_c_args += '-DGPU_TRANSPOSE_MAT=1'
   endif
