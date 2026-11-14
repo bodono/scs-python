@@ -272,6 +272,8 @@ jobs:
           # --upgrade-deps: Ubuntu 22.04's pip (22.0) has no -C option
           python3 -m venv --upgrade-deps /opt/venv
           /opt/venv/bin/pip install numpy scipy meson-python meson ninja
+          # meson-python runs the meson it finds on PATH
+          echo /opt/venv/bin >> "$GITHUB_PATH"
       - name: The cuDSS build for another CUDA major version is refused
         run: |
           d=/usr/lib/x86_64-linux-gnu/libcudss/13/cmake/cudss
