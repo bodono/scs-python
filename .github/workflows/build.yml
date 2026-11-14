@@ -251,14 +251,17 @@ jobs:
     # configures (cuDSS's own check, see link_cudss in meson.build) and the
     # CUDA 12 build must build and import. Importing needs only the shared
     # libraries, not a GPU. Each build is pointed at explicitly with cudss_DIR,
-    # so the job does not depend on which one apt makes the default.
+    # so the job does not depend on which one apt makes the default; if apt stops
+    # shipping one of them, the step that needs it is skipped with a warning.
     runs-on: ubuntu-latest
+    # The newest CUDA 12 devel image when this job was written; bump it if
+    # NVIDIA removes the tag.
     container: nvidia/cuda:12.6.3-devel-ubuntu22.04
     steps:
       - name: Install dependencies
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y git pkg-config cmake \
+          apt-get -o Acquire::Retries=5 update
+          DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=5 install -y git pkg-config cmake \
             ninja-build libopenblas-dev liblapack-dev python3-dev python3-venv binutils cudss
       - uses: actions/checkout@v7
         with:
@@ -266,11 +269,18 @@ jobs:
       - name: Python build tools
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          python3 -m venv /opt/venv
+          # --upgrade-deps: Ubuntu 22.04's pip (22.0) has no -C option
+          python3 -m venv --upgrade-deps /opt/venv
           /opt/venv/bin/pip install numpy scipy meson-python meson ninja
       - name: The cuDSS build for another CUDA major version is refused
         run: |
-          if cudss_DIR=/usr/lib/x86_64-linux-gnu/libcudss/13/cmake/cudss /opt/venv/bin/pip install -v \
+          d=/usr/lib/x86_64-linux-gnu/libcudss/13/cmake/cudss
+          if [ ! -f "$d/cudss-config.cmake" ]; then
+            echo "::warning::apt's cuDSS has no CUDA 13 build; mismatch check skipped"
+            exit 0
+          fi
+          # LIBRARY_PATH: the image points it at the CUDA stubs; a plain toolkit install does not
+          if cudss_DIR=$d env -u LIBRARY_PATH /opt/venv/bin/pip install -v \
               --no-build-isolation -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true . > mismatch.log 2>&1; then
             cat mismatch.log
             echo "::error::the CUDA 13 build of cuDSS was accepted with the CUDA 12 toolkit"
@@ -279,7 +289,12 @@ jobs:
           grep "cuDSS for CUDA 12 was not found" mismatch.log || { cat mismatch.log; exit 1; }
       - name: The cuDSS build for this CUDA builds and imports
         run: |
-          cudss_DIR=/usr/lib/x86_64-linux-gnu/libcudss/12/cmake/cudss /opt/venv/bin/pip install -v \
+          d=/usr/lib/x86_64-linux-gnu/libcudss/12/cmake/cudss
+          if [ ! -f "$d/cudss-config.cmake" ]; then
+            echo "::warning::apt's cuDSS has no CUDA 12 build; build check skipped"
+            exit 0
+          fi
+          cudss_DIR=$d env -u LIBRARY_PATH /opt/venv/bin/pip install -v \
             --no-build-isolation -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true .
           cd /tmp && /opt/venv/bin/python -c "from scs import _scs_cudss; import scs; print('scs', scs.__version__, 'cuDSS backend imports')"
 
