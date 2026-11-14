@@ -456,7 +456,36 @@ if host_machine.system() == 'darwin'
 endif
 
 if get_option('link_cudss')
-  cudss_dep = dependency('cudss', required: true)
+  # A cuDSS build works only with the CUDA major version it was built for, and
+  # NVIDIA's apt package installs the builds for CUDA 12 and 13 side by side
+  # with the CUDA 13 one as the default. cuDSS's CMake package (cuDSS 1.0 has
+  # this) refuses a build for another major version, but only when it is told
+  # the consumer's CUDA version, which Meson's CMake lookup does not do on its
+  # own. Pass it the major version of the toolkit cuda_dep found, so that a
+  # mismatched cuDSS stops the configure step instead of building a module that
+  # fails on import (for example with "libcublas.so.13: cannot open shared
+  # object file" under CUDA 12). A cuDSS found through pkg-config (cudss.pc) is
+  # not checked. Reuse cudss_dep: another dependency('cudss') call without these
+  # cmake_args would be a separate lookup without the check.
+  cuda_major = cuda_dep.version().split('.')[0]
+  cudss_dep = dependency('cudss', required: false,
+                         cmake_args: ['-DCUDAToolkit_VERSION_MAJOR=' + cuda_major])
+  if not cudss_dep.found()
+    cudss_apt_dir = ('/usr/lib/' + host_machine.cpu_family() + '-linux-gnu/libcudss/' +
+                     cuda_major + '/cmake/cudss')
+    if not find_program('cmake', required: false).found()
+      error('cuDSS was not found with pkg-config, and cmake was not found. A cuDSS ' +
+            'without cudss.pc (such as NVIDIA\'s apt package or archive) is found ' +
+            'only through its CMake package, so install cmake.')
+    endif
+    error('cuDSS for CUDA ' + cuda_major + ' was not found (tried pkg-config and ' +
+          'cuDSS\'s CMake package). If cuDSS is installed for another CUDA major ' +
+          'version, or Meson found that build, point it at the build for CUDA ' +
+          cuda_major + ' with the cudss_DIR environment variable, e.g. cudss_DIR=' +
+          cudss_apt_dir + ' for NVIDIA\'s apt package. pip deletes its build ' +
+          'directory; to see CMake\'s reason, rerun with -Cbuild-dir=build and read ' +
+          'build/meson-logs/meson-log.txt.')
+  endif
   # Scope the CUDA libraries to this target rather than mutating the shared
   # `_deps` (see the use_gpu block above).
   cudss_deps = _deps + [cuda_dep, cudss_dep]
