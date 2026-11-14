@@ -328,11 +328,15 @@ endif
 
 if get_option('use_gpu')
   gpu_c_args = common_c_args + ['-DPY_GPU=1', '-DINDIRECT=1']
-  # cuBLAS and cuSPARSE come from the same CUDA toolkit as cuda_dep (found
-  # from CUDA_PATH, CUDA_HOME or CUDA_ROOT, or else /usr/local/cuda). The
-  # compiler's default library path and pkg-config do not know where a toolkit
-  # is installed, and the toolkit's own .pc files carry the CUDA version in
-  # their names, so look the libraries up as modules of that dependency.
+  # cuBLAS and cuSPARSE come from the CUDA toolkit. The compiler's default
+  # library path and pkg-config do not know where a toolkit is installed, and
+  # the toolkit's own .pc files carry the CUDA version in their names, so look
+  # them up with a second dependency('cuda') that requests them as modules.
+  # With no version given it resolves to the same toolkit as cuda_dep:
+  # CUDA_PATH, CUDA_HOME or CUDA_ROOT (CUDA_PATH only on Windows), or else
+  # /usr/local/cuda. Only that toolkit's lib folder (and its stubs) is searched,
+  # so cuBLAS and cuSPARSE must be installed in the same toolkit as cudart. As
+  # before, cudart is linked statically; cuBLAS and cuSPARSE link dynamically.
   cuda_gpu_dep = dependency('cuda', modules: ['cublas', 'cusparse'], required: true)
   # Scope the CUDA libraries to this target rather than mutating the shared
   # `_deps`, so they don't leak into _scs_mkl / _scs_accelerate / _scs_cudss
