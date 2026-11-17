@@ -33,6 +33,10 @@ mkl_static_prefix = get_option('mkl_static_prefix')
 if get_option('link_mkl') and mkl_static_prefix != ''
     error('link_mkl and mkl_static_prefix are mutually exclusive.')
 endif
+mkl_static_threading = get_option('mkl_static_threading')
+if mkl_static_threading != 'sequential' and mkl_static_prefix == ''
+    error('mkl_static_threading applies to the static MKL only; set mkl_static_prefix.')
+endif
 if get_option('link_mkl')
     if get_option('use_blas64') and get_option('int32')
         error('MKL BLAS64 requires 64-bit SCS integers. Re-run Meson with -Dint32=false.')
@@ -394,16 +398,26 @@ if get_option('link_mkl')
   # skipped. Keep mkl_rt a hard dependency of the dynamic build.
   _mkl_link_args = is_linux ? ['-Wl,--no-as-needed'] : []
 elif mkl_static_prefix != ''
-  # Intel's mkl-static archives: LP64, sequential, linked as a group (they
-  # reference each other) with every MKL symbol hidden so an MKL already in
-  # the process is never interposed. The core's MKL_Set_Interface_Layer
-  # reference is weak, so the mkl_rt-only runtime check is skipped.
+  # Intel's mkl-static archives: LP64, linked as a group (they reference each
+  # other) with every MKL symbol hidden so an MKL already in the process is
+  # never interposed. The core's MKL_Set_Interface_Layer reference is weak, so
+  # the mkl_rt-only runtime check is skipped. The threading layer is
+  # mkl_static_threading (see meson.options): sequential by default, or
+  # gnu_thread, which runs on GCC's libgomp, the runtime of SCS's own OpenMP
+  # code when use_openmp is on, so that SCS and MKL share one thread pool.
   if get_option('use_blas64')
     error('mkl_static_prefix links the LP64 interface; use link_mkl for ILP64 MKL builds.')
   endif
+  _mkl_threaded = mkl_static_threading == 'gnu_thread'
+  if _mkl_threaded and cc.get_id() != 'gcc'
+    # libmkl_gnu_thread.a calls libgomp. With another compiler, SCS's OpenMP
+    # code (use_openmp) would be on that compiler's runtime and MKL on libgomp:
+    # two runtimes in one module, whose threads multiply.
+    error('mkl_static_threading=gnu_thread needs GCC (libgomp); the compiler is ' + cc.get_id() + '.')
+  endif
   _mkl_lib = mkl_static_prefix / 'lib'
   _mkl_archives = []
-  foreach _a : ['libmkl_intel_lp64.a', 'libmkl_sequential.a', 'libmkl_core.a']
+  foreach _a : ['libmkl_intel_lp64.a', _mkl_threaded ? 'libmkl_gnu_thread.a' : 'libmkl_sequential.a', 'libmkl_core.a']
     if not fs.exists(_mkl_lib / _a)
       error('mkl_static_prefix: ' + (_mkl_lib / _a) + ' not found (pip install mkl-static).')
     endif
@@ -411,6 +425,11 @@ elif mkl_static_prefix != ''
   endforeach
   _mkl_deps = _base_deps + [cc.find_library('dl'), cc.find_library('m'), cc.find_library('rt')]
   _mkl_link_args = ['-Wl,--start-group'] + _mkl_archives + ['-Wl,--end-group', '-Wl,--exclude-libs,ALL']
+  if _mkl_threaded
+    # libgomp after the archives that call it, as in Intel's link line, so
+    # that --as-needed keeps it even when SCS itself is built without OpenMP.
+    _mkl_link_args += ['-lgomp']
+  endif
   # Intel Simplified Software License: the notice ships with the binaries.
   install_data('LICENSE-INTEL-MKL.txt', install_dir: scs_dir)
 endif
