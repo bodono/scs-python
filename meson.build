@@ -426,9 +426,11 @@ elif mkl_static_prefix != ''
   _mkl_deps = _base_deps + [cc.find_library('dl'), cc.find_library('m'), cc.find_library('rt')]
   _mkl_link_args = ['-Wl,--start-group'] + _mkl_archives + ['-Wl,--end-group', '-Wl,--exclude-libs,ALL']
   if _mkl_threaded
-    # libgomp after the archives that call it, as in Intel's link line, so
-    # that --as-needed keeps it even when SCS itself is built without OpenMP.
-    _mkl_link_args += ['-lgomp']
+    # libmkl_gnu_thread.a calls libgomp: the link part of Meson's OpenMP
+    # dependency (GCC's -fopenmp at link time, which adds libgomp after the
+    # archives) brings it in. Only the link part, so SCS's own code in this
+    # module is compiled with OpenMP only when use_openmp asks for it.
+    _mkl_deps += [dependency('openmp').partial_dependency(link_args: true)]
   endif
   # Intel Simplified Software License: the notice ships with the binaries.
   install_data('LICENSE-INTEL-MKL.txt', install_dir: scs_dir)
