@@ -33,3 +33,18 @@ option('use_spectral_cones', type: 'boolean',
        value: false, description: 'Build with spectral cone support (logdet, nuclear norm, ell1, sum-of-largest). Requires LAPACK.')
 option('mkl_static_prefix', type: 'string', value: '',
        description: 'Prefix holding Intel MKL static archives (<prefix>/lib/libmkl_*.a, e.g. from the mkl-static PyPI wheel). Builds _scs_mkl with MKL linked statically and hidden while every other extension uses the platform BLAS: the x86-64 Linux wheel configuration.')
+# The threading layer of the static MKL in _scs_mkl (only with mkl_static_prefix).
+# 'sequential' (the default, and the wheel) runs MKL Pardiso and the LAPACK
+# calls of the PSD projection on one thread and adds no OpenMP runtime to the
+# module. 'gnu_thread' links libmkl_gnu_thread.a and GCC's libgomp, so MKL
+# Pardiso (reordering, factorization, and the solve that runs every iteration)
+# and MKL's BLAS and LAPACK use MKL_NUM_THREADS / OMP_NUM_THREADS threads. With
+# use_openmp, SCS's own OpenMP code is on the same libgomp, so MKL called inside
+# a parallel region of SCS (use_parallel_psd) runs on one thread instead of
+# starting threads of its own. Tradeoff: faster on large linear systems and
+# large PSD blocks, possibly slower on small problems (a parallel solve every
+# iteration costs thread start-up), and the module needs libgomp at run time,
+# so a wheel would have to vendor it. Requires GCC.
+option('mkl_static_threading', type: 'combo', choices: ['sequential', 'gnu_thread'],
+       value: 'sequential',
+       description: 'Threading layer of the static MKL (mkl_static_prefix): sequential (default) or gnu_thread (MKL threads on GCC\'s libgomp, shared with SCS\'s OpenMP). Requires GCC.')
