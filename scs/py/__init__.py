@@ -120,6 +120,26 @@ def _select_scs_module(stgs):
   return _SOLVER_DISPATCH[linear_solver]()
 
 
+# Settings that only the solve reads, which `SCS.update` can change after
+# construction (scs_update_settings in the SCS core).
+SOLVE_SETTINGS = frozenset({
+    "max_iters", "eps_abs", "eps_rel", "eps_infeas", "alpha",
+    "time_limit_secs", "verbose", "log_csv_filename",
+})
+
+# Settings used to set up the solver (data scaling, the factorized matrix,
+# the acceleration memory, the backend), which `SCS.update` refuses. The
+# core refuses a change to any of them too; this list only gives a clearer
+# message.
+SETUP_SETTINGS = frozenset({
+    "linear_solver", "normalize", "scale", "adaptive_scale",
+    "adaptive_diag_scale", "rho_x", "acceleration_lookback",
+    "acceleration_interval", "acceleration_type_1",
+    "acceleration_regularization", "acceleration_relaxation",
+    "write_data_filename",
+})
+
+
 def _has_lower_tri(P):
   """Fast check for strictly lower triangular entries in a sorted CSC matrix."""
   nnz_per_col = np.diff(P.indptr)
@@ -248,16 +268,72 @@ class SCS(object):
     """
     return self._solver.solve(warm_start, x, y, s)
 
-  def update(self, b=None, c=None):
-    """Update the `b` vector, `c` vector, or both, before another solve.
+  def update(self, b=None, c=None, **settings):
+    """Update the `b` vector, `c` vector, settings, or any of them, before
+    another solve.
 
     After a solve we can reuse the SCS workspace in another solve if the
     only problem data that has changed are the `b` and `c` vectors.
 
-    @param  b   New `b` vector.
-    @param  c   New `c` vector.
+    The settings that only the solve reads (see `SOLVE_SETTINGS`, e.g.
+    `time_limit_secs`, `max_iters` and the tolerances) can be changed the
+    same way, as keyword arguments. Only the settings passed change, and
+    they stay in force for every later solve until changed again. A setting
+    used to set up the solver (see `SETUP_SETTINGS`) raises `ValueError`
+    and an unknown name raises `TypeError`. If anything is rejected (a
+    setting, its value, `b` or `c`) nothing is changed. Changing only
+    settings leaves the `setup_time` reported in `info` alone.
+
+    Example, to make a time budget cover the setup as well as the solve:
+
+        t0 = time.perf_counter()
+        solver = scs.SCS(data, cone)
+        remaining = budget - (time.perf_counter() - t0)
+        if remaining > 0:  # time_limit_secs=0 would mean no limit
+          solver.update(time_limit_secs=remaining)
+          sol = solver.solve()
+
+    @param  b           New `b` vector.
+    @param  c           New `c` vector.
+    @param  settings    New values of settings in `SOLVE_SETTINGS`.
     """
-    self._solver.update(b, c)
+    if settings:
+      unknown = sorted(set(settings) - SOLVE_SETTINGS - SETUP_SETTINGS)
+      if unknown:
+        raise TypeError(
+            "update() got unknown setting(s): "
+            + ", ".join(f"'{k}'" for k in unknown)
+            + ". Settings that can be changed after construction: "
+            + ", ".join(sorted(SOLVE_SETTINGS)) + "."
+        )
+      setup = sorted(set(settings) & SETUP_SETTINGS)
+      if setup:
+        raise ValueError(
+            ("Setting " if len(setup) == 1 else "Settings ")
+            + ", ".join(f"'{k}'" for k in setup)
+            + (" is" if len(setup) == 1 else " are")
+            + " used to set up the solver and cannot be changed after it is "
+            "constructed; create a new scs.SCS object to change it. Settings "
+            "that can be changed after construction: "
+            + ", ".join(sorted(SOLVE_SETTINGS)) + "."
+        )
+      merged = dict(self._settings)
+      merged.update(settings)
+      # The settings given at construction come along unchanged, so the
+      # core sees the setup settings it was set up with. Raises, changing
+      # nothing, if a new value is invalid.
+      self._solver.update_settings(**merged)
+    if b is not None or c is not None or not settings:
+      try:
+        self._solver.update(b, c)
+      except BaseException:
+        if settings:
+          # b or c was rejected: put the previous settings back (they were
+          # accepted before, so this cannot fail) so nothing has changed.
+          self._solver.update_settings(**self._settings)
+        raise
+    if settings:
+      self._settings = merged
 
 
 # Backwards compatible helper function that simply calls the main API.
