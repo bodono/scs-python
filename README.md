@@ -156,7 +156,8 @@ if remaining > 0:  # time_limit_secs=0 would mean no limit
 cover the setup as well. Settings used to set up the solver (`scale`,
 `rho_x`, `normalize`, `adaptive_scale`, `adaptive_diag_scale`, the
 `acceleration_*` settings, `write_data_filename`, `linear_solver`) raise
-`ValueError` and change nothing; create a new `scs.SCS` object instead.
+`ValueError` and change nothing, even when passed their current value;
+create a new `scs.SCS` object instead.
 Unknown names raise `TypeError`. See the
 [settings docs](https://www.cvxgrp.org/scs/api/settings.html) for what an
 update does not change.

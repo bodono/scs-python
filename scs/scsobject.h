@@ -1321,9 +1321,9 @@ static PyObject *SCS_update_settings(SCS *self, PyObject *args,
 
   if (status < 0) {
     return none_with_error(
-        "SCS refused the settings update and changed nothing: a setting "
-        "used to set up the solver differs from its value when the solver "
-        "was constructed (SCS printed which one)");
+        "SCS refused the settings update and changed nothing (SCS printed "
+        "the reason: a setting used to set up the solver that differs from "
+        "its value at construction, or an invalid value)");
   }
   Py_RETURN_NONE;
 }
