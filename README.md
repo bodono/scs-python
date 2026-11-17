@@ -89,6 +89,14 @@ pip install . -Csetup-args=-Duse_spectral_cones=true
 # default: it is only faster when BLAS runs on one thread inside the threads
 # of SCS (see "Parallel projection of PSD blocks" in the SCS documentation).
 pip install . -Csetup-args=-Duse_openmp=true -Csetup-args=-Duse_parallel_psd=true
+
+# x86-64 Linux, GCC: static MKL (as in the wheel) on its threaded layer, so
+# MKL Pardiso and MKL's LAPACK use OMP_NUM_THREADS threads. MKL runs on GCC's
+# libgomp, which SCS's OpenMP code shares. The module then needs libgomp at
+# run time; the wheel stays sequential.
+pip install . -Csetup-args=-Dmkl_static_prefix=/opt/mkl-static \
+  -Csetup-args=-Dmkl_static_threading=gnu_thread \
+  -Csetup-args=-Duse_openmp=true -Csetup-args=-Duse_parallel_psd=true
 ```
 
 Notes:
