@@ -132,6 +132,35 @@ print(sol["info"]["aa_stats"])  # Anderson acceleration diagnostics
 print(sol["x"])               # primal solution
 ```
 
+### Reusing the solver: new `b`, `c` or settings
+
+`solver.update(b=..., c=...)` changes `b` and `c` before the next `solve()`
+and keeps the setup (data scaling and factorization). The settings that only
+the solve reads, `time_limit_secs`, `max_iters`, `eps_abs`, `eps_rel`,
+`eps_infeas`, `alpha`, `verbose` and `log_csv_filename`, can be changed the
+same way, and stay in force for later solves:
+
+```python
+import time
+
+budget = 60.0  # seconds for setup and solve together
+t0 = time.perf_counter()
+solver = scs.SCS(data, cone, verbose=False)
+remaining = budget - (time.perf_counter() - t0)
+if remaining > 0:  # time_limit_secs=0 would mean no limit
+    solver.update(time_limit_secs=remaining)
+    sol = solver.solve()
+```
+
+`time_limit_secs` counts the solve only, so this is how to make a time budget
+cover the setup as well. Settings used to set up the solver (`scale`,
+`rho_x`, `normalize`, `adaptive_scale`, `adaptive_diag_scale`, the
+`acceleration_*` settings, `write_data_filename`, `linear_solver`) raise
+`ValueError` and change nothing; create a new `scs.SCS` object instead.
+Unknown names raise `TypeError`. See the
+[settings docs](https://www.cvxgrp.org/scs/api/settings.html) for what an
+update does not change.
+
 ### Anderson acceleration tuning
 
 SCS applies Anderson acceleration (AA) on top of ADMM. The defaults work

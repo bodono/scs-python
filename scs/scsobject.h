@@ -439,6 +439,68 @@ static PyObject *none_with_type_error(char *str) {
   return (PyObject *)NULL;
 }
 
+/* Checks the values of the settings. Returns NULL if they are valid, else a
+ * message naming the offending setting. Shared by SCS_init and
+ * SCS_update_settings so that both accept exactly the same values.
+ *
+ * Ranges below match SCS's own validate() in scs_source/src/scs.c, plus
+ * explicit isnan/isfinite guards that SCS's validate() lacks. Without
+ * those, NaN values slip through every `x <= 0` / `x < 0` / `x >= 2`
+ * check (IEEE NaN comparisons always return false) and the solver runs
+ * to completion producing NaN iterates; +inf on scale or rho_x either
+ * crashes the linear-system factorization with a misleading "ScsWork
+ * allocation error!" or silently produces NaN. Better to raise a
+ * Python exception naming the offending setting up front. */
+static const char *py_validate_settings(const ScsSettings *stgs) {
+  if (stgs->max_iters <= 0) {
+    return "max_iters must be positive";
+  }
+  /* acceleration_lookback: nonnegative memory size for AA. 0 disables
+   * acceleration; the type (I or II) is selected by acceleration_type_1. */
+  if (stgs->acceleration_lookback < 0) {
+    return "acceleration_lookback must be nonnegative "
+           "(use acceleration_type_1=0 for type-II AA)";
+  }
+  if (stgs->acceleration_interval <= 0) {
+    return "acceleration_interval must be positive";
+  }
+  /* Negative regularization pins its absolute value. */
+  if (!isfinite((double)stgs->acceleration_regularization)) {
+    return "acceleration_regularization must be a finite number";
+  }
+  if (!isfinite((double)stgs->acceleration_relaxation) ||
+      stgs->acceleration_relaxation < 0 ||
+      stgs->acceleration_relaxation > 2) {
+    return "acceleration_relaxation must be in [0, 2]";
+  }
+  if (!isfinite((double)stgs->scale) || stgs->scale <= 0) {
+    return "scale must be a positive finite number";
+  }
+  /* Match the core (!isfinite): +inf is rejected; 0 disables the limit. */
+  if (!isfinite((double)stgs->time_limit_secs) || stgs->time_limit_secs < 0) {
+    return "time_limit_secs must be a nonnegative finite number (0 disables)";
+  }
+  if (!isfinite((double)stgs->eps_abs) || stgs->eps_abs < 0) {
+    return "eps_abs must be a nonnegative finite number";
+  }
+  if (!isfinite((double)stgs->eps_rel) || stgs->eps_rel < 0) {
+    return "eps_rel must be a nonnegative finite number";
+  }
+  if (!isfinite((double)stgs->eps_infeas) || stgs->eps_infeas < 0) {
+    return "eps_infeas must be a nonnegative finite number";
+  }
+  if (!isfinite((double)stgs->alpha) || stgs->alpha <= 0 || stgs->alpha >= 2) {
+    return "alpha must be in (0, 2)";
+  }
+  if (!isfinite((double)stgs->rho_x) || stgs->rho_x <= 0) {
+    return "rho_x must be a positive finite number";
+  }
+  if (stgs->adaptive_diag_scale < 0 || stgs->adaptive_diag_scale > 1) {
+    return "adaptive_diag_scale must be 0 (off) or 1 (on)";
+  }
+  return NULL;
+}
+
 static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
   /* data structures for arguments */
   PyArrayObject *Ax, *Ai, *Ap, *Px, *Pi, *Pp, *c, *b;
@@ -803,76 +865,12 @@ static int SCS_init(SCS *self, PyObject *args, PyObject *kwargs) {
                              ? (scs_int)PyObject_IsTrue(adaptive_scale)
                              : ADAPTIVE_SCALE;
 
-  /* Ranges below match SCS's own validate() in scs_source/src/scs.c, plus
-   * explicit isnan/isfinite guards that SCS's validate() lacks. Without
-   * those, NaN values slip through every `x <= 0` / `x < 0` / `x >= 2`
-   * check (IEEE NaN comparisons always return false) and the solver runs
-   * to completion producing NaN iterates; +inf on scale or rho_x either
-   * crashes the linear-system factorization with a misleading "ScsWork
-   * allocation error!" or silently produces NaN. Better to raise a
-   * Python exception naming the offending setting up front. */
-  if (stgs->max_iters <= 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("max_iters must be positive");
-  }
-  /* acceleration_lookback: nonnegative memory size for AA. 0 disables
-   * acceleration; the type (I or II) is selected by acceleration_type_1. */
-  if (stgs->acceleration_lookback < 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error(
-        "acceleration_lookback must be nonnegative "
-        "(use acceleration_type_1=0 for type-II AA)");
-  }
-  if (stgs->acceleration_interval <= 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("acceleration_interval must be positive");
-  }
-  /* Negative regularization pins its absolute value. */
-  if (!isfinite((double)stgs->acceleration_regularization)) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error(
-        "acceleration_regularization must be a finite number");
-  }
-  if (!isfinite((double)stgs->acceleration_relaxation) ||
-      stgs->acceleration_relaxation < 0 ||
-      stgs->acceleration_relaxation > 2) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("acceleration_relaxation must be in [0, 2]");
-  }
-  if (!isfinite((double)stgs->scale) || stgs->scale <= 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("scale must be a positive finite number");
-  }
-  /* Match the core (!isfinite): +inf is rejected; 0 disables the limit. */
-  if (!isfinite((double)stgs->time_limit_secs) || stgs->time_limit_secs < 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error(
-        "time_limit_secs must be a nonnegative finite number (0 disables)");
-  }
-  if (!isfinite((double)stgs->eps_abs) || stgs->eps_abs < 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_abs must be a nonnegative finite number");
-  }
-  if (!isfinite((double)stgs->eps_rel) || stgs->eps_rel < 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("eps_rel must be a nonnegative finite number");
-  }
-  if (!isfinite((double)stgs->eps_infeas) || stgs->eps_infeas < 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error(
-        "eps_infeas must be a nonnegative finite number");
-  }
-  if (!isfinite((double)stgs->alpha) || stgs->alpha <= 0 || stgs->alpha >= 2) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("alpha must be in (0, 2)");
-  }
-  if (!isfinite((double)stgs->rho_x) || stgs->rho_x <= 0) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("rho_x must be a positive finite number");
-  }
-  if (stgs->adaptive_diag_scale < 0 || stgs->adaptive_diag_scale > 1) {
-    free_py_scs_data(d, k, stgs, &ps);
-    return finish_with_error("adaptive_diag_scale must be 0 (off) or 1 (on)");
+  {
+    const char *err = py_validate_settings(stgs);
+    if (err) {
+      free_py_scs_data(d, k, stgs, &ps);
+      return finish_with_error((char *)err);
+    }
   }
   stgs->warm_start = WARM_START; /* False by default */
 
@@ -1214,6 +1212,122 @@ static PyObject *SCS_update(SCS *self, PyObject *args) {
   Py_RETURN_NONE;
 }
 
+/* Change the settings that only the solve reads on the existing workspace
+ * (scs_update_settings in the SCS core). Takes the complete settings as
+ * keyword arguments, with the same names, types and defaults as SCS_init;
+ * the Python wrapper (scs.SCS.update) passes the settings the object was
+ * constructed with, updated with the caller's changes. The core refuses the
+ * whole call, changing nothing, if a setting used to set up the workspace
+ * differs from its value at construction, and the new values persist for
+ * later solves. */
+static PyObject *SCS_update_settings(SCS *self, PyObject *args,
+                                     PyObject *kwargs) {
+  PyObject *verbose = NULL;
+  PyObject *normalize = NULL;
+  PyObject *adaptive_scale = NULL;
+  ScsSettings stgs;
+  const char *err;
+  scs_int status;
+  /* keyword-only, in the order and with the format of SCS_init's settings */
+  char *kwlist[] = {"verbose",
+                    "normalize",
+                    "adaptive_scale",
+                    "adaptive_diag_scale",
+                    "max_iters",
+                    "scale",
+                    "eps_abs",
+                    "eps_rel",
+                    "eps_infeas",
+                    "alpha",
+                    "rho_x",
+                    "time_limit_secs",
+                    "acceleration_lookback",
+                    "acceleration_interval",
+                    "acceleration_type_1",
+                    "acceleration_regularization",
+                    "acceleration_relaxation",
+                    "write_data_filename",
+                    "log_csv_filename",
+                    NULL};
+#ifdef DLONG
+#ifdef SFLOAT
+  char *argparse_string = "|$O!O!O!LLfffffffLLLffzz";
+#else
+  char *argparse_string = "|$O!O!O!LLdddddddLLLddzz";
+#endif
+#else
+#ifdef SFLOAT
+  char *argparse_string = "|$O!O!O!iifffffffiiiffzz";
+#else
+  char *argparse_string = "|$O!O!O!iidddddddiiiddzz";
+#endif
+#endif
+
+  scs_set_default_settings(&stgs);
+  /* clang-format off */
+  if (!PyArg_ParseTupleAndKeywords(
+          args, kwargs, argparse_string, kwlist,
+          &PyBool_Type, &verbose,
+          &PyBool_Type, &normalize,
+          &PyBool_Type, &adaptive_scale,
+          &(stgs.adaptive_diag_scale),
+          &(stgs.max_iters),
+          &(stgs.scale),
+          &(stgs.eps_abs),
+          &(stgs.eps_rel),
+          &(stgs.eps_infeas),
+          &(stgs.alpha),
+          &(stgs.rho_x),
+          &(stgs.time_limit_secs),
+          &(stgs.acceleration_lookback),
+          &(stgs.acceleration_interval),
+          &(stgs.acceleration_type_1),
+          &(stgs.acceleration_regularization),
+          &(stgs.acceleration_relaxation),
+          &(stgs.write_data_filename),
+          &(stgs.log_csv_filename))) {
+    /* PyArg_ParseTupleAndKeywords already set an informative TypeError. */
+    return (PyObject *)NULL;
+  }
+  /* clang-format on */
+  stgs.verbose = verbose ? (scs_int)PyObject_IsTrue(verbose) : VERBOSE;
+  stgs.normalize = normalize ? (scs_int)PyObject_IsTrue(normalize) : NORMALIZE;
+  stgs.adaptive_scale = adaptive_scale
+                            ? (scs_int)PyObject_IsTrue(adaptive_scale)
+                            : ADAPTIVE_SCALE;
+  stgs.warm_start = WARM_START; /* replaced by solve's warm_start argument */
+
+  err = py_validate_settings(&stgs);
+  if (err) {
+    return none_with_error((char *)err);
+  }
+
+  /* Acquire per-instance lock (release GIL first to avoid deadlock) */
+  int lock_ok;
+  Py_BEGIN_ALLOW_THREADS;
+  lock_ok = (PyThread_acquire_lock(self->lock, WAIT_LOCK) == PY_LOCK_ACQUIRED);
+  Py_END_ALLOW_THREADS;
+  if (!lock_ok) {
+    return none_with_error("Failed to acquire instance lock");
+  }
+  if (!self->work) {
+    PyThread_release_lock(self->lock);
+    return none_with_error("Workspace not initialized!");
+  }
+  /* The call only copies a few settings; it keeps the GIL, which also
+   * keeps the strings parsed with 'z' alive (SCS copies log_csv_filename). */
+  status = scs_update_settings(self->work, &stgs);
+  PyThread_release_lock(self->lock);
+
+  if (status < 0) {
+    return none_with_error(
+        "SCS refused the settings update and changed nothing: a setting "
+        "used to set up the solver differs from its value when the solver "
+        "was constructed (SCS printed which one)");
+  }
+  Py_RETURN_NONE;
+}
+
 /* Deallocate SCS object. Signature must match tp_dealloc
  * (void (*)(PyObject *)). Using the type's tp_free slot (rather than
  * PyObject_Free directly) is the standard C-API pattern and works
@@ -1252,6 +1366,9 @@ static PyMethodDef scs_obj_methods[] = {
     {"solve", (PyCFunction)SCS_solve, METH_VARARGS, PyDoc_STR("Solve problem")},
     {"update", (PyCFunction)SCS_update, METH_VARARGS,
      PyDoc_STR("Update b or c vectors")},
+    {"update_settings", (PyCFunction)(void (*)(void))SCS_update_settings,
+     METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("Change the settings that only the solve reads")},
     {NULL, NULL} /* sentinel */
 };
 
