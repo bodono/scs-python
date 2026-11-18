@@ -76,7 +76,8 @@ pip install . -Csetup-args=-Dlink_mkl=true
 # is LP64 and the build rejects the combination as unsafe.
 pip install . -Csetup-args=-Dlink_mkl=true -Csetup-args=-Duse_blas64=true
 
-# GPU direct solver (cuDSS)
+# GPU direct solver (cuDSS). Also links cuBLAS and cuSPARSE, which must be
+# installed in the same CUDA toolkit as cudart.
 pip install . -Csetup-args=-Dlink_cudss=true -Csetup-args=-Dint32=true
 
 # Dense direct solver (LAPACK)

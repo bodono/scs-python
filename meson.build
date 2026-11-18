@@ -507,9 +507,14 @@ if get_option('link_cudss')
           'directory; to see CMake\'s reason, rerun with -Cbuild-dir=build and read ' +
           'build/meson-logs/meson-log.txt.')
   endif
+  # SCS's cuDSS backend computes the products with K that its per-iteration
+  # refinement needs on the GPU (cuSPARSE SpMV, cuBLAS amax/axpy), so the
+  # target links cuBLAS and cuSPARSE from the same toolkit as cudart, as the
+  # use_gpu block above does.
+  cudss_cuda_libs_dep = dependency('cuda', modules: ['cublas', 'cusparse'], required: true)
   # Scope the CUDA libraries to this target rather than mutating the shared
   # `_deps` (see the use_gpu block above).
-  cudss_deps = _deps + [cuda_dep, cudss_dep]
+  cudss_deps = _deps + [cuda_dep, cudss_cuda_libs_dep, cudss_dep]
   py.extension_module(
     '_scs_cudss',
     'scs/scspy.c',
